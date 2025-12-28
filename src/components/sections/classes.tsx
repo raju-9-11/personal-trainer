@@ -8,14 +8,18 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription }
 import { Button } from '@/components/ui/button';
 import { Calendar, Clock, Users } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { useTrainerSlug } from '@/app/[slug]/content';
 
 export function Classes() {
   const { getClasses } = useData();
+  const slug = useTrainerSlug();
   const [items, setItems] = useState<GymClass[]>([]);
 
   useEffect(() => {
-    getClasses().then(setItems);
-  }, [getClasses]);
+    if (slug) {
+      getClasses(slug).then(setItems);
+    }
+  }, [getClasses, slug]);
 
   return (
     <section id="classes" className="py-24 bg-muted/20">

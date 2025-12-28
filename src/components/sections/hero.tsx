@@ -6,14 +6,18 @@ import Link from 'next/link';
 import { useData } from '@/lib/data-provider';
 import { useEffect, useState } from 'react';
 import { TrainerProfile } from '@/lib/types';
+import { useTrainerSlug } from '@/app/[slug]/content';
 
 export function Hero() {
   const { getProfile } = useData();
+  const slug = useTrainerSlug();
   const [profile, setProfile] = useState<TrainerProfile | null>(null);
 
   useEffect(() => {
-    getProfile().then(setProfile);
-  }, [getProfile]);
+    if (slug) {
+      getProfile(slug).then(setProfile);
+    }
+  }, [getProfile, slug]);
 
   if (!profile) return <div className="h-screen bg-background flex items-center justify-center">Loading...</div>;
 
@@ -58,10 +62,10 @@ export function Hero() {
           className="flex flex-col md:flex-row gap-4"
         >
           <Button size="lg" className="text-lg px-8 py-6 rounded-full" asChild>
-            <Link href="#contact">Start Your Journey</Link>
+            <Link href={`/${slug}#contact`}>Start Your Journey</Link>
           </Button>
           <Button size="lg" variant="outline" className="text-lg px-8 py-6 rounded-full" asChild>
-            <Link href="#classes">View Classes</Link>
+            <Link href={`/${slug}#classes`}>View Classes</Link>
           </Button>
         </motion.div>
       </div>

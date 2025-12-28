@@ -7,6 +7,14 @@ export interface TrainerProfile {
   contactPhone: string;
   instagramUrl: string;
   youtubeUrl: string;
+  // profileImageUrl property might be needed if not present, checking existing usages or implicit logic
+}
+
+export interface TrainerSummary {
+  slug: string; // The URL part, e.g., 'trainer1'
+  name: string;
+  heroTitle: string;
+  profileImage?: string; // Optional image for the card
 }
 
 export interface Certification {
@@ -58,7 +66,7 @@ export interface DataProviderType {
   getClasses: () => Promise<GymClass[]>;
   getTestimonials: () => Promise<Testimonial[]>;
 
-  // Write (Admin)
+  // Write (Admin) - These typically rely on the authenticated user's context
   updateProfile: (profile: TrainerProfile) => Promise<void>;
   updateBrandIdentity: (identity: BrandIdentity) => Promise<void>;
   addCertification: (cert: Omit<Certification, 'id'>) => Promise<void>;

@@ -28,25 +28,10 @@ const INITIAL_PROFILE: TrainerProfile = {
   youtubeUrl: "https://youtube.com",
 };
 
-const INITIAL_CERTS: Certification[] = [
-  { id: '1', title: "Certified Personal Trainer", issuer: "NASM", date: "2015-06-15" },
-  { id: '2', title: "Advanced Nutrition Coach", issuer: "Precision Nutrition", date: "2017-03-10" },
-  { id: '3', title: "CrossFit Level 2", issuer: "CrossFit Inc.", date: "2019-11-20" },
-];
-
-const INITIAL_CLASSES: GymClass[] = [
-  { id: '1', title: "Morning HIIT", description: "High Intensity Interval Training to start your day.", time: "Mon 06:00 AM", durationMinutes: 45, maxSpots: 15, enrolledSpots: 10 },
-  { id: '2', title: "Strength Mastery", description: "Focus on compound lifts and form.", time: "Tue 05:00 PM", durationMinutes: 60, maxSpots: 8, enrolledSpots: 5 },
-  { id: '3', title: "Cardio Blast", description: "Endurance based training.", time: "Wed 07:00 AM", durationMinutes: 45, maxSpots: 20, enrolledSpots: 12 },
-];
-
-const INITIAL_TRANS: Transformation[] = [
-  { id: '1', clientName: "John D.", description: "Lost 30lbs in 3 months.", beforeImage: "https://via.placeholder.com/300?text=Before", afterImage: "https://via.placeholder.com/300?text=After" },
-];
-
-const INITIAL_TESTIMONIALS: Testimonial[] = [
-  { id: '1', clientName: "Sarah L.", text: "Alex changed my life. I've never felt stronger!", rating: 5 },
-];
+const INITIAL_DB = {
+  'trainer1': TRAINER1_DATA,
+  'testtrainer': TESTTRAINER_DATA
+};
 
 export class MockDataService implements DataProviderType {
   private isClient = typeof window !== 'undefined';
@@ -62,7 +47,7 @@ export class MockDataService implements DataProviderType {
     }
   }
 
-  private save = (key: string, data: any) => {
+  private saveDb = (db: any) => {
     if (this.isClient) {
         try {
             localStorage.setItem(key, JSON.stringify(data));
@@ -70,11 +55,18 @@ export class MockDataService implements DataProviderType {
             console.error("MockDataService save error", e);
         }
     }
+    return slug || this.currentTrainerSlug;
   }
 
   // --- Read ---
-  getProfile = async (): Promise<TrainerProfile> => {
-    return this.load(STORAGE_KEYS.PROFILE, INITIAL_PROFILE);
+  getTrainers = async (): Promise<TrainerSummary[]> => {
+    const db = this.getDb();
+    return Object.keys(db).map(slug => ({
+      slug,
+      name: db[slug].profile.name,
+      heroTitle: db[slug].profile.heroTitle,
+      profileImage: undefined // Add placeholder if needed
+    }));
   }
 
   getBrandIdentity = async (): Promise<BrandIdentity> => {
@@ -85,21 +77,39 @@ export class MockDataService implements DataProviderType {
     return this.load(STORAGE_KEYS.CERTS, INITIAL_CERTS);
   }
 
-  getTransformations = async (): Promise<Transformation[]> => {
-    return this.load(STORAGE_KEYS.TRANS, INITIAL_TRANS);
+  getCertifications = async (slug?: string): Promise<Certification[]> => {
+    const db = this.getDb();
+    const target = this.getTargetSlug(slug);
+    return db[target]?.certs || [];
   }
 
-  getClasses = async (): Promise<GymClass[]> => {
-    return this.load(STORAGE_KEYS.CLASSES, INITIAL_CLASSES);
+  getTransformations = async (slug?: string): Promise<Transformation[]> => {
+    const db = this.getDb();
+    const target = this.getTargetSlug(slug);
+    return db[target]?.transformations || [];
   }
 
-  getTestimonials = async (): Promise<Testimonial[]> => {
-    return this.load(STORAGE_KEYS.TESTIMONIALS, INITIAL_TESTIMONIALS);
+  getClasses = async (slug?: string): Promise<GymClass[]> => {
+    const db = this.getDb();
+    const target = this.getTargetSlug(slug);
+    return db[target]?.classes || [];
   }
 
-  // --- Write ---
+  getTestimonials = async (slug?: string): Promise<Testimonial[]> => {
+    const db = this.getDb();
+    const target = this.getTargetSlug(slug);
+    return db[target]?.testimonials || [];
+  }
+
+  // --- Write (Implicitly acts on logged-in user, which we simulate via getTargetSlug() returning current auth user) ---
+
   updateProfile = async (profile: TrainerProfile): Promise<void> => {
-    this.save(STORAGE_KEYS.PROFILE, profile);
+    const db = this.getDb();
+    const target = this.getTargetSlug();
+    if (db[target]) {
+        db[target].profile = profile;
+        this.saveDb(db);
+    }
   }
 
   updateBrandIdentity = async (identity: BrandIdentity): Promise<void> => {
@@ -107,40 +117,68 @@ export class MockDataService implements DataProviderType {
   }
 
   addCertification = async (cert: Omit<Certification, 'id'>): Promise<void> => {
-    const list = await this.getCertifications();
-    const newCert = { ...cert, id: Math.random().toString(36).substr(2, 9) };
-    this.save(STORAGE_KEYS.CERTS, [...list, newCert]);
+    const db = this.getDb();
+    const target = this.getTargetSlug();
+    if (db[target]) {
+        const newCert = { ...cert, id: Math.random().toString(36).substr(2, 9) };
+        db[target].certs = [...(db[target].certs || []), newCert];
+        this.saveDb(db);
+    }
   }
 
   removeCertification = async (id: string): Promise<void> => {
-    const list = await this.getCertifications();
-    this.save(STORAGE_KEYS.CERTS, list.filter(i => i.id !== id));
+    const db = this.getDb();
+    const target = this.getTargetSlug();
+    if (db[target]) {
+        db[target].certs = db[target].certs.filter((i: Certification) => i.id !== id);
+        this.saveDb(db);
+    }
   }
 
   addTransformation = async (trans: Omit<Transformation, 'id'>): Promise<void> => {
-    const list = await this.getTransformations();
-    const newTrans = { ...trans, id: Math.random().toString(36).substr(2, 9) };
-    this.save(STORAGE_KEYS.TRANS, [...list, newTrans]);
+    const db = this.getDb();
+    const target = this.getTargetSlug();
+    if (db[target]) {
+        const newTrans = { ...trans, id: Math.random().toString(36).substr(2, 9) };
+        db[target].transformations = [...(db[target].transformations || []), newTrans];
+        this.saveDb(db);
+    }
   }
 
   removeTransformation = async (id: string): Promise<void> => {
-    const list = await this.getTransformations();
-    this.save(STORAGE_KEYS.TRANS, list.filter(i => i.id !== id));
+    const db = this.getDb();
+    const target = this.getTargetSlug();
+    if (db[target]) {
+        db[target].transformations = db[target].transformations.filter((i: Transformation) => i.id !== id);
+        this.saveDb(db);
+    }
   }
 
   addClass = async (gymClass: Omit<GymClass, 'id'>): Promise<void> => {
-    const list = await this.getClasses();
-    const newClass = { ...gymClass, id: Math.random().toString(36).substr(2, 9) };
-    this.save(STORAGE_KEYS.CLASSES, [...list, newClass]);
+    const db = this.getDb();
+    const target = this.getTargetSlug();
+    if (db[target]) {
+        const newClass = { ...gymClass, id: Math.random().toString(36).substr(2, 9) };
+        db[target].classes = [...(db[target].classes || []), newClass];
+        this.saveDb(db);
+    }
   }
 
   removeClass = async (id: string): Promise<void> => {
-    const list = await this.getClasses();
-    this.save(STORAGE_KEYS.CLASSES, list.filter(i => i.id !== id));
+    const db = this.getDb();
+    const target = this.getTargetSlug();
+    if (db[target]) {
+        db[target].classes = db[target].classes.filter((i: GymClass) => i.id !== id);
+        this.saveDb(db);
+    }
   }
 
   updateClass = async (id: string, updates: Partial<GymClass>): Promise<void> => {
-    const list = await this.getClasses();
-    this.save(STORAGE_KEYS.CLASSES, list.map(c => c.id === id ? { ...c, ...updates } : c));
+    const db = this.getDb();
+    const target = this.getTargetSlug();
+    if (db[target]) {
+        db[target].classes = db[target].classes.map((c: GymClass) => c.id === id ? { ...c, ...updates } : c);
+        this.saveDb(db);
+    }
   }
 }

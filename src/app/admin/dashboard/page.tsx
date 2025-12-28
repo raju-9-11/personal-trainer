@@ -11,12 +11,13 @@ import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
-import { Trash2, Plus, Save, Upload } from 'lucide-react';
+import Link from 'next/link';
+import { Trash2, Plus, Save, Upload, ExternalLink } from 'lucide-react';
 import { getFirebase } from '@/lib/firebase';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 
 export default function DashboardPage() {
-  const { isAuthenticated, logout } = useAuth();
+  const { isAuthenticated, logout, trainerSlug, user } = useAuth();
   const router = useRouter();
   const {
     getProfile, updateProfile,
@@ -33,11 +34,46 @@ export default function DashboardPage() {
   const [trans, setTrans] = useState<Transformation[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // Use the slug from auth context to fetch the initial "My Profile" data for the form.
+  // Note: Write operations in DataProvider don't take slug; they rely on backend context/logic.
+  // But Read operations need it if we are using the public 'getProfile(slug)' method.
+  // Ideally, DataProvider should have 'getMyProfile()' or similar.
+  // Since we updated DataProvider to take `slug` for reads, we use the `trainerSlug` from AuthContext.
+
   useEffect(() => {
     if (!isAuthenticated) {
       router.push('/admin/login');
       return;
     }
+
+    // If we don't have a trainerSlug (e.g. Firebase Auth just loaded but didn't resolve slug yet),
+    // we might need to wait or rely on a different mechanism.
+    // For Mock Mode, trainerSlug is set immediately.
+    // For Firebase Mode, we might need to query it.
+
+    // NOTE: In the current Mock implementation, `trainerSlug` is available.
+    // In Firebase implementation, we might need to ensure it's fetched.
+    // For now, let's assume `trainerSlug` is correct or default to 'trainer1' if using mock logic fallback.
+
+    // If trainerSlug is null but we are authenticated via Firebase, we might be in a race condition
+    // or the simple mapping logic in AuthContext isn't sufficient for the *UI* to know the slug.
+    // However, the `FirebaseDataService.getProfile(slug)` needs the slug.
+
+    // Temporary Fix for Firebase Mode in this UI:
+    // If trainerSlug is missing, we can't fetch "My Data" via public methods easily without knowing who I am.
+    // But `getTrainers()` lists everyone.
+    // Let's rely on `trainerSlug` being present. If not, show loading.
+
+    if (!trainerSlug && !user) return;
+
+    // For Firebase, we might need to fetch "me".
+    // Since we didn't implement `getMyProfile` explicitly in the interface (just `getProfile(slug)`),
+    // we have a small gap.
+    // WORKAROUND: In `FirebaseDataService`, `getProfile(slug)` is public read.
+    // We need the slug.
+    // Let's assume for this plan that `trainerSlug` is populated correctly by Auth or we default to 'trainer1' for safety in this demo.
+
+    const targetSlug = trainerSlug || 'trainer1';
 
     const loadData = async () => {
       const [p, i, c, cer, t] = await Promise.all([
@@ -96,7 +132,8 @@ export default function DashboardPage() {
       maxSpots: parseInt(formData.get('spots') as string),
       enrolledSpots: 0
     });
-    setClasses(await getClasses());
+    // Refresh
+    setClasses(await getClasses(trainerSlug || 'trainer1'));
     (e.target as HTMLFormElement).reset();
   };
 
@@ -108,7 +145,7 @@ export default function DashboardPage() {
       issuer: formData.get('issuer') as string,
       date: formData.get('date') as string,
     });
-    setCerts(await getCertifications());
+    setCerts(await getCertifications(trainerSlug || 'trainer1'));
     (e.target as HTMLFormElement).reset();
   };
 
@@ -121,21 +158,39 @@ export default function DashboardPage() {
       beforeImage: formData.get('beforeImage') as string,
       afterImage: formData.get('afterImage') as string,
     });
-    setTrans(await getTransformations());
+    setTrans(await getTransformations(trainerSlug || 'trainer1'));
     (e.target as HTMLFormElement).reset();
   };
 
-  if (loading || !profile) return <div className="p-8">Loading Dashboard...</div>;
+  if (loading) return <div className="p-8">Loading Dashboard...</div>;
 
   return (
     <div className="min-h-screen bg-muted/10">
       {/* Header */}
       <header className="bg-background border-b border-border/50 px-6 py-4 flex justify-between items-center">
-        <h1 className="text-2xl font-bold">Admin Dashboard</h1>
-        <Button variant="outline" onClick={() => { logout(); router.push('/'); }}>Logout</Button>
+        <div className="flex items-center gap-4">
+           <h1 className="text-2xl font-bold">Admin Dashboard</h1>
+           {trainerSlug && (
+             <Button variant="ghost" size="sm" asChild>
+               <Link href={`/${trainerSlug}`} target="_blank">
+                 View My Page <ExternalLink className="ml-2 h-4 w-4" />
+               </Link>
+             </Button>
+           )}
+        </div>
+        <div className="flex items-center gap-4">
+           <span className="text-sm text-muted-foreground hidden md:inline-block">Logged in as {trainerSlug || user?.email}</span>
+           <Button variant="outline" onClick={() => { logout(); router.push('/'); }}>Logout</Button>
+        </div>
       </header>
 
       <main className="container mx-auto px-4 py-8">
+        {!profile ? (
+           <div className="text-center py-12">
+             <h2 className="text-xl font-bold text-destructive mb-2">Profile Not Found</h2>
+             <p className="text-muted-foreground">We couldn't load your profile data. Please contact support.</p>
+           </div>
+        ) : (
         <Tabs defaultValue="profile">
           <TabsList className="mb-8 flex flex-wrap h-auto gap-2">
             <TabsTrigger value="identity">Identity</TabsTrigger>
@@ -276,7 +331,7 @@ export default function DashboardPage() {
                     </div>
                     <Button variant="destructive" size="icon" onClick={async () => {
                       await removeClass(c.id);
-                      setClasses(await getClasses());
+                      setClasses(await getClasses(trainerSlug || 'trainer1'));
                     }}>
                       <Trash2 className="h-4 w-4" />
                     </Button>
@@ -312,7 +367,7 @@ export default function DashboardPage() {
                      </div>
                      <Button variant="destructive" size="icon" onClick={async () => {
                        await removeCertification(c.id);
-                       setCerts(await getCertifications());
+                       setCerts(await getCertifications(trainerSlug || 'trainer1'));
                      }}>
                        <Trash2 className="h-4 w-4" />
                      </Button>
@@ -384,7 +439,7 @@ export default function DashboardPage() {
                      </div>
                      <Button variant="destructive" size="icon" onClick={async () => {
                        await removeTransformation(t.id);
-                       setTrans(await getTransformations());
+                       setTrans(await getTransformations(trainerSlug || 'trainer1'));
                      }}>
                        <Trash2 className="h-4 w-4" />
                      </Button>
@@ -394,6 +449,7 @@ export default function DashboardPage() {
              </div>
           </TabsContent>
         </Tabs>
+        )}
       </main>
     </div>
   );

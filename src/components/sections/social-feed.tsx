@@ -4,11 +4,25 @@ import { motion } from 'framer-motion';
 import { Card } from '@/components/ui/card';
 import { Instagram, Youtube, Play } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useData } from '@/lib/data-provider';
+import { useEffect, useState } from 'react';
+import { TrainerProfile } from '@/lib/types';
+import { useTrainerSlug } from '@/app/[slug]/content';
 
 export function SocialFeed() {
   // Mock Data for Social Media
   const instaPosts = [1, 2, 3, 4];
   const youtubeVideos = [1, 2];
+
+  const { getProfile } = useData();
+  const slug = useTrainerSlug();
+  const [profile, setProfile] = useState<TrainerProfile | null>(null);
+
+  useEffect(() => {
+    if (slug) {
+      getProfile(slug).then(setProfile);
+    }
+  }, [getProfile, slug]);
 
   return (
     <section className="py-24 bg-background overflow-hidden">
@@ -19,11 +33,15 @@ export function SocialFeed() {
              <p className="text-muted-foreground">Follow the journey on Instagram & YouTube</p>
            </div>
            <div className="flex gap-4">
-             <Button variant="outline" className="gap-2">
-               <Instagram className="h-4 w-4" /> @titanfitness
+             <Button variant="outline" className="gap-2" asChild>
+               <a href={profile?.instagramUrl || "#"} target="_blank" rel="noopener noreferrer">
+                 <Instagram className="h-4 w-4" /> Instagram
+               </a>
              </Button>
-             <Button variant="outline" className="gap-2">
-               <Youtube className="h-4 w-4" /> TitanTV
+             <Button variant="outline" className="gap-2" asChild>
+               <a href={profile?.youtubeUrl || "#"} target="_blank" rel="noopener noreferrer">
+                 <Youtube className="h-4 w-4" /> YouTube
+               </a>
              </Button>
            </div>
         </div>

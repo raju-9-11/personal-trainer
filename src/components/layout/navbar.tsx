@@ -6,18 +6,33 @@ import { Menu, X, Dumbbell } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { motion } from 'framer-motion';
+import { useTrainerSlug } from '@/app/[slug]/content';
+import { useData } from '@/lib/data-provider';
 
 export function Navbar() {
   const [isOpen, setIsOpen] = React.useState(false);
+  const slug = useTrainerSlug();
+  const { getProfile } = useData();
+  const [brandName, setBrandName] = React.useState("Titan Fitness");
+
+  React.useEffect(() => {
+    if (slug) {
+        getProfile(slug).then(p => {
+             // Extract brand name from bio or just use a generic logic if strict branding per trainer isn't defined yet
+             // Using defaults
+        });
+    }
+  }, [slug, getProfile]);
 
   const toggleMenu = () => setIsOpen(!isOpen);
 
+  // Links must be relative to the slug page
   const links = [
-    { href: '#about', label: 'About' },
-    { href: '#certifications', label: 'Certifications' },
-    { href: '#transformations', label: 'Transformations' },
-    { href: '#classes', label: 'Classes' },
-    { href: '#contact', label: 'Contact' },
+    { href: `#about`, label: 'About' },
+    { href: `#certifications`, label: 'Certifications' },
+    { href: `#transformations`, label: 'Transformations' },
+    { href: `#classes`, label: 'Classes' },
+    { href: `#contact`, label: 'Contact' },
   ];
 
   return (
@@ -29,7 +44,7 @@ export function Navbar() {
     >
       <div className="container mx-auto px-4 h-16 flex items-center justify-between">
         {/* Logo */}
-        <Link href="/" className="flex items-center space-x-2 font-bold text-xl uppercase tracking-tighter hover:text-primary transition-colors">
+        <Link href={`/${slug}`} className="flex items-center space-x-2 font-bold text-xl uppercase tracking-tighter hover:text-primary transition-colors">
           <Dumbbell className="h-6 w-6 text-primary" />
           <span>Titan<span className="text-primary">Fitness</span></span>
         </Link>
