@@ -1,60 +1,69 @@
-import { DataProviderType, TrainerProfile, Certification, Transformation, GymClass, Testimonial, BrandIdentity } from '../types';
+import { DataProviderType, TrainerProfile, Certification, Transformation, GymClass, Testimonial, BrandIdentity, TrainerSummary } from '../types';
 
-const STORAGE_KEYS = {
-  PROFILE: 'trainer_profile',
-  IDENTITY: 'trainer_identity',
-  CERTS: 'trainer_certs',
-  TRANS: 'trainer_trans',
-  CLASSES: 'trainer_classes',
-  TESTIMONIALS: 'trainer_testimonials',
+const TRAINER1_DATA = {
+  profile: {
+    name: "Alex 'The Forge' Titan",
+    bio: "Over 10 years of experience forging elite physiques. I specialize in high-intensity functional training and nutritional coaching. Let's sculpt the best version of you.",
+    heroTitle: "UNLEASH YOUR POTENTIAL",
+    heroSubtitle: "Elite Personal Training & Fitness Coaching",
+    contactEmail: "alex@titanfitness.com",
+    contactPhone: "+1 (555) 012-3456",
+    instagramUrl: "https://instagram.com",
+    youtubeUrl: "https://youtube.com",
+  },
+  identity: {
+    brandName: "Titan Fitness",
+    logoUrl: "https://via.placeholder.com/150?text=TF",
+    primaryColor: "#000000",
+    secondaryColor: "#ffffff",
+  },
+  certs: [
+    { id: '1', title: 'NASM Certified Personal Trainer', issuer: 'NASM', date: '2015-06-01' },
+    { id: '2', title: 'CrossFit Level 2', issuer: 'CrossFit', date: '2018-03-15' }
+  ],
+  transformations: [
+    { id: '1', clientName: 'John Doe', description: 'Lost 30lbs in 3 months', beforeImage: 'https://via.placeholder.com/300', afterImage: 'https://via.placeholder.com/300' }
+  ],
+  classes: [
+    { id: '1', title: 'HIIT Blast', description: 'High intensity interval training', time: 'Mon 10:00 AM', durationMinutes: 60, maxSpots: 20, enrolledSpots: 12 },
+    { id: '2', title: 'Strength 101', description: 'Basic compound movements', time: 'Wed 6:00 PM', durationMinutes: 60, maxSpots: 15, enrolledSpots: 15 }
+  ],
+  testimonials: [
+    { id: '1', clientName: 'Sarah K.', text: 'Best trainer ever!', rating: 5 }
+  ]
 };
 
-const INITIAL_IDENTITY: BrandIdentity = {
-  brandName: "Titan Fitness",
-  logoUrl: "https://via.placeholder.com/150?text=TF",
-  primaryColor: "#000000",
-  secondaryColor: "#ffffff",
+const TESTTRAINER_DATA = {
+  ...TRAINER1_DATA,
+  profile: { ...TRAINER1_DATA.profile, name: "Test Trainer", heroTitle: "TEST YOUR LIMITS" }
 };
 
-// Initial Data
-const INITIAL_PROFILE: TrainerProfile = {
-  name: "Alex 'The Forge' Titan",
-  bio: "Over 10 years of experience forging elite physiques. I specialize in high-intensity functional training and nutritional coaching. Let's sculpt the best version of you.",
-  heroTitle: "UNLEASH YOUR POTENTIAL",
-  heroSubtitle: "Elite Personal Training & Fitness Coaching",
-  contactEmail: "alex@titanfitness.com",
-  contactPhone: "+1 (555) 012-3456",
-  instagramUrl: "https://instagram.com",
-  youtubeUrl: "https://youtube.com",
-};
-
-const INITIAL_DB = {
+const INITIAL_DB: Record<string, any> = {
   'trainer1': TRAINER1_DATA,
   'testtrainer': TESTTRAINER_DATA
 };
 
 export class MockDataService implements DataProviderType {
   private isClient = typeof window !== 'undefined';
+  private currentTrainerSlug = 'trainer1'; // Default context
 
-  private load = <T>(key: string, initial: T): T => {
-    if (!this.isClient) return initial;
+  private getDb = () => {
+    if (!this.isClient) return INITIAL_DB;
     try {
-        const stored = localStorage.getItem(key);
-        return stored ? JSON.parse(stored) : initial;
-    } catch (e) {
-        console.error("MockDataService load error", e);
-        return initial;
+      const stored = localStorage.getItem('mock_db');
+      return stored ? JSON.parse(stored) : INITIAL_DB;
+    } catch {
+      return INITIAL_DB;
     }
   }
 
   private saveDb = (db: any) => {
     if (this.isClient) {
-        try {
-            localStorage.setItem(key, JSON.stringify(data));
-        } catch (e) {
-            console.error("MockDataService save error", e);
-        }
+      localStorage.setItem('mock_db', JSON.stringify(db));
     }
+  }
+
+  private getTargetSlug(slug?: string): string {
     return slug || this.currentTrainerSlug;
   }
 
@@ -65,16 +74,20 @@ export class MockDataService implements DataProviderType {
       slug,
       name: db[slug].profile.name,
       heroTitle: db[slug].profile.heroTitle,
-      profileImage: undefined // Add placeholder if needed
+      profileImage: undefined
     }));
   }
 
-  getBrandIdentity = async (): Promise<BrandIdentity> => {
-    return this.load(STORAGE_KEYS.IDENTITY, INITIAL_IDENTITY);
+  getProfile = async (slug?: string): Promise<TrainerProfile> => {
+    const db = this.getDb();
+    const target = this.getTargetSlug(slug);
+    return db[target]?.profile || TRAINER1_DATA.profile;
   }
 
-  getCertifications = async (): Promise<Certification[]> => {
-    return this.load(STORAGE_KEYS.CERTS, INITIAL_CERTS);
+  getBrandIdentity = async (slug?: string): Promise<BrandIdentity> => {
+    const db = this.getDb();
+    const target = this.getTargetSlug(slug);
+    return db[target]?.identity || TRAINER1_DATA.identity;
   }
 
   getCertifications = async (slug?: string): Promise<Certification[]> => {
@@ -101,7 +114,7 @@ export class MockDataService implements DataProviderType {
     return db[target]?.testimonials || [];
   }
 
-  // --- Write (Implicitly acts on logged-in user, which we simulate via getTargetSlug() returning current auth user) ---
+  // --- Write ---
 
   updateProfile = async (profile: TrainerProfile): Promise<void> => {
     const db = this.getDb();
@@ -113,7 +126,12 @@ export class MockDataService implements DataProviderType {
   }
 
   updateBrandIdentity = async (identity: BrandIdentity): Promise<void> => {
-    this.save(STORAGE_KEYS.IDENTITY, identity);
+    const db = this.getDb();
+    const target = this.getTargetSlug();
+    if (db[target]) {
+        db[target].identity = identity;
+        this.saveDb(db);
+    }
   }
 
   addCertification = async (cert: Omit<Certification, 'id'>): Promise<void> => {

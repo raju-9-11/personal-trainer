@@ -59,12 +59,13 @@ export interface BrandIdentity {
 
 export interface DataProviderType {
   // Read
-  getProfile: () => Promise<TrainerProfile>;
-  getBrandIdentity: () => Promise<BrandIdentity>;
-  getCertifications: () => Promise<Certification[]>;
-  getTransformations: () => Promise<Transformation[]>;
-  getClasses: () => Promise<GymClass[]>;
-  getTestimonials: () => Promise<Testimonial[]>;
+  getTrainers: () => Promise<TrainerSummary[]>;
+  getProfile: (slug?: string) => Promise<TrainerProfile>;
+  getBrandIdentity: (slug?: string) => Promise<BrandIdentity>;
+  getCertifications: (slug?: string) => Promise<Certification[]>;
+  getTransformations: (slug?: string) => Promise<Transformation[]>;
+  getClasses: (slug?: string) => Promise<GymClass[]>;
+  getTestimonials: (slug?: string) => Promise<Testimonial[]>;
 
   // Write (Admin) - These typically rely on the authenticated user's context
   updateProfile: (profile: TrainerProfile) => Promise<void>;
