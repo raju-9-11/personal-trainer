@@ -7,7 +7,7 @@ export interface TrainerProfile {
   contactPhone: string;
   instagramUrl: string;
   youtubeUrl: string;
-  // profileImageUrl property might be needed if not present, checking existing usages or implicit logic
+  profileImageUrl?: string;
 }
 
 export interface TrainerSummary {
@@ -57,6 +57,13 @@ export interface BrandIdentity {
   secondaryColor: string;
 }
 
+export interface LandingPageContent {
+  heroTitle: string;
+  heroSubtitle: string;
+  heroImageUrl: string;
+  // Can add more sections here if needed
+}
+
 export interface DataProviderType {
   // Read
   getTrainers: () => Promise<TrainerSummary[]>;
@@ -66,6 +73,7 @@ export interface DataProviderType {
   getTransformations: (slug?: string) => Promise<Transformation[]>;
   getClasses: (slug?: string) => Promise<GymClass[]>;
   getTestimonials: (slug?: string) => Promise<Testimonial[]>;
+  getLandingPageContent: () => Promise<LandingPageContent>;
 
   // Write (Admin) - These typically rely on the authenticated user's context
   updateProfile: (profile: TrainerProfile) => Promise<void>;
@@ -77,4 +85,5 @@ export interface DataProviderType {
   addClass: (gymClass: Omit<GymClass, 'id'>) => Promise<void>;
   removeClass: (id: string) => Promise<void>;
   updateClass: (id: string, gymClass: Partial<GymClass>) => Promise<void>;
+  updateLandingPageContent: (content: LandingPageContent) => Promise<void>;
 }
