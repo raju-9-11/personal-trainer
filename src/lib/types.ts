@@ -50,21 +50,25 @@ export interface Testimonial {
   rating: number; // 1-5
 }
 
+export interface BrandIdentity {
+  brandName: string;
+  logoUrl: string;
+  primaryColor: string;
+  secondaryColor: string;
+}
+
 export interface DataProviderType {
   // Read
-  // slug is optional. If provided, fetches public data for that trainer.
-  // If not provided, it may rely on authenticated context or throw error depending on implementation.
-  getProfile: (slug?: string) => Promise<TrainerProfile>;
-  getCertifications: (slug?: string) => Promise<Certification[]>;
-  getTransformations: (slug?: string) => Promise<Transformation[]>;
-  getClasses: (slug?: string) => Promise<GymClass[]>;
-  getTestimonials: (slug?: string) => Promise<Testimonial[]>;
-
-  // New method to list all trainers for the directory
-  getTrainers: () => Promise<TrainerSummary[]>;
+  getProfile: () => Promise<TrainerProfile>;
+  getBrandIdentity: () => Promise<BrandIdentity>;
+  getCertifications: () => Promise<Certification[]>;
+  getTransformations: () => Promise<Transformation[]>;
+  getClasses: () => Promise<GymClass[]>;
+  getTestimonials: () => Promise<Testimonial[]>;
 
   // Write (Admin) - These typically rely on the authenticated user's context
   updateProfile: (profile: TrainerProfile) => Promise<void>;
+  updateBrandIdentity: (identity: BrandIdentity) => Promise<void>;
   addCertification: (cert: Omit<Certification, 'id'>) => Promise<void>;
   removeCertification: (id: string) => Promise<void>;
   addTransformation: (trans: Omit<Transformation, 'id'>) => Promise<void>;

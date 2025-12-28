@@ -1,6 +1,7 @@
 import { initializeApp, getApps, getApp, FirebaseApp } from "firebase/app";
 import { getFirestore, Firestore } from "firebase/firestore";
 import { getAuth, Auth } from "firebase/auth";
+import { getStorage, FirebaseStorage } from "firebase/storage";
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -14,26 +15,27 @@ const firebaseConfig = {
 let app: FirebaseApp | undefined;
 let db: Firestore | undefined;
 let auth: Auth | undefined;
+let storage: FirebaseStorage | undefined;
 
 export function getFirebase() {
-  if (typeof window === "undefined") return { app: null, db: null, auth: null }; // SSR safety
+  if (typeof window === "undefined") return { app: null, db: null, auth: null, storage: null }; // SSR safety
 
   if (!app) {
     try {
       // Check if config is valid
       if (!firebaseConfig.apiKey) {
-        // Return nulls gracefully instead of throwing, allowing the app to fallback to Mock Mode
-        console.warn("Firebase API Key is missing. Check .env.local. Falling back to Mock Mode.");
-        return { app: null, db: null, auth: null };
+        console.warn("Firebase API Key is missing. Firebase features will be disabled.");
+        return { app: null, db: null, auth: null, storage: null };
       }
       app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
       db = getFirestore(app);
       auth = getAuth(app);
+      storage = getStorage(app);
     } catch (e) {
       console.error("Firebase Initialization Error:", e);
-      // Fallback gracefully
-      return { app: null, db: null, auth: null };
+      // Don't throw, just return nulls to allow app to run in mock mode
+      return { app: null, db: null, auth: null, storage: null };
     }
   }
-  return { app, db, auth };
+  return { app, db, auth, storage };
 }

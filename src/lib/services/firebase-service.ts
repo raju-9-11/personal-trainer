@@ -1,16 +1,19 @@
-import { DataProviderType, TrainerProfile, Certification, Transformation, GymClass, Testimonial, TrainerSummary } from '../types';
+import { DataProviderType, TrainerProfile, Certification, Transformation, GymClass, Testimonial, BrandIdentity } from '../types';
 import { getFirebase } from '../firebase';
 import { collection, getDocs, doc, setDoc, addDoc, deleteDoc, updateDoc, Firestore, getDoc } from 'firebase/firestore';
 import { getAuth } from 'firebase/auth';
 
-// Structure:
-// trainers/{slug} (doc) -> Contains TrainerProfile
-// trainers/{slug}/certifications (collection)
-// trainers/{slug}/transformations (collection)
-// trainers/{slug}/classes (collection)
-// trainers/{slug}/testimonials (collection)
+const COLLECTIONS = {
+  PROFILE: 'profile',
+  IDENTITY: 'brand_identity',
+  CERTS: 'certifications',
+  TRANS: 'transformations',
+  CLASSES: 'classes',
+  TESTIMONIALS: 'testimonials',
+};
 
-const ROOT_COLLECTION = 'trainers';
+const PROFILE_DOC_ID = 'main';
+const IDENTITY_DOC_ID = 'main';
 
 export class FirebaseDataService implements DataProviderType {
   private db: Firestore;
@@ -75,33 +78,39 @@ export class FirebaseDataService implements DataProviderType {
   }
 
   // --- Read ---
-  getTrainers = async (): Promise<TrainerSummary[]> => {
-    const snapshot = await getDocs(collection(this.db, ROOT_COLLECTION));
-    return snapshot.docs.map(doc => {
-      const data = doc.data() as TrainerProfile;
+  getProfile = async (): Promise<TrainerProfile> => {
+    const snapshot = await getDocs(collection(this.db, COLLECTIONS.PROFILE));
+    if (snapshot.empty) {
+      console.warn("Profile not found in Firestore. Returning default profile. Please create a document in 'profile' collection.");
       return {
-        slug: doc.id,
-        name: data.name,
-        heroTitle: data.heroTitle,
-        profileImage: undefined // Add field to Profile if needed
+        name: "Your Name",
+        bio: "Your Bio",
+        heroTitle: "Your Hero Title",
+        heroSubtitle: "Your Hero Subtitle",
+        contactEmail: "your.email@example.com",
+        contactPhone: "Your Phone",
+        instagramUrl: "",
+        youtubeUrl: "",
       };
-    });
-  }
-
-  getProfile = async (slug?: string): Promise<TrainerProfile> => {
-    if (!slug) throw new Error("Slug required");
-    const docRef = doc(this.db, ROOT_COLLECTION, slug);
-    const snapshot = await getDoc(docRef);
-    if (!snapshot.exists()) {
-      // Return a default or throw
-      throw new Error(`Trainer ${slug} not found`);
     }
     return snapshot.data() as TrainerProfile;
   }
 
-  getCertifications = async (slug?: string): Promise<Certification[]> => {
-    if (!slug) throw new Error("Slug required");
-    const snapshot = await getDocs(collection(this.db, ROOT_COLLECTION, slug, 'certifications'));
+  getBrandIdentity = async (): Promise<BrandIdentity> => {
+    const snapshot = await getDocs(collection(this.db, COLLECTIONS.IDENTITY));
+    if (snapshot.empty) {
+      return {
+        brandName: "",
+        logoUrl: "",
+        primaryColor: "#000000",
+        secondaryColor: "#ffffff"
+      };
+    }
+    return snapshot.docs[0].data() as BrandIdentity;
+  }
+
+  getCertifications = async (): Promise<Certification[]> => {
+    const snapshot = await getDocs(collection(this.db, COLLECTIONS.CERTS));
     return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Certification));
   }
 
@@ -128,6 +137,12 @@ export class FirebaseDataService implements DataProviderType {
   updateProfile = async (profile: TrainerProfile): Promise<void> => {
     const slug = await this.getMySlug();
     await setDoc(doc(this.db, ROOT_COLLECTION, slug), profile, { merge: true });
+  }
+
+  updateBrandIdentity = async (identity: BrandIdentity): Promise<void> => {
+    const snapshot = await getDocs(collection(this.db, COLLECTIONS.IDENTITY));
+    const docId = snapshot.empty ? IDENTITY_DOC_ID : snapshot.docs[0].id;
+    await setDoc(doc(this.db, COLLECTIONS.IDENTITY, docId), identity, { merge: true });
   }
 
   addCertification = async (cert: Omit<Certification, 'id'>): Promise<void> => {

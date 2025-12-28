@@ -10,31 +10,31 @@ import { Mail, Shield, User } from 'lucide-react';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
-  const [mockUser, setMockUser] = useState('trainer1'); // Default for mock mode
-  const [sent, setSent] = useState(false);
+  const [password, setPassword] = useState('');
   const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
-
-  const { sendLoginLink, loginAsTrainer } = useAuth();
+  const [isLoading, setIsLoading] = useState(false);
+  // const { login } = useAuth();
   const router = useRouter();
 
-  const handleEmailLogin = async (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
+    setIsLoading(true);
     setError('');
 
-    try {
-      await sendLoginLink(email);
-      setSent(true);
-    } catch (err: any) {
-      setError(err.message || 'Failed to send login link');
-
-      // Fallback/Dev hint if Firebase is not configured properly or intentionally failing in dev
-      if (process.env.NEXT_PUBLIC_USE_FIREBASE !== 'true') {
-         setError('Firebase is not enabled. Use Mock Login below.');
+    // Try mock login first if only password provided (legacy support)
+    if (!email && password === 'admin123') {
+      if (await login('admin123')) {
+        router.push('/admin/dashboard');
+        return;
       }
-    } finally {
-      setLoading(false);
+    }
+
+    // Try Firebase Login
+    if (await login(email, password)) {
+      router.push('/admin/dashboard');
+    } else {
+      setError('Invalid credentials');
+      setIsLoading(false);
     }
   };
 
@@ -77,23 +77,29 @@ export default function LoginPage() {
         <form onSubmit={handleEmailLogin}>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <div className="relative">
-                 <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                 <Input
-                    type="email"
-                    placeholder="name@titanfitness.com"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="pl-10"
-                    required
-                 />
-              </div>
+              <Input
+                type="email"
+                placeholder="Email address"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
+              <Input
+                type="password"
+                placeholder="Password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
               {error && <p className="text-destructive text-sm">{error}</p>}
             </div>
             <Button type="submit" className="w-full" disabled={loading}>
               {loading ? "Sending..." : "Send Login Link"}
             </Button>
           </CardContent>
+          <CardFooter>
+            <Button type="submit" className="w-full" disabled={isLoading}>
+              {isLoading ? 'Authenticating...' : 'Login'}
+            </Button>
+          </CardFooter>
         </form>
 
         {/* Mock Login Section for Development/Demo Ease */}
