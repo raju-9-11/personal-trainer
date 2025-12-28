@@ -34,6 +34,18 @@ export function SocialFeed() {
       return platform.charAt(0).toUpperCase() + platform.slice(1);
   };
 
+  const hasPlatform = (platform: SocialLink['platform']) => {
+      if (profile?.socialLinks?.some(link => link.platform === platform)) return true;
+      // Legacy Check
+      if (platform === 'instagram' && profile?.instagramUrl) return true;
+      if (platform === 'youtube' && profile?.youtubeUrl) return true;
+      return false;
+  };
+
+  // Mock data for preview - assuming 4 items max as requested
+  const instaPosts = [1, 2, 3, 4];
+  const youtubeVideos = [1, 2, 3, 4];
+
   return (
     <section className="py-24 bg-background overflow-hidden">
       <div className="container px-4 mx-auto">
@@ -72,14 +84,53 @@ export function SocialFeed() {
            </div>
         </div>
 
-        {/* We keep the mock posts/videos grid below or remove it?
-            The requirement was "Option to link instagram links and youtube links".
-            It didn't explicitly say "remove the feed preview".
-            However, without an API connection to IG/YT, the feed preview was always mock.
-            Let's leave the mock preview for visual fullness, or hide it if no links?
-            Let's leave it as "Latest Posts" but maybe it's confusing if it's not real.
-            For now, I will keep the section structure but it's just static mock.
-        */}
+        {/* Instagram Grid - Conditionally Rendered */}
+        {hasPlatform('instagram') && (
+            <div className="mb-12">
+              <h3 className="text-lg font-bold mb-6 flex items-center gap-2">
+                 <Instagram className="text-primary" /> Latest Posts
+              </h3>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                {instaPosts.map((post) => (
+                  <motion.div
+                    key={post}
+                    whileHover={{ scale: 1.05 }}
+                    className="aspect-square bg-muted rounded-xl overflow-hidden relative group cursor-pointer"
+                  >
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-4">
+                       <span className="text-white text-xs font-bold">View on Instagram</span>
+                    </div>
+                    {/* Placeholder Image */}
+                    <div className="w-full h-full bg-secondary flex items-center justify-center text-muted-foreground">
+                       POST {post}
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+            </div>
+        )}
+
+        {/* YouTube Grid - Conditionally Rendered */}
+        {hasPlatform('youtube') && (
+            <div>
+              <h3 className="text-lg font-bold mb-6 flex items-center gap-2">
+                 <Youtube className="text-primary" /> Recent Training Videos
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                {youtubeVideos.map((video) => (
+                  <Card key={video} className="aspect-video bg-black rounded-xl overflow-hidden relative group cursor-pointer border-none">
+                     <div className="absolute inset-0 flex items-center justify-center">
+                        <div className="w-16 h-16 rounded-full bg-primary/90 flex items-center justify-center group-hover:scale-110 transition-transform">
+                           <Play className="h-6 w-6 text-black fill-black ml-1" />
+                        </div>
+                     </div>
+                     {/* Placeholder Thumbnail */}
+                     <div className="w-full h-full bg-muted/20" />
+                  </Card>
+                ))}
+              </div>
+            </div>
+        )}
       </div>
     </section>
   );
