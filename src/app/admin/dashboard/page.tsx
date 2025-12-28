@@ -16,6 +16,7 @@ import { Trash2, Plus, Save, Upload, ExternalLink, Globe } from 'lucide-react';
 import { getFirebase } from '@/lib/firebase';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import Image from 'next/image';
+import { useAlert } from '@/components/ui/custom-alert';
 
 export default function DashboardPage() {
   const { isAuthenticated, logout, trainerSlug, user, isSuperAdmin } = useAuth();
@@ -36,6 +37,7 @@ export default function DashboardPage() {
   const [trans, setTrans] = useState<Transformation[]>([]);
   const [landing, setLanding] = useState<LandingPageContent | null>(null);
   const [loading, setLoading] = useState(true);
+  const { showAlert } = useAlert();
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -80,7 +82,7 @@ export default function DashboardPage() {
     e.preventDefault();
     if (profile) {
       await updateProfile(profile);
-      alert('Profile updated!');
+      showAlert('Success', 'Profile updated!');
     }
   };
 
@@ -88,7 +90,7 @@ export default function DashboardPage() {
     e.preventDefault();
     if (identity) {
       await updateBrandIdentity(identity);
-      alert('Brand Identity updated!');
+      showAlert('Success', 'Brand Identity updated!');
     }
   };
 
@@ -96,7 +98,7 @@ export default function DashboardPage() {
     e.preventDefault();
     if (landing) {
         await updateLandingPageContent(landing);
-        alert('Landing Page updated!');
+        showAlert('Success', 'Landing Page updated!');
     }
   }
 
