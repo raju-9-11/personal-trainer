@@ -5,16 +5,23 @@ export interface TrainerProfile {
   heroSubtitle: string;
   contactEmail: string;
   contactPhone: string;
-  instagramUrl: string;
-  youtubeUrl: string;
+  // Deprecated single strings, keeping for compatibility if needed, but moving to socialLinks
+  instagramUrl?: string;
+  youtubeUrl?: string;
+  socialLinks?: SocialLink[];
   profileImageUrl?: string;
 }
 
+export interface SocialLink {
+    platform: 'instagram' | 'youtube' | 'facebook' | 'twitter' | 'other';
+    url: string;
+}
+
 export interface TrainerSummary {
-  slug: string; // The URL part, e.g., 'trainer1'
+  slug: string;
   name: string;
   heroTitle: string;
-  profileImage?: string; // Optional image for the card
+  profileImage?: string;
 }
 
 export interface Certification {
@@ -23,6 +30,7 @@ export interface Certification {
   issuer: string;
   date: string;
   imageUrl?: string;
+  url?: string;
 }
 
 export interface Transformation {
@@ -37,17 +45,25 @@ export interface GymClass {
   id: string;
   title: string;
   description: string;
-  time: string; // e.g., "Mon 10:00 AM"
+  time: string;
   durationMinutes: number;
   maxSpots: number;
   enrolledSpots: number;
+  imageUrl?: string;
 }
 
 export interface Testimonial {
   id: string;
   clientName: string;
   text: string;
-  rating: number; // 1-5
+  rating: number;
+}
+
+export interface PlatformTestimonial {
+    id: string;
+    name: string;
+    testimonial: string;
+    imageUrl: string;
 }
 
 export interface BrandIdentity {
@@ -61,7 +77,6 @@ export interface LandingPageContent {
   heroTitle: string;
   heroSubtitle: string;
   heroImageUrl: string;
-  // Can add more sections here if needed
 }
 
 export interface DataProviderType {
@@ -74,8 +89,9 @@ export interface DataProviderType {
   getClasses: (slug?: string) => Promise<GymClass[]>;
   getTestimonials: (slug?: string) => Promise<Testimonial[]>;
   getLandingPageContent: () => Promise<LandingPageContent>;
+  getPlatformTestimonials: () => Promise<PlatformTestimonial[]>;
 
-  // Write (Admin) - These typically rely on the authenticated user's context
+  // Write (Admin)
   updateProfile: (profile: TrainerProfile) => Promise<void>;
   updateBrandIdentity: (identity: BrandIdentity) => Promise<void>;
   addCertification: (cert: Omit<Certification, 'id'>) => Promise<void>;
@@ -86,4 +102,6 @@ export interface DataProviderType {
   removeClass: (id: string) => Promise<void>;
   updateClass: (id: string, gymClass: Partial<GymClass>) => Promise<void>;
   updateLandingPageContent: (content: LandingPageContent) => Promise<void>;
+  addPlatformTestimonial: (t: Omit<PlatformTestimonial, 'id'>) => Promise<void>;
+  removePlatformTestimonial: (id: string) => Promise<void>;
 }

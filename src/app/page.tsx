@@ -3,26 +3,30 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { useData } from '@/lib/data-provider';
-import { TrainerSummary, LandingPageContent, BrandIdentity } from '@/lib/types';
+import { TrainerSummary, LandingPageContent, BrandIdentity, PlatformTestimonial } from '@/lib/types';
+import Image from 'next/image';
 
 export default function Home() {
-  const { getTrainers, getLandingPageContent, getBrandIdentity } = useData();
+  const { getTrainers, getLandingPageContent, getBrandIdentity, getPlatformTestimonials } = useData();
   const [trainers, setTrainers] = useState<TrainerSummary[]>([]);
   const [landing, setLanding] = useState<LandingPageContent | null>(null);
   const [brand, setBrand] = useState<BrandIdentity | null>(null);
+  const [testimonials, setTestimonials] = useState<PlatformTestimonial[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchData = async () => {
         try {
-            const [tData, lData, bData] = await Promise.all([
+            const [tData, lData, bData, testData] = await Promise.all([
                 getTrainers(),
                 getLandingPageContent(),
-                getBrandIdentity('platform')
+                getBrandIdentity('platform'),
+                getPlatformTestimonials()
             ]);
             setTrainers(tData);
             setLanding(lData);
             setBrand(bData);
+            setTestimonials(testData);
         } catch (e) {
             console.error("Error loading home page data", e);
         } finally {
@@ -30,18 +34,12 @@ export default function Home() {
         }
     };
     fetchData();
-  }, [getTrainers, getLandingPageContent, getBrandIdentity]);
+  }, [getTrainers, getLandingPageContent, getBrandIdentity, getPlatformTestimonials]);
 
-  // Default content if loading or empty
   const heroTitle = landing?.heroTitle || "FIND YOUR TITAN";
   const heroSubtitle = landing?.heroSubtitle || "Elite personal trainers ready to help you shatter your limits. Choose your coach and start your journey today.";
   const heroImage = landing?.heroImageUrl || 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?q=80&w=2070&auto=format&fit=crop';
-  const brandName = brand?.brandName || "TITAN"; // Fallback
-
-  // Parse brand name in hero if it matches?
-  // The design has "FIND YOUR TITAN" where TITAN is colored.
-  // We can just try to highlight the last word or keep it simple.
-  // For now, let's display the title as is.
+  const brandName = brand?.brandName || "TITAN";
 
   return (
     <main className="min-h-screen bg-background text-foreground">
@@ -138,7 +136,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Success Stories Preview */}
+      {/* Success Stories Preview (Testimonials) */}
       <section className="py-24 bg-black text-white">
         <div className="container mx-auto px-4">
            <div className="text-center mb-16">
@@ -147,26 +145,33 @@ export default function Home() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-             <div className="bg-gray-900 rounded-xl p-8 border border-white/10">
-                <div className="flex gap-4 items-center mb-4">
-                   <div className="w-12 h-12 bg-primary rounded-full flex items-center justify-center font-bold text-black">JD</div>
-                   <div>
-                      <h4 className="font-bold text-lg">John Doe</h4>
-                      <p className="text-sm text-gray-400">Lost 30lbs</p>
-                   </div>
-                </div>
-                <p className="text-gray-300">&quot;The training program was intense but exactly what I needed. I&apos;ve never felt stronger.&quot;</p>
-             </div>
-             <div className="bg-gray-900 rounded-xl p-8 border border-white/10">
-                <div className="flex gap-4 items-center mb-4">
-                   <div className="w-12 h-12 bg-primary rounded-full flex items-center justify-center font-bold text-black">JS</div>
-                   <div>
-                      <h4 className="font-bold text-lg">Jane Smith</h4>
-                      <p className="text-sm text-gray-400">Marathon Runner</p>
-                   </div>
-                </div>
-                <p className="text-gray-300">&quot;From couch potato to marathon finisher. The coaching was instrumental in my journey.&quot;</p>
-             </div>
+             {testimonials.length > 0 ? (
+                 testimonials.map(t => (
+                    <div key={t.id} className="bg-gray-900 rounded-xl p-8 border border-white/10">
+                        <div className="flex gap-4 items-center mb-4">
+                           {t.imageUrl ? (
+                               <Image src={t.imageUrl} alt={t.name} width={48} height={48} className="rounded-full w-12 h-12 object-cover" />
+                           ) : (
+                               <div className="w-12 h-12 bg-primary rounded-full flex items-center justify-center font-bold text-black">
+                                   {t.name.substring(0,2).toUpperCase()}
+                               </div>
+                           )}
+                           <div>
+                              <h4 className="font-bold text-lg">{t.name}</h4>
+                              <p className="text-sm text-gray-400">Client</p>
+                           </div>
+                        </div>
+                        <p className="text-gray-300">&quot;{t.testimonial}&quot;</p>
+                     </div>
+                 ))
+             ) : (
+                <>
+                 {/* Fallback if no testimonials created yet */}
+                 <div className="bg-gray-900 rounded-xl p-8 border border-white/10 opacity-50">
+                    <p className="text-center">Success stories coming soon.</p>
+                 </div>
+                </>
+             )}
           </div>
         </div>
       </section>

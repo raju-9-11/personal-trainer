@@ -1,4 +1,4 @@
-import { DataProviderType, TrainerProfile, Certification, Transformation, GymClass, Testimonial, BrandIdentity, TrainerSummary, LandingPageContent } from '../types';
+import { DataProviderType, TrainerProfile, Certification, Transformation, GymClass, Testimonial, BrandIdentity, TrainerSummary, LandingPageContent, PlatformTestimonial } from '../types';
 import { getFirebase } from '../firebase';
 import { collection, getDocs, doc, setDoc, addDoc, deleteDoc, updateDoc, Firestore, getDoc, query, where, Timestamp } from 'firebase/firestore';
 import { User } from 'firebase/auth';
@@ -58,8 +58,9 @@ export class FirebaseDataService implements DataProviderType {
         heroSubtitle: "Let's train",
         contactEmail: this.currentUser.email || "",
         contactPhone: "",
-        instagramUrl: "",
-        youtubeUrl: "",
+        instagramUrl: "", // Deprecated field default
+        youtubeUrl: "",   // Deprecated field default
+        socialLinks: []
     };
 
     // Create the document
@@ -89,18 +90,11 @@ export class FirebaseDataService implements DataProviderType {
       const summaries: TrainerSummary[] = [];
       for (const docSnap of snapshot.docs) {
          const data = docSnap.data();
-         // Filter out 'platform' or non-trainer docs if any mixed in (though we separate platform settings)
-         // Assuming all docs in 'trainers' are actual trainers.
-
-         // Fetch subcollection for identity? Or assume profileImage in root?
-         // Optimally we'd store a summary field in the root doc to avoid N+1 queries.
-         // Let's assume root doc has name/heroTitle.
-
          summaries.push({
              slug: docSnap.id,
              name: data.name || 'Unnamed Trainer',
              heroTitle: data.heroTitle || 'Personal Trainer',
-             profileImage: data.profileImageUrl // If saved on root
+             profileImage: data.profileImageUrl
          });
       }
       return summaries;
@@ -119,8 +113,7 @@ export class FirebaseDataService implements DataProviderType {
           heroSubtitle: "",
           contactEmail: "",
           contactPhone: "",
-          instagramUrl: "",
-          youtubeUrl: "",
+          socialLinks: []
         };
     }
 
@@ -141,13 +134,10 @@ export class FirebaseDataService implements DataProviderType {
       heroSubtitle: "",
       contactEmail: "",
       contactPhone: "",
-      instagramUrl: "",
-      youtubeUrl: "",
     };
   }
 
   getBrandIdentity = async (slug?: string): Promise<BrandIdentity> => {
-    // If no slug, return defaults so Dashboard can render empty form
     if (!slug) {
         return {
           brandName: "My Fitness Brand",
@@ -160,10 +150,8 @@ export class FirebaseDataService implements DataProviderType {
     try {
       let docRef;
       if (slug === 'platform') {
-        // Read from platform_settings/identity
         docRef = doc(this.db, PLATFORM_COLLECTION, 'identity');
       } else {
-        // Read from trainers/{slug}/brand_identity/main
         docRef = doc(this.db, ROOT_COLLECTION, slug, COLLECTIONS.IDENTITY, IDENTITY_DOC_ID);
       }
 
@@ -184,7 +172,6 @@ export class FirebaseDataService implements DataProviderType {
   }
 
   getLandingPageContent = async (): Promise<LandingPageContent> => {
-      // Fetch from platform_settings/landing
       try {
           const docRef = doc(this.db, PLATFORM_COLLECTION, 'landing');
           const snap = await getDoc(docRef);
@@ -194,12 +181,23 @@ export class FirebaseDataService implements DataProviderType {
       } catch (e) {
           console.warn("Error fetching landing content", e);
       }
-      // Default
       return {
           heroTitle: "FIND YOUR TITAN",
           heroSubtitle: "Elite personal trainers ready to help you shatter your limits.",
           heroImageUrl: "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?q=80&w=2070&auto=format&fit=crop"
       };
+  }
+
+  getPlatformTestimonials = async (): Promise<PlatformTestimonial[]> => {
+      try {
+          // Stored in subcollection of platform_settings? Or root?
+          // Let's use 'platform_settings/testimonials/items'
+          const snapshot = await getDocs(collection(this.db, PLATFORM_COLLECTION, 'testimonials', 'items'));
+          return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as PlatformTestimonial));
+      } catch (e) {
+          console.warn("Error fetching platform testimonials", e);
+          return [];
+      }
   }
 
   getCertifications = async (slug?: string): Promise<Certification[]> => {
@@ -246,15 +244,13 @@ export class FirebaseDataService implements DataProviderType {
 
   updateProfile = async (profile: TrainerProfile): Promise<void> => {
     const slug = await this.getMySlug();
-    if (slug === 'platform') return; // Platform doesn't have a trainer profile
+    if (slug === 'platform') return;
     await setDoc(doc(this.db, ROOT_COLLECTION, slug), profile, { merge: true });
   }
 
   updateBrandIdentity = async (identity: BrandIdentity): Promise<void> => {
     const slug = await this.getMySlug();
     if (slug === 'platform') {
-         // Platform has global identity?
-         // Let's store it in platform_settings/identity
          await setDoc(doc(this.db, PLATFORM_COLLECTION, 'identity'), identity, { merge: true });
          return;
     }
@@ -266,6 +262,18 @@ export class FirebaseDataService implements DataProviderType {
       if (slug !== 'platform') throw new Error("Unauthorized");
 
       await setDoc(doc(this.db, PLATFORM_COLLECTION, 'landing'), content, { merge: true });
+  }
+
+  addPlatformTestimonial = async (t: Omit<PlatformTestimonial, 'id'>): Promise<void> => {
+       const slug = await this.getMySlug();
+       if (slug !== 'platform') throw new Error("Unauthorized");
+       await addDoc(collection(this.db, PLATFORM_COLLECTION, 'testimonials', 'items'), t);
+  }
+
+  removePlatformTestimonial = async (id: string): Promise<void> => {
+      const slug = await this.getMySlug();
+      if (slug !== 'platform') throw new Error("Unauthorized");
+      await deleteDoc(doc(this.db, PLATFORM_COLLECTION, 'testimonials', 'items', id));
   }
 
   addCertification = async (cert: Omit<Certification, 'id'>): Promise<void> => {

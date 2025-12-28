@@ -4,13 +4,14 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
 import { useData } from '@/lib/data-provider';
-import { TrainerProfile, GymClass, Certification, Transformation, BrandIdentity, LandingPageContent } from '@/lib/types';
+import { TrainerProfile, GymClass, Certification, Transformation, BrandIdentity, LandingPageContent, PlatformTestimonial, SocialLink } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import Link from 'next/link';
 import { Trash2, Plus, Save, Upload, ExternalLink, Globe } from 'lucide-react';
 import { getFirebase } from '@/lib/firebase';
@@ -27,7 +28,8 @@ export default function DashboardPage() {
     getClasses, addClass, removeClass,
     getCertifications, addCertification, removeCertification,
     getTransformations, addTransformation, removeTransformation,
-    getLandingPageContent, updateLandingPageContent
+    getLandingPageContent, updateLandingPageContent,
+    getPlatformTestimonials, addPlatformTestimonial, removePlatformTestimonial
   } = useData();
 
   const [profile, setProfile] = useState<TrainerProfile | null>(null);
@@ -36,6 +38,7 @@ export default function DashboardPage() {
   const [certs, setCerts] = useState<Certification[]>([]);
   const [trans, setTrans] = useState<Transformation[]>([]);
   const [landing, setLanding] = useState<LandingPageContent | null>(null);
+  const [testimonials, setTestimonials] = useState<PlatformTestimonial[]>([]);
   const [loading, setLoading] = useState(true);
   const { showAlert } = useAlert();
 
@@ -48,16 +51,16 @@ export default function DashboardPage() {
     if (!trainerSlug && !user) return; // Wait for auth
 
     const loadData = async () => {
-      // If Super Admin, fetch Platform Settings
       if (isSuperAdmin) {
-          const l = await getLandingPageContent();
-          const i = await getBrandIdentity('platform');
+          const [l, i, t] = await Promise.all([
+              getLandingPageContent(),
+              getBrandIdentity('platform'),
+              getPlatformTestimonials()
+          ]);
           setLanding(l);
           setIdentity(i);
+          setTestimonials(t);
       } else {
-        // Normal Trainer
-        // If trainerSlug is null, we pass undefined to services.
-        // The services should return empty/default objects.
         const targetSlug = trainerSlug || undefined;
 
         const [p, i, c, cer, t] = await Promise.all([
@@ -76,7 +79,7 @@ export default function DashboardPage() {
       setLoading(false);
     };
     loadData();
-  }, [isAuthenticated, router, isSuperAdmin, trainerSlug, user, getProfile, getBrandIdentity, getClasses, getCertifications, getTransformations, getLandingPageContent]);
+  }, [isAuthenticated, router, isSuperAdmin, trainerSlug, user, getProfile, getBrandIdentity, getClasses, getCertifications, getTransformations, getLandingPageContent, getPlatformTestimonials]);
 
   const handleProfileSave = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -122,7 +125,8 @@ export default function DashboardPage() {
       time: formData.get('time') as string,
       durationMinutes: parseInt(formData.get('duration') as string),
       maxSpots: parseInt(formData.get('spots') as string),
-      enrolledSpots: 0
+      enrolledSpots: 0,
+      imageUrl: formData.get('imageUrl') as string || undefined
     });
     setClasses(await getClasses(trainerSlug || undefined));
     (e.target as HTMLFormElement).reset();
@@ -135,6 +139,8 @@ export default function DashboardPage() {
       title: formData.get('title') as string,
       issuer: formData.get('issuer') as string,
       date: formData.get('date') as string,
+      url: formData.get('url') as string || undefined,
+      imageUrl: formData.get('imageUrl') as string || undefined,
     });
     setCerts(await getCertifications(trainerSlug || undefined));
     (e.target as HTMLFormElement).reset();
@@ -151,6 +157,18 @@ export default function DashboardPage() {
     });
     setTrans(await getTransformations(trainerSlug || undefined));
     (e.target as HTMLFormElement).reset();
+  };
+
+  const handleAddTestimonial = async (e: React.FormEvent<HTMLFormElement>) => {
+      e.preventDefault();
+      const formData = new FormData(e.currentTarget);
+      await addPlatformTestimonial({
+          name: formData.get('name') as string,
+          testimonial: formData.get('testimonial') as string,
+          imageUrl: formData.get('imageUrl') as string
+      });
+      setTestimonials(await getPlatformTestimonials());
+      (e.target as HTMLFormElement).reset();
   };
 
   if (loading) return <div className="p-8">Loading Dashboard...</div>;
@@ -191,6 +209,7 @@ export default function DashboardPage() {
             <Tabs defaultValue="landing">
                 <TabsList className="mb-8">
                     <TabsTrigger value="landing">Landing Page</TabsTrigger>
+                    <TabsTrigger value="testimonials">Testimonials</TabsTrigger>
                     <TabsTrigger value="identity">Global Identity</TabsTrigger>
                 </TabsList>
 
@@ -232,6 +251,62 @@ export default function DashboardPage() {
                             )}
                         </CardContent>
                     </Card>
+                </TabsContent>
+
+                <TabsContent value="testimonials">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                        <Card className="md:col-span-1 h-fit">
+                            <CardHeader>
+                                <CardTitle>Add Testimonial</CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                <form onSubmit={handleAddTestimonial} className="space-y-4">
+                                    <Input name="name" placeholder="Client Name" required />
+                                    <Textarea name="testimonial" placeholder="Testimonial text" required />
+                                    <div className="space-y-2">
+                                       <Label>Client Image</Label>
+                                       <div className="flex gap-2 items-center">
+                                          <Input name="imageUrl" placeholder="Image URL" required />
+                                          <Label htmlFor="upload-test-img" className="cursor-pointer bg-secondary px-4 py-2 rounded flex items-center justify-center">
+                                             <Upload className="h-4 w-4" />
+                                          </Label>
+                                          <Input id="upload-test-img" type="file" accept="image/*" className="hidden" onChange={async (e) => {
+                                              const file = e.target.files?.[0];
+                                              if (file) {
+                                                  const url = await uploadImage(file, `platform/testimonial_${Date.now()}`);
+                                                  const input = document.getElementsByName('imageUrl')[0] as HTMLInputElement;
+                                                  if (input) input.value = url;
+                                              }
+                                          }} />
+                                       </div>
+                                    </div>
+                                    <Button type="submit" className="w-full"><Plus className="mr-2 h-4 w-4" /> Add Testimonial</Button>
+                                </form>
+                            </CardContent>
+                        </Card>
+
+                        <div className="md:col-span-2 space-y-4">
+                            {testimonials.map(t => (
+                                <Card key={t.id} className="flex flex-row items-center justify-between p-4">
+                                    <div className="flex items-center gap-4">
+                                        <div className="w-12 h-12 rounded-full bg-secondary overflow-hidden">
+                                            {t.imageUrl && <Image src={t.imageUrl} alt={t.name} width={48} height={48} className="object-cover w-full h-full" />}
+                                        </div>
+                                        <div>
+                                            <h3 className="font-bold">{t.name}</h3>
+                                            <p className="text-sm text-muted-foreground line-clamp-1">{t.testimonial}</p>
+                                        </div>
+                                    </div>
+                                    <Button variant="destructive" size="icon" onClick={async () => {
+                                        await removePlatformTestimonial(t.id);
+                                        setTestimonials(await getPlatformTestimonials());
+                                    }}>
+                                        <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                </Card>
+                            ))}
+                        </div>
+                    </div>
                 </TabsContent>
 
                 <TabsContent value="identity">
@@ -367,17 +442,55 @@ export default function DashboardPage() {
                               <Input value={profile.contactPhone} onChange={e => setProfile({...profile, contactPhone: e.target.value})} />
                             </div>
                           </div>
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div className="space-y-2">
-                              <Label>Instagram URL</Label>
-                              <Input value={profile.instagramUrl} onChange={e => setProfile({...profile, instagramUrl: e.target.value})} />
-                            </div>
-                            <div className="space-y-2">
-                              <Label>YouTube URL</Label>
-                              <Input value={profile.youtubeUrl} onChange={e => setProfile({...profile, youtubeUrl: e.target.value})} />
-                            </div>
+
+                          <div className="space-y-4 pt-4 border-t">
+                             <Label>Social Links (Max 4)</Label>
+                             <div className="space-y-2">
+                                {profile.socialLinks?.map((link, idx) => (
+                                    <div key={idx} className="flex gap-2">
+                                        <Select value={link.platform} onValueChange={(val) => {
+                                            const newLinks = [...(profile.socialLinks || [])];
+                                            newLinks[idx].platform = val as any;
+                                            setProfile({...profile, socialLinks: newLinks});
+                                        }}>
+                                            <SelectTrigger className="w-[140px]">
+                                                <SelectValue placeholder="Platform" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="instagram">Instagram</SelectItem>
+                                                <SelectItem value="youtube">YouTube</SelectItem>
+                                                <SelectItem value="facebook">Facebook</SelectItem>
+                                                <SelectItem value="twitter">Twitter</SelectItem>
+                                                <SelectItem value="other">Other</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                        <Input value={link.url} placeholder="URL" onChange={(e) => {
+                                             const newLinks = [...(profile.socialLinks || [])];
+                                             newLinks[idx].url = e.target.value;
+                                             setProfile({...profile, socialLinks: newLinks});
+                                        }} />
+                                        <Button type="button" variant="destructive" size="icon" onClick={() => {
+                                             const newLinks = profile.socialLinks?.filter((_, i) => i !== idx);
+                                             setProfile({...profile, socialLinks: newLinks});
+                                        }}>
+                                            <Trash2 className="h-4 w-4" />
+                                        </Button>
+                                    </div>
+                                ))}
+                                {(!profile.socialLinks || profile.socialLinks.length < 4) && (
+                                    <Button type="button" variant="outline" size="sm" onClick={() => {
+                                        setProfile({
+                                            ...profile,
+                                            socialLinks: [...(profile.socialLinks || []), { platform: 'instagram', url: '' }]
+                                        });
+                                    }}>
+                                        <Plus className="mr-2 h-4 w-4" /> Add Social Link
+                                    </Button>
+                                )}
+                             </div>
                           </div>
-                          <Button type="submit" className="w-full"><Save className="mr-2 h-4 w-4" /> Save Changes</Button>
+
+                          <Button type="submit" className="w-full mt-4"><Save className="mr-2 h-4 w-4" /> Save Changes</Button>
                         </form>
                       </CardContent>
                     </Card>
@@ -400,6 +513,25 @@ export default function DashboardPage() {
                                <Input name="duration" type="number" placeholder="Mins" required />
                                <Input name="spots" type="number" placeholder="Max Spots" required />
                             </div>
+
+                            <div className="space-y-2">
+                               <Label>Class Image</Label>
+                               <div className="flex gap-2 items-center">
+                                  <Input name="imageUrl" placeholder="Image URL" />
+                                  <Label htmlFor="upload-class" className="cursor-pointer bg-secondary px-4 py-2 rounded flex items-center justify-center">
+                                     <Upload className="h-4 w-4" />
+                                  </Label>
+                                  <Input id="upload-class" type="file" accept="image/*" className="hidden" onChange={async (e) => {
+                                      const file = e.target.files?.[0];
+                                      if (file) {
+                                          const url = await uploadImage(file, `classes/img_${Date.now()}`);
+                                          const input = document.getElementsByName('imageUrl')[0] as HTMLInputElement;
+                                          if (input) input.value = url;
+                                      }
+                                  }} />
+                               </div>
+                            </div>
+
                             <Button type="submit" className="w-full"><Plus className="mr-2 h-4 w-4" /> Add Class</Button>
                           </form>
                         </CardContent>
@@ -412,6 +544,7 @@ export default function DashboardPage() {
                             <div>
                               <h3 className="font-bold">{c.title}</h3>
                               <p className="text-sm text-muted-foreground">{c.time} • {c.maxSpots} spots</p>
+                              {c.imageUrl && <p className="text-xs text-muted-foreground mt-1">Image attached</p>}
                             </div>
                             <Button variant="destructive" size="icon" onClick={async () => {
                               await removeClass(c.id);
@@ -437,6 +570,30 @@ export default function DashboardPage() {
                              <Input name="title" placeholder="Certificate Title" required />
                              <Input name="issuer" placeholder="Issuer (e.g. NASM)" required />
                              <Input name="date" type="date" required />
+
+                             <div className="space-y-2">
+                                <Label>Verify URL (Optional)</Label>
+                                <Input name="url" placeholder="https://..." />
+                             </div>
+
+                             <div className="space-y-2">
+                               <Label>Certificate Image (Optional)</Label>
+                               <div className="flex gap-2 items-center">
+                                  <Input name="imageUrl" placeholder="Image URL" />
+                                  <Label htmlFor="upload-cert" className="cursor-pointer bg-secondary px-4 py-2 rounded flex items-center justify-center">
+                                     <Upload className="h-4 w-4" />
+                                  </Label>
+                                  <Input id="upload-cert" type="file" accept="image/*" className="hidden" onChange={async (e) => {
+                                      const file = e.target.files?.[0];
+                                      if (file) {
+                                          const url = await uploadImage(file, `certs/img_${Date.now()}`);
+                                          const input = document.getElementsByName('imageUrl')[0] as HTMLInputElement;
+                                          if (input) input.value = url;
+                                      }
+                                  }} />
+                               </div>
+                             </div>
+
                              <Button type="submit" className="w-full"><Plus className="mr-2 h-4 w-4" /> Add Cert</Button>
                            </form>
                          </CardContent>
@@ -448,6 +605,10 @@ export default function DashboardPage() {
                              <div>
                                <h3 className="font-bold">{c.title}</h3>
                                <p className="text-sm text-muted-foreground">{c.issuer} • {c.date}</p>
+                               {(c.url || c.imageUrl) && <div className="text-xs mt-1 space-x-2">
+                                   {c.url && <a href={c.url} target="_blank" className="text-primary hover:underline">Verify</a>}
+                                   {c.imageUrl && <a href={c.imageUrl} target="_blank" className="text-primary hover:underline">View Image</a>}
+                               </div>}
                              </div>
                              <Button variant="destructive" size="icon" onClick={async () => {
                                await removeCertification(c.id);
