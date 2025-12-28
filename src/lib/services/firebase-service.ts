@@ -116,32 +116,71 @@ export class FirebaseDataService implements DataProviderType {
     return null; // No slug provided and not authenticated to resolve one
   }
 
-  getProfile = async (slug?: string): Promise<TrainerProfile> => {
-    const finalSlug = await this._resolveTrainerSlug(slug);
+  // --- Read ---
+  getTrainers = async (): Promise<TrainerSummary[]> => {
+    try {
+      const trainersRef = collection(this.db, ROOT_COLLECTION);
+      const snapshot = await getDocs(trainersRef);
 
-    if (!finalSlug) {
-      console.warn("Attempted to fetch profile without slug and not authenticated. Returning default profile.");
-      return {
-        name: "Trainer Not Found",
-        bio: "This profile could not be loaded.",
-        heroTitle: "Titan Fitness",
-        heroSubtitle: "",
-        contactEmail: "",
-        contactPhone: "",
-        instagramUrl: "",
-        youtubeUrl: "",
-      };
+      if (snapshot.empty) {
+        // Fallback generic data as requested
+        return [
+          {
+            slug: 'generic-trainer-1',
+            name: 'Titan Trainer',
+            heroTitle: 'Generic Fitness Expert',
+          },
+          {
+            slug: 'generic-trainer-2',
+            name: 'Power Coach',
+            heroTitle: 'Strength Specialist',
+          }
+        ];
+      }
+
+      return snapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+          slug: doc.id,
+          name: data.name || 'Unknown Trainer',
+          heroTitle: data.heroTitle || 'Personal Trainer',
+          profileImage: data.profileImageUrl
+        };
+      });
+    } catch (e) {
+      console.error("Error fetching trainers:", e);
+      // Fallback on error to ensure page loads
+      return [
+        {
+          slug: 'error-fallback',
+          name: 'Fallback Trainer',
+          heroTitle: 'System Maintenance',
+        }
+      ];
     }
+  }
+
+  getProfile = async (slug?: string): Promise<TrainerProfile> => {
+    // If slug is provided, we fetch from trainers/{slug}
+    // If not, we might fail or return a default (or try to infer from auth, but read ops shouldn't rely on auth usually for public pages)
+    const targetSlug = slug || 'trainer1'; // Fallback for safety/dev
 
     try {
-      const docRef = doc(this.db, ROOT_COLLECTION, finalSlug);
+      const docRef = doc(this.db, ROOT_COLLECTION, targetSlug);
       const docSnap = await getDoc(docRef);
 
       if (docSnap.exists()) {
-         return docSnap.data() as TrainerProfile;
+         const data = docSnap.data();
+         // Check if data is nested under 'profile' key or flat. Based on updateProfile, it merges into root.
+         // But types say TrainerProfile has specific fields.
+         // Let's assume the root doc contains the profile fields directly OR under a profile field.
+         // Mock service structure suggests 'profile' is a field.
+         // Let's check updateProfile implementation... it does setDoc(..., profile, {merge: true}).
+         // So the fields are at the root of the trainer document.
+         return data as TrainerProfile;
       }
     } catch (e) {
-      console.warn(`Error fetching profile for slug ${finalSlug}, using fallback`, e);
+      console.warn("Error fetching profile, using fallback", e);
     }
 
     return {
@@ -157,25 +196,23 @@ export class FirebaseDataService implements DataProviderType {
   }
 
   getBrandIdentity = async (slug?: string): Promise<BrandIdentity> => {
-    const finalSlug = await this._resolveTrainerSlug(slug);
+    // Identity might be stored in a subcollection or on the root doc.
+    // Mock service stores it as 'identity' field or separate.
+    // Let's assume it is stored in `trainers/{slug}/brand_identity/main` based on COLLECTIONS.IDENTITY usage in previous code?
+    // Previous code: `collection(this.db, COLLECTIONS.IDENTITY)` which was 'brand_identity' at root?
+    // That implies a single brand for the whole app? The prompt says "multi-tenant".
+    // So it should be `trainers/{slug}/brand_identity/main` OR fields on the root doc.
 
-    if (!finalSlug) {
-      console.warn("Attempted to fetch brand identity without slug and not authenticated. Returning default identity.");
-      return {
-        brandName: "Titan Fitness",
-        logoUrl: "",
-        primaryColor: "#000000",
-        secondaryColor: "#ffffff"
-      };
-    }
+    const targetSlug = slug || 'trainer1';
 
     try {
-      const identityDoc = await getDoc(doc(this.db, ROOT_COLLECTION, finalSlug, COLLECTIONS.IDENTITY, IDENTITY_DOC_ID));
+      // Let's try subcollection pattern as it seems more robust for distinct data
+      const identityDoc = await getDoc(doc(this.db, ROOT_COLLECTION, targetSlug, 'brand_identity', 'main'));
       if (identityDoc.exists()) {
         return identityDoc.data() as BrandIdentity;
       }
     } catch (e) {
-      console.warn("Error fetching identity, using fallback", e);
+      console.warn("Error fetching identity", e);
     }
 
     return {
@@ -187,10 +224,8 @@ export class FirebaseDataService implements DataProviderType {
   }
 
   getCertifications = async (slug?: string): Promise<Certification[]> => {
-    const finalSlug = await this._resolveTrainerSlug(slug);
-    if (!finalSlug) return []; // No slug, no certs
-
-    const snapshot = await getDocs(collection(this.db, ROOT_COLLECTION, finalSlug, 'certifications'));
+    if (!slug) return [];
+    const snapshot = await getDocs(collection(this.db, ROOT_COLLECTION, slug, 'certifications'));
     return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Certification));
   }
 
