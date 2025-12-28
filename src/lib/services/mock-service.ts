@@ -43,78 +43,78 @@ const INITIAL_TESTIMONIALS: Testimonial[] = [
 export class MockDataService implements DataProviderType {
   private isClient = typeof window !== 'undefined';
 
-  private load<T>(key: string, initial: T): T {
+  private load = <T>(key: string, initial: T): T => {
     if (!this.isClient) return initial;
     const stored = localStorage.getItem(key);
     return stored ? JSON.parse(stored) : initial;
   }
 
-  private save(key: string, data: any) {
+  private save = (key: string, data: any) => {
     if (this.isClient) {
       localStorage.setItem(key, JSON.stringify(data));
     }
   }
 
   // --- Read ---
-  async getProfile(): Promise<TrainerProfile> {
+  getProfile = async (): Promise<TrainerProfile> => {
     return this.load(STORAGE_KEYS.PROFILE, INITIAL_PROFILE);
   }
 
-  async getCertifications(): Promise<Certification[]> {
+  getCertifications = async (): Promise<Certification[]> => {
     return this.load(STORAGE_KEYS.CERTS, INITIAL_CERTS);
   }
 
-  async getTransformations(): Promise<Transformation[]> {
+  getTransformations = async (): Promise<Transformation[]> => {
     return this.load(STORAGE_KEYS.TRANS, INITIAL_TRANS);
   }
 
-  async getClasses(): Promise<GymClass[]> {
+  getClasses = async (): Promise<GymClass[]> => {
     return this.load(STORAGE_KEYS.CLASSES, INITIAL_CLASSES);
   }
 
-  async getTestimonials(): Promise<Testimonial[]> {
+  getTestimonials = async (): Promise<Testimonial[]> => {
     return this.load(STORAGE_KEYS.TESTIMONIALS, INITIAL_TESTIMONIALS);
   }
 
   // --- Write ---
-  async updateProfile(profile: TrainerProfile): Promise<void> {
+  updateProfile = async (profile: TrainerProfile): Promise<void> => {
     this.save(STORAGE_KEYS.PROFILE, profile);
   }
 
-  async addCertification(cert: Omit<Certification, 'id'>): Promise<void> {
+  addCertification = async (cert: Omit<Certification, 'id'>): Promise<void> => {
     const list = await this.getCertifications();
     const newCert = { ...cert, id: Math.random().toString(36).substr(2, 9) };
     this.save(STORAGE_KEYS.CERTS, [...list, newCert]);
   }
 
-  async removeCertification(id: string): Promise<void> {
+  removeCertification = async (id: string): Promise<void> => {
     const list = await this.getCertifications();
     this.save(STORAGE_KEYS.CERTS, list.filter(i => i.id !== id));
   }
 
-  async addTransformation(trans: Omit<Transformation, 'id'>): Promise<void> {
+  addTransformation = async (trans: Omit<Transformation, 'id'>): Promise<void> => {
     const list = await this.getTransformations();
     const newTrans = { ...trans, id: Math.random().toString(36).substr(2, 9) };
     this.save(STORAGE_KEYS.TRANS, [...list, newTrans]);
   }
 
-  async removeTransformation(id: string): Promise<void> {
+  removeTransformation = async (id: string): Promise<void> => {
     const list = await this.getTransformations();
     this.save(STORAGE_KEYS.TRANS, list.filter(i => i.id !== id));
   }
 
-  async addClass(gymClass: Omit<GymClass, 'id'>): Promise<void> {
+  addClass = async (gymClass: Omit<GymClass, 'id'>): Promise<void> => {
     const list = await this.getClasses();
     const newClass = { ...gymClass, id: Math.random().toString(36).substr(2, 9) };
     this.save(STORAGE_KEYS.CLASSES, [...list, newClass]);
   }
 
-  async removeClass(id: string): Promise<void> {
+  removeClass = async (id: string): Promise<void> => {
     const list = await this.getClasses();
     this.save(STORAGE_KEYS.CLASSES, list.filter(i => i.id !== id));
   }
 
-  async updateClass(id: string, updates: Partial<GymClass>): Promise<void> {
+  updateClass = async (id: string, updates: Partial<GymClass>): Promise<void> => {
     const list = await this.getClasses();
     this.save(STORAGE_KEYS.CLASSES, list.map(c => c.id === id ? { ...c, ...updates } : c));
   }

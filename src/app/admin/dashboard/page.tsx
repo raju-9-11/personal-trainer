@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
 import { useData } from '@/lib/data-provider';
-import { TrainerProfile, GymClass, Certification } from '@/lib/types';
+import { TrainerProfile, GymClass, Certification, Transformation } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -16,11 +16,17 @@ import { Trash2, Plus, Save } from 'lucide-react';
 export default function DashboardPage() {
   const { isAuthenticated, logout } = useAuth();
   const router = useRouter();
-  const { getProfile, updateProfile, getClasses, addClass, removeClass, getCertifications, addCertification, removeCertification } = useData();
+  const {
+    getProfile, updateProfile,
+    getClasses, addClass, removeClass,
+    getCertifications, addCertification, removeCertification,
+    getTransformations, addTransformation, removeTransformation
+  } = useData();
 
   const [profile, setProfile] = useState<TrainerProfile | null>(null);
   const [classes, setClasses] = useState<GymClass[]>([]);
   const [certs, setCerts] = useState<Certification[]>([]);
+  const [trans, setTrans] = useState<Transformation[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -30,14 +36,20 @@ export default function DashboardPage() {
     }
 
     const loadData = async () => {
-      const [p, c, cer] = await Promise.all([getProfile(), getClasses(), getCertifications()]);
+      const [p, c, cer, t] = await Promise.all([
+        getProfile(),
+        getClasses(),
+        getCertifications(),
+        getTransformations()
+      ]);
       setProfile(p);
       setClasses(c);
       setCerts(cer);
+      setTrans(t);
       setLoading(false);
     };
     loadData();
-  }, [isAuthenticated, router, getProfile, getClasses, getCertifications]);
+  }, [isAuthenticated, router, getProfile, getClasses, getCertifications, getTransformations]);
 
   const handleProfileSave = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -74,6 +86,19 @@ export default function DashboardPage() {
     (e.target as HTMLFormElement).reset();
   };
 
+  const handleAddTrans = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    await addTransformation({
+      clientName: formData.get('clientName') as string,
+      description: formData.get('description') as string,
+      beforeImage: formData.get('beforeImage') as string,
+      afterImage: formData.get('afterImage') as string,
+    });
+    setTrans(await getTransformations());
+    (e.target as HTMLFormElement).reset();
+  };
+
   if (loading || !profile) return <div className="p-8">Loading Dashboard...</div>;
 
   return (
@@ -86,10 +111,11 @@ export default function DashboardPage() {
 
       <main className="container mx-auto px-4 py-8">
         <Tabs defaultValue="profile">
-          <TabsList className="mb-8">
+          <TabsList className="mb-8 flex flex-wrap h-auto gap-2">
             <TabsTrigger value="profile">Profile & Hero</TabsTrigger>
             <TabsTrigger value="classes">Classes</TabsTrigger>
             <TabsTrigger value="certs">Certifications</TabsTrigger>
+            <TabsTrigger value="trans">Transformations</TabsTrigger>
           </TabsList>
 
           {/* Profile Editor */}
@@ -123,6 +149,16 @@ export default function DashboardPage() {
                     <div className="space-y-2">
                       <Label>Contact Phone</Label>
                       <Input value={profile.contactPhone} onChange={e => setProfile({...profile, contactPhone: e.target.value})} />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Instagram URL</Label>
+                      <Input value={profile.instagramUrl} onChange={e => setProfile({...profile, instagramUrl: e.target.value})} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>YouTube URL</Label>
+                      <Input value={profile.youtubeUrl} onChange={e => setProfile({...profile, youtubeUrl: e.target.value})} />
                     </div>
                   </div>
                   <Button type="submit" className="w-full"><Save className="mr-2 h-4 w-4" /> Save Changes</Button>
@@ -200,6 +236,43 @@ export default function DashboardPage() {
                      <Button variant="destructive" size="icon" onClick={async () => {
                        await removeCertification(c.id);
                        setCerts(await getCertifications());
+                     }}>
+                       <Trash2 className="h-4 w-4" />
+                     </Button>
+                   </Card>
+                 ))}
+               </div>
+             </div>
+          </TabsContent>
+
+          {/* Transformations Editor */}
+          <TabsContent value="trans">
+             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+               <Card className="md:col-span-1 h-fit">
+                 <CardHeader>
+                   <CardTitle>Add Transformation</CardTitle>
+                 </CardHeader>
+                 <CardContent>
+                   <form onSubmit={handleAddTrans} className="space-y-4">
+                     <Input name="clientName" placeholder="Client Name" required />
+                     <Input name="description" placeholder="Description (e.g. Lost 30lbs)" required />
+                     <Input name="beforeImage" placeholder="Before Image URL" defaultValue="https://via.placeholder.com/300?text=Before" required />
+                     <Input name="afterImage" placeholder="After Image URL" defaultValue="https://via.placeholder.com/300?text=After" required />
+                     <Button type="submit" className="w-full"><Plus className="mr-2 h-4 w-4" /> Add Transformation</Button>
+                   </form>
+                 </CardContent>
+               </Card>
+
+               <div className="md:col-span-2 space-y-4">
+                 {trans.map(t => (
+                   <Card key={t.id} className="flex flex-row items-center justify-between p-4">
+                     <div>
+                       <h3 className="font-bold">{t.clientName}</h3>
+                       <p className="text-sm text-muted-foreground">{t.description}</p>
+                     </div>
+                     <Button variant="destructive" size="icon" onClick={async () => {
+                       await removeTransformation(t.id);
+                       setTrans(await getTransformations());
                      }}>
                        <Trash2 className="h-4 w-4" />
                      </Button>
