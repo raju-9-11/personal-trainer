@@ -12,6 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
 import Link from 'next/link';
 import { Trash2, Plus, Save, Upload, ExternalLink, Globe } from 'lucide-react';
 import { getFirebase } from '@/lib/firebase';
@@ -459,6 +460,25 @@ export default function DashboardPage() {
                             </div>
                           </div>
 
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 border-t pt-4">
+                              <div className="space-y-2">
+                                  <Label>Experience (Years)</Label>
+                                  <Input type="number" value={profile.experienceYears || 0} onChange={e => setProfile({...profile, experienceYears: parseInt(e.target.value)})} />
+                              </div>
+                              <div className="space-y-2">
+                                  <Label>Experience (Months)</Label>
+                                  <Input type="number" max={11} value={profile.experienceMonths || 0} onChange={e => setProfile({...profile, experienceMonths: parseInt(e.target.value)})} />
+                              </div>
+                              <div className="space-y-2">
+                                  <Label>Clients Handled</Label>
+                                  <Input type="number" value={profile.clientsHandled || 0} onChange={e => setProfile({...profile, clientsHandled: parseInt(e.target.value)})} />
+                              </div>
+                              <div className="flex items-center space-x-2">
+                                <Switch id="rounded-mode" checked={profile.clientsHandledRounded || false} onCheckedChange={(c) => setProfile({...profile, clientsHandledRounded: c})} />
+                                <Label htmlFor="rounded-mode">Round Clients (55 -> 50+)</Label>
+                              </div>
+                          </div>
+
                           <div className="space-y-4 pt-4 border-t">
                              <Label>Social Links (Max 4)</Label>
                              <div className="space-y-2">
@@ -607,7 +627,7 @@ export default function DashboardPage() {
                                           if (input) input.value = url;
                                       }
                                   }} />
-                               </div>
+                                </div>
                              </div>
 
                              <Button type="submit" className="w-full"><Plus className="mr-2 h-4 w-4" /> Add Cert</Button>

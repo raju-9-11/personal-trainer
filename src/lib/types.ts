@@ -10,6 +10,10 @@ export interface TrainerProfile {
   youtubeUrl?: string;
   socialLinks?: SocialLink[];
   profileImageUrl?: string;
+  experienceYears?: number;
+  experienceMonths?: number;
+  clientsHandled?: number;
+  clientsHandledRounded?: boolean;
 }
 
 export interface SocialLink {

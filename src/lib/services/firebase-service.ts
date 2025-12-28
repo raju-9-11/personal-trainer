@@ -23,8 +23,6 @@ export class FirebaseDataService implements DataProviderType {
 
   constructor(user: User | null) {
     const { db } = getFirebase();
-    // Allow db to be null, but methods should check for it.
-    // If we throw here, we crash the app if env vars are missing.
     if (!db) {
        console.warn("Firebase Firestore not available. Service is in limited mode.");
     }
@@ -71,7 +69,11 @@ export class FirebaseDataService implements DataProviderType {
         contactPhone: "",
         instagramUrl: "", // Deprecated field default
         youtubeUrl: "",   // Deprecated field default
-        socialLinks: []
+        socialLinks: [],
+        experienceYears: 0,
+        experienceMonths: 0,
+        clientsHandled: 0,
+        clientsHandledRounded: false
     };
 
     // Create the document
