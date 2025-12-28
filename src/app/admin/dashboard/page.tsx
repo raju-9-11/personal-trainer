@@ -42,6 +42,10 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const { showAlert } = useAlert();
 
+  // Track active tab to update page title logic
+  const [activeTab, setActiveTab] = useState<string>('landing');
+  const [trainerActiveTab, setTrainerActiveTab] = useState<string>('profile');
+
   useEffect(() => {
     if (!isAuthenticated) {
       router.push('/admin/login');
@@ -173,13 +177,25 @@ export default function DashboardPage() {
 
   if (loading) return <div className="p-8">Loading Dashboard...</div>;
 
+  const getPageTitle = () => {
+      if (isSuperAdmin) {
+          switch(activeTab) {
+              case 'landing': return 'Platform Admin - Landing Page';
+              case 'testimonials': return 'Platform Admin - Testimonials';
+              case 'identity': return 'Platform Admin - Identity';
+              default: return 'Platform Admin';
+          }
+      }
+      return 'Trainer Dashboard';
+  };
+
   return (
     <div className="min-h-screen bg-muted/10">
       {/* Header */}
       <header className="bg-background border-b border-border/50 px-6 py-4 flex justify-between items-center">
         <div className="flex items-center gap-4">
            <h1 className="text-2xl font-bold">
-               {isSuperAdmin ? 'Platform Admin' : 'Trainer Dashboard'}
+               {getPageTitle()}
            </h1>
            {!isSuperAdmin && trainerSlug && (
              <Button variant="ghost" size="sm" asChild>
@@ -206,7 +222,7 @@ export default function DashboardPage() {
 
         {isSuperAdmin ? (
             // SUPER ADMIN VIEW
-            <Tabs defaultValue="landing">
+            <Tabs defaultValue="landing" onValueChange={setActiveTab}>
                 <TabsList className="mb-8">
                     <TabsTrigger value="landing">Landing Page</TabsTrigger>
                     <TabsTrigger value="testimonials">Testimonials</TabsTrigger>
@@ -350,7 +366,7 @@ export default function DashboardPage() {
                      <p className="text-muted-foreground">We couldn't load your profile data. Please refresh or contact support.</p>
                 </div>
             ) : (
-                <Tabs defaultValue="profile">
+                <Tabs defaultValue="profile" onValueChange={setTrainerActiveTab}>
                   <TabsList className="mb-8 flex flex-wrap h-auto gap-2">
                     <TabsTrigger value="identity">Identity</TabsTrigger>
                     <TabsTrigger value="profile">Profile & Hero</TabsTrigger>
