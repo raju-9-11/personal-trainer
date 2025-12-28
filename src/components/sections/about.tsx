@@ -56,29 +56,31 @@ export function About() {
           </motion.div>
 
           {/* Right: Certifications */}
-          <motion.div
-             initial={{ opacity: 0, x: 50 }}
-             whileInView={{ opacity: 1, x: 0 }}
-             viewport={{ once: true }}
-             transition={{ duration: 0.5 }}
-          >
-             <h3 className="text-2xl font-bold mb-6 flex items-center gap-2">
-               <Award className="h-6 w-6 text-primary" /> Certifications & Expertise
-             </h3>
-             <div className="space-y-4">
-               {certs.map((cert) => (
-                 <Card key={cert.id} className="bg-card border-border/50 hover:border-primary transition-colors">
-                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                     <CardTitle className="text-base font-semibold">{cert.title}</CardTitle>
-                     <Badge variant="outline">{cert.issuer}</Badge>
-                   </CardHeader>
-                   <CardContent>
-                     <p className="text-sm text-muted-foreground">Issued: {cert.date}</p>
-                   </CardContent>
-                 </Card>
-               ))}
-             </div>
-          </motion.div>
+          {certs.length > 0 && (
+            <motion.div
+               initial={{ opacity: 0, x: 50 }}
+               whileInView={{ opacity: 1, x: 0 }}
+               viewport={{ once: true }}
+               transition={{ duration: 0.5 }}
+            >
+               <h3 className="text-2xl font-bold mb-6 flex items-center gap-2">
+                 <Award className="h-6 w-6 text-primary" /> Certifications & Expertise
+               </h3>
+               <div className="space-y-4">
+                 {certs.map((cert) => (
+                   <Card key={cert.id} className="bg-card border-border/50 hover:border-primary transition-colors">
+                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                       <CardTitle className="text-base font-semibold">{cert.title}</CardTitle>
+                       <Badge variant="outline">{cert.issuer}</Badge>
+                     </CardHeader>
+                     <CardContent>
+                       <p className="text-sm text-muted-foreground">Issued: {cert.date}</p>
+                     </CardContent>
+                   </Card>
+                 ))}
+               </div>
+            </motion.div>
+          )}
         </div>
       </div>
     </section>
