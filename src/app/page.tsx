@@ -40,6 +40,41 @@ export default function Home() {
         </div>
       </section>
 
+      {/* Why Choose Us */}
+      <section className="py-24 bg-muted/20">
+        <div className="container mx-auto px-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-12 text-center">
+            <div className="p-6">
+              <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-6">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                </svg>
+              </div>
+              <h3 className="text-xl font-bold mb-4">Elite Expertise</h3>
+              <p className="text-muted-foreground">Train with coaches who have proven track records and top-tier certifications.</p>
+            </div>
+            <div className="p-6">
+              <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-6">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <h3 className="text-xl font-bold mb-4">Proven Results</h3>
+              <p className="text-muted-foreground">Our data-driven approach ensures you see real, measurable progress every step of the way.</p>
+            </div>
+            <div className="p-6">
+              <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-6">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                </svg>
+              </div>
+              <h3 className="text-xl font-bold mb-4">Community Focused</h3>
+              <p className="text-muted-foreground">Join a supportive community of like-minded individuals pushing for greatness.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* Trainers Grid */}
       <section id="trainers" className="py-24 bg-background">
         <div className="container mx-auto px-4">
@@ -70,6 +105,39 @@ export default function Home() {
               ))}
             </div>
           )}
+        </div>
+      </section>
+
+      {/* Success Stories Preview */}
+      <section className="py-24 bg-black text-white">
+        <div className="container mx-auto px-4">
+           <div className="text-center mb-16">
+            <h2 className="text-4xl font-bold mb-4">Real Transformations</h2>
+            <p className="text-gray-400">See what's possible when you commit to the process.</p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+             <div className="bg-gray-900 rounded-xl p-8 border border-white/10">
+                <div className="flex gap-4 items-center mb-4">
+                   <div className="w-12 h-12 bg-primary rounded-full flex items-center justify-center font-bold text-black">JD</div>
+                   <div>
+                      <h4 className="font-bold text-lg">John Doe</h4>
+                      <p className="text-sm text-gray-400">Lost 30lbs</p>
+                   </div>
+                </div>
+                <p className="text-gray-300">"The training program was intense but exactly what I needed. I've never felt stronger."</p>
+             </div>
+             <div className="bg-gray-900 rounded-xl p-8 border border-white/10">
+                <div className="flex gap-4 items-center mb-4">
+                   <div className="w-12 h-12 bg-primary rounded-full flex items-center justify-center font-bold text-black">JS</div>
+                   <div>
+                      <h4 className="font-bold text-lg">Jane Smith</h4>
+                      <p className="text-sm text-gray-400">Marathon Runner</p>
+                   </div>
+                </div>
+                <p className="text-gray-300">"From couch potato to marathon finisher. The coaching was instrumental in my journey."</p>
+             </div>
+          </div>
         </div>
       </section>
 

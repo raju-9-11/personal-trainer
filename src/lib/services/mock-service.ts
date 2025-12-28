@@ -19,23 +19,40 @@ const TRAINER1_DATA = {
   },
   certs: [
     { id: '1', title: 'NASM Certified Personal Trainer', issuer: 'NASM', date: '2015-06-01' },
-    { id: '2', title: 'CrossFit Level 2', issuer: 'CrossFit', date: '2018-03-15' }
+    { id: '2', title: 'CrossFit Level 2', issuer: 'CrossFit', date: '2018-03-15' },
+    { id: '3', title: 'Precision Nutrition Level 1', issuer: 'Precision Nutrition', date: '2019-11-20' },
+    { id: '4', title: 'ACE Health Coach', issuer: 'ACE', date: '2020-05-10' }
   ],
   transformations: [
-    { id: '1', clientName: 'John Doe', description: 'Lost 30lbs in 3 months', beforeImage: 'https://via.placeholder.com/300', afterImage: 'https://via.placeholder.com/300' }
+    { id: '1', clientName: 'John Doe', description: 'Lost 30lbs in 3 months and gained significant muscle mass.', beforeImage: 'https://via.placeholder.com/300', afterImage: 'https://via.placeholder.com/300' },
+    { id: '2', clientName: 'Jane Smith', description: 'Completed first marathon after 6 months of training.', beforeImage: 'https://via.placeholder.com/300', afterImage: 'https://via.placeholder.com/300' },
+    { id: '3', clientName: 'Mike Ross', description: 'Rehabbed shoulder injury and returned to competitive lifting.', beforeImage: 'https://via.placeholder.com/300', afterImage: 'https://via.placeholder.com/300' }
   ],
   classes: [
-    { id: '1', title: 'HIIT Blast', description: 'High intensity interval training', time: 'Mon 10:00 AM', durationMinutes: 60, maxSpots: 20, enrolledSpots: 12 },
-    { id: '2', title: 'Strength 101', description: 'Basic compound movements', time: 'Wed 6:00 PM', durationMinutes: 60, maxSpots: 15, enrolledSpots: 15 }
+    { id: '1', title: 'HIIT Blast', description: 'High intensity interval training to burn fat.', time: 'Mon 10:00 AM', durationMinutes: 60, maxSpots: 20, enrolledSpots: 12 },
+    { id: '2', title: 'Strength 101', description: 'Basic compound movements for beginners.', time: 'Wed 6:00 PM', durationMinutes: 60, maxSpots: 15, enrolledSpots: 15 },
+    { id: '3', title: 'Power Yoga', description: 'Flexibility and core strength fusion.', time: 'Fri 8:00 AM', durationMinutes: 45, maxSpots: 25, enrolledSpots: 20 },
+    { id: '4', title: 'Weekend Warriors', description: 'Outdoor boot camp style workout.', time: 'Sat 9:00 AM', durationMinutes: 90, maxSpots: 30, enrolledSpots: 28 }
   ],
   testimonials: [
-    { id: '1', clientName: 'Sarah K.', text: 'Best trainer ever!', rating: 5 }
+    { id: '1', clientName: 'Sarah K.', text: 'Best trainer ever! Changed my life completely.', rating: 5 },
+    { id: '2', clientName: 'Tom H.', text: 'Alex pushes you to the limit but keeps it safe.', rating: 5 },
+    { id: '3', clientName: 'Emily R.', text: 'Great results in just 2 months.', rating: 4 }
   ]
 };
 
 const TESTTRAINER_DATA = {
   ...TRAINER1_DATA,
-  profile: { ...TRAINER1_DATA.profile, name: "Test Trainer", heroTitle: "TEST YOUR LIMITS" }
+  profile: {
+    ...TRAINER1_DATA.profile,
+    name: "Test Trainer",
+    heroTitle: "TEST YOUR LIMITS",
+    bio: "I am a test trainer data set designed to demonstrate the platform's capabilities. With a focus on data integrity and user experience, I help developers test their code."
+  },
+  classes: [
+     ...TRAINER1_DATA.classes,
+     { id: '5', title: 'Debugging 101', description: 'Learn to fix bugs fast.', time: 'Tue 10:00 AM', durationMinutes: 60, maxSpots: 10, enrolledSpots: 2 }
+  ]
 };
 
 const INITIAL_DB: Record<string, any> = {
