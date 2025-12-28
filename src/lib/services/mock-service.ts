@@ -121,8 +121,8 @@ export class MockDataService implements DataProviderType {
   private getDb = () => {
     if (!this.isClient) return INITIAL_DB;
     try {
-      // Using v2 to force refresh of data for existing users
-      const stored = localStorage.getItem('mock_db_v2');
+      // Using v3 to force refresh of data for existing users
+      const stored = localStorage.getItem('mock_db_v3');
       return stored ? JSON.parse(stored) : INITIAL_DB;
     } catch {
       return INITIAL_DB;
@@ -131,7 +131,7 @@ export class MockDataService implements DataProviderType {
 
   private saveDb = (db: any) => {
     if (this.isClient) {
-      localStorage.setItem('mock_db_v2', JSON.stringify(db));
+      localStorage.setItem('mock_db_v3', JSON.stringify(db));
     }
   }
 
