@@ -21,28 +21,6 @@ export function Hero() {
 
   if (!profile) return <div className="h-screen bg-background flex items-center justify-center">Loading...</div>;
 
-  const getExperienceString = () => {
-      const years = profile.experienceYears || 0;
-      const months = profile.experienceMonths || 0;
-      if (years === 0 && months === 0) return null;
-      let text = "";
-      if (years > 0) text += `${years} Year${years > 1 ? 's' : ''}`;
-      if (months > 0) text += ` ${months} Month${months > 1 ? 's' : ''}`;
-      return text + " Experience";
-  };
-
-  const getClientsString = () => {
-      let count = profile.clientsHandled || 0;
-      if (count === 0) return null;
-      if (profile.clientsHandledRounded) {
-          count = Math.floor(count / 10) * 10;
-          return `${count}+ Clients Handled`;
-      }
-      return `${count} Clients Handled`;
-  };
-
-  const stats = [getExperienceString(), getClientsString()].filter(Boolean);
-
   return (
     <section className="relative h-[90vh] flex items-center justify-center overflow-hidden bg-background">
       {/* Background Graphic Element - Energetic Gradient Blob */}
@@ -67,19 +45,6 @@ export function Hero() {
         >
           {profile.heroTitle}
         </motion.h1>
-
-        {stats.length > 0 && (
-            <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ duration: 0.5, delay: 0.15 }}
-                className="flex gap-4 md:gap-8 mb-6 text-sm md:text-lg font-bold uppercase tracking-wider text-muted-foreground"
-            >
-                {stats.map((stat, idx) => (
-                    <span key={idx} className="border border-primary/30 px-3 py-1 rounded-full">{stat}</span>
-                ))}
-            </motion.div>
-        )}
 
         <motion.p
           initial={{ opacity: 0 }}

@@ -112,6 +112,9 @@ export default function DashboardPage() {
     e.preventDefault();
     if (identity) {
       await updateBrandIdentity(identity);
+      // Update local state is automatic via two-way binding,
+      // but ensure side effects (like doc title) trigger if needed
+      // setIdentity({...identity}); // React batching might make this redundant but safe
       showAlert('Success', 'Brand Identity updated!');
     }
   };
@@ -459,6 +462,12 @@ export default function DashboardPage() {
                               <Input value={profile.heroSubtitle} onChange={e => setProfile({...profile, heroSubtitle: e.target.value})} />
                             </div>
                           </div>
+
+                          <div className="space-y-2">
+                              <Label>Trainer Name</Label>
+                              <Input value={profile.name} onChange={e => setProfile({...profile, name: e.target.value})} />
+                          </div>
+
                           <div className="space-y-2">
                             <Label>Bio</Label>
                             <Textarea value={profile.bio} onChange={e => setProfile({...profile, bio: e.target.value})} className="h-32" />

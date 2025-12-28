@@ -34,17 +34,20 @@ export function SocialFeed() {
       return platform.charAt(0).toUpperCase() + platform.slice(1);
   };
 
-  const hasPlatform = (platform: SocialLink['platform']) => {
-      if (profile?.socialLinks?.some(link => link.platform === platform)) return true;
-      // Legacy Check
-      if (platform === 'instagram' && profile?.instagramUrl) return true;
-      if (platform === 'youtube' && profile?.youtubeUrl) return true;
-      return false;
+  const getLinksByPlatform = (platform: SocialLink['platform']) => {
+      if (!profile) return [];
+      const links = profile.socialLinks?.filter(link => link.platform === platform) || [];
+
+      // Legacy Fallback
+      if (links.length === 0) {
+          if (platform === 'instagram' && profile.instagramUrl) return [{ platform: 'instagram', url: profile.instagramUrl }];
+          if (platform === 'youtube' && profile.youtubeUrl) return [{ platform: 'youtube', url: profile.youtubeUrl }];
+      }
+      return links;
   };
 
-  // Mock data for preview - assuming 4 items max as requested
-  const instaPosts = [1, 2, 3, 4];
-  const youtubeVideos = [1, 2, 3, 4];
+  const instagramLinks = getLinksByPlatform('instagram');
+  const youtubeLinks = getLinksByPlatform('youtube');
 
   return (
     <section className="py-24 bg-background overflow-hidden">
@@ -84,48 +87,52 @@ export function SocialFeed() {
            </div>
         </div>
 
-        {/* Instagram Grid - Conditionally Rendered */}
-        {hasPlatform('instagram') && (
+        {/* Instagram Grid - Dynamic to # of links */}
+        {instagramLinks.length > 0 && (
             <div className="mb-12">
               <h3 className="text-lg font-bold mb-6 flex items-center gap-2">
                  <Instagram className="text-primary" /> Latest Posts
               </h3>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                {instaPosts.map((post) => (
+                {instagramLinks.map((link, idx) => (
                   <motion.div
-                    key={post}
+                    key={idx}
                     whileHover={{ scale: 1.05 }}
                     className="aspect-square bg-muted rounded-xl overflow-hidden relative group cursor-pointer"
                   >
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-4">
-                       <span className="text-white text-xs font-bold">View on Instagram</span>
-                    </div>
-                    {/* Placeholder Image */}
-                    <div className="w-full h-full bg-secondary flex items-center justify-center text-muted-foreground">
-                       POST {post}
-                    </div>
+                    <a href={link.url} target="_blank" rel="noopener noreferrer" className="block w-full h-full">
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-4">
+                           <span className="text-white text-xs font-bold">View on Instagram</span>
+                        </div>
+                        {/* Placeholder Image */}
+                        <div className="w-full h-full bg-secondary flex items-center justify-center text-muted-foreground">
+                           POST {idx + 1}
+                        </div>
+                    </a>
                   </motion.div>
                 ))}
               </div>
             </div>
         )}
 
-        {/* YouTube Grid - Conditionally Rendered */}
-        {hasPlatform('youtube') && (
+        {/* YouTube Grid - Dynamic to # of links */}
+        {youtubeLinks.length > 0 && (
             <div>
               <h3 className="text-lg font-bold mb-6 flex items-center gap-2">
                  <Youtube className="text-primary" /> Recent Training Videos
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                {youtubeVideos.map((video) => (
-                  <Card key={video} className="aspect-video bg-black rounded-xl overflow-hidden relative group cursor-pointer border-none">
-                     <div className="absolute inset-0 flex items-center justify-center">
-                        <div className="w-16 h-16 rounded-full bg-primary/90 flex items-center justify-center group-hover:scale-110 transition-transform">
-                           <Play className="h-6 w-6 text-black fill-black ml-1" />
-                        </div>
-                     </div>
-                     {/* Placeholder Thumbnail */}
-                     <div className="w-full h-full bg-muted/20" />
+                {youtubeLinks.map((link, idx) => (
+                  <Card key={idx} className="aspect-video bg-black rounded-xl overflow-hidden relative group cursor-pointer border-none">
+                     <a href={link.url} target="_blank" rel="noopener noreferrer" className="block w-full h-full">
+                         <div className="absolute inset-0 flex items-center justify-center">
+                            <div className="w-16 h-16 rounded-full bg-primary/90 flex items-center justify-center group-hover:scale-110 transition-transform">
+                               <Play className="h-6 w-6 text-black fill-black ml-1" />
+                            </div>
+                         </div>
+                         {/* Placeholder Thumbnail */}
+                         <div className="w-full h-full bg-muted/20" />
+                     </a>
                   </Card>
                 ))}
               </div>
