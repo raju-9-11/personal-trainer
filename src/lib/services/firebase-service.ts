@@ -1,9 +1,10 @@
-import { DataProviderType, TrainerProfile, Certification, Transformation, GymClass, Testimonial } from '../types';
+import { DataProviderType, TrainerProfile, Certification, Transformation, GymClass, Testimonial, BrandIdentity } from '../types';
 import { getFirebase } from '../firebase';
 import { collection, getDocs, doc, setDoc, addDoc, deleteDoc, updateDoc, Firestore } from 'firebase/firestore';
 
 const COLLECTIONS = {
   PROFILE: 'profile',
+  IDENTITY: 'brand_identity',
   CERTS: 'certifications',
   TRANS: 'transformations',
   CLASSES: 'classes',
@@ -11,6 +12,7 @@ const COLLECTIONS = {
 };
 
 const PROFILE_DOC_ID = 'main';
+const IDENTITY_DOC_ID = 'main';
 
 export class FirebaseDataService implements DataProviderType {
   private db: Firestore;
@@ -27,9 +29,32 @@ export class FirebaseDataService implements DataProviderType {
   getProfile = async (): Promise<TrainerProfile> => {
     const snapshot = await getDocs(collection(this.db, COLLECTIONS.PROFILE));
     if (snapshot.empty) {
-      throw new Error("Profile not found in Firestore. Please create a document in 'profile' collection.");
+      console.warn("Profile not found in Firestore. Returning default profile. Please create a document in 'profile' collection.");
+      return {
+        name: "Your Name",
+        bio: "Your Bio",
+        heroTitle: "Your Hero Title",
+        heroSubtitle: "Your Hero Subtitle",
+        contactEmail: "your.email@example.com",
+        contactPhone: "Your Phone",
+        instagramUrl: "",
+        youtubeUrl: "",
+      };
     }
     return snapshot.docs[0].data() as TrainerProfile;
+  }
+
+  getBrandIdentity = async (): Promise<BrandIdentity> => {
+    const snapshot = await getDocs(collection(this.db, COLLECTIONS.IDENTITY));
+    if (snapshot.empty) {
+      return {
+        brandName: "",
+        logoUrl: "",
+        primaryColor: "#000000",
+        secondaryColor: "#ffffff"
+      };
+    }
+    return snapshot.docs[0].data() as BrandIdentity;
   }
 
   getCertifications = async (): Promise<Certification[]> => {
@@ -57,6 +82,12 @@ export class FirebaseDataService implements DataProviderType {
     const snapshot = await getDocs(collection(this.db, COLLECTIONS.PROFILE));
     const docId = snapshot.empty ? PROFILE_DOC_ID : snapshot.docs[0].id;
     await setDoc(doc(this.db, COLLECTIONS.PROFILE, docId), profile, { merge: true });
+  }
+
+  updateBrandIdentity = async (identity: BrandIdentity): Promise<void> => {
+    const snapshot = await getDocs(collection(this.db, COLLECTIONS.IDENTITY));
+    const docId = snapshot.empty ? IDENTITY_DOC_ID : snapshot.docs[0].id;
+    await setDoc(doc(this.db, COLLECTIONS.IDENTITY, docId), identity, { merge: true });
   }
 
   addCertification = async (cert: Omit<Certification, 'id'>): Promise<void> => {

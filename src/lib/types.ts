@@ -42,9 +42,17 @@ export interface Testimonial {
   rating: number; // 1-5
 }
 
+export interface BrandIdentity {
+  brandName: string;
+  logoUrl: string;
+  primaryColor: string;
+  secondaryColor: string;
+}
+
 export interface DataProviderType {
   // Read
   getProfile: () => Promise<TrainerProfile>;
+  getBrandIdentity: () => Promise<BrandIdentity>;
   getCertifications: () => Promise<Certification[]>;
   getTransformations: () => Promise<Transformation[]>;
   getClasses: () => Promise<GymClass[]>;
@@ -52,6 +60,7 @@ export interface DataProviderType {
 
   // Write (Admin)
   updateProfile: (profile: TrainerProfile) => Promise<void>;
+  updateBrandIdentity: (identity: BrandIdentity) => Promise<void>;
   addCertification: (cert: Omit<Certification, 'id'>) => Promise<void>;
   removeCertification: (id: string) => Promise<void>;
   addTransformation: (trans: Omit<Transformation, 'id'>) => Promise<void>;

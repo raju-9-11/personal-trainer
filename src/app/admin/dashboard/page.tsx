@@ -4,26 +4,30 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
 import { useData } from '@/lib/data-provider';
-import { TrainerProfile, GymClass, Certification, Transformation } from '@/lib/types';
+import { TrainerProfile, GymClass, Certification, Transformation, BrandIdentity } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
-import { Trash2, Plus, Save } from 'lucide-react';
+import { Trash2, Plus, Save, Upload } from 'lucide-react';
+import { getFirebase } from '@/lib/firebase';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 
 export default function DashboardPage() {
   const { isAuthenticated, logout } = useAuth();
   const router = useRouter();
   const {
     getProfile, updateProfile,
+    getBrandIdentity, updateBrandIdentity,
     getClasses, addClass, removeClass,
     getCertifications, addCertification, removeCertification,
     getTransformations, addTransformation, removeTransformation
   } = useData();
 
   const [profile, setProfile] = useState<TrainerProfile | null>(null);
+  const [identity, setIdentity] = useState<BrandIdentity | null>(null);
   const [classes, setClasses] = useState<GymClass[]>([]);
   const [certs, setCerts] = useState<Certification[]>([]);
   const [trans, setTrans] = useState<Transformation[]>([]);
@@ -36,20 +40,22 @@ export default function DashboardPage() {
     }
 
     const loadData = async () => {
-      const [p, c, cer, t] = await Promise.all([
+      const [p, i, c, cer, t] = await Promise.all([
         getProfile(),
+        getBrandIdentity(),
         getClasses(),
         getCertifications(),
         getTransformations()
       ]);
       setProfile(p);
+      setIdentity(i);
       setClasses(c);
       setCerts(cer);
       setTrans(t);
       setLoading(false);
     };
     loadData();
-  }, [isAuthenticated, router, getProfile, getClasses, getCertifications, getTransformations]);
+  }, [isAuthenticated, router, getProfile, getBrandIdentity, getClasses, getCertifications, getTransformations]);
 
   const handleProfileSave = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -57,6 +63,26 @@ export default function DashboardPage() {
       await updateProfile(profile);
       alert('Profile updated!');
     }
+  };
+
+  const handleIdentitySave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (identity) {
+      await updateBrandIdentity(identity);
+      alert('Brand Identity updated!');
+    }
+  };
+
+  const uploadImage = async (file: File, path: string): Promise<string> => {
+    const { storage } = getFirebase();
+    if (!storage) {
+        // Fallback for mock mode or missing config
+        console.warn("Firebase Storage not available. Using fake URL.");
+        return URL.createObjectURL(file);
+    }
+    const storageRef = ref(storage, path);
+    await uploadBytes(storageRef, file);
+    return await getDownloadURL(storageRef);
   };
 
   const handleAddClass = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -112,11 +138,62 @@ export default function DashboardPage() {
       <main className="container mx-auto px-4 py-8">
         <Tabs defaultValue="profile">
           <TabsList className="mb-8 flex flex-wrap h-auto gap-2">
+            <TabsTrigger value="identity">Identity</TabsTrigger>
             <TabsTrigger value="profile">Profile & Hero</TabsTrigger>
             <TabsTrigger value="classes">Classes</TabsTrigger>
             <TabsTrigger value="certs">Certifications</TabsTrigger>
             <TabsTrigger value="trans">Transformations</TabsTrigger>
           </TabsList>
+
+          {/* Identity Editor */}
+          <TabsContent value="identity">
+            <Card>
+              <CardHeader>
+                <CardTitle>Brand Identity</CardTitle>
+                <CardDescription>Manage your brand's look and feel.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {identity && (
+                  <form onSubmit={handleIdentitySave} className="space-y-4">
+                    <div className="space-y-2">
+                        <Label>Brand Name</Label>
+                        <Input value={identity.brandName} onChange={e => setIdentity({...identity, brandName: e.target.value})} />
+                    </div>
+                    <div className="space-y-2">
+                        <Label>Logo</Label>
+                        <div className="flex gap-4 items-center">
+                            {identity.logoUrl && <img src={identity.logoUrl} alt="Logo" className="h-16 w-16 object-contain border p-1 rounded" />}
+                            <Input type="file" accept="image/*" onChange={async (e) => {
+                                const file = e.target.files?.[0];
+                                if (file) {
+                                    const url = await uploadImage(file, `brand/logo_${Date.now()}`);
+                                    setIdentity({...identity, logoUrl: url});
+                                }
+                            }} />
+                        </div>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                            <Label>Primary Color</Label>
+                            <div className="flex gap-2">
+                                <Input type="color" className="w-12 p-1 h-10" value={identity.primaryColor} onChange={e => setIdentity({...identity, primaryColor: e.target.value})} />
+                                <Input value={identity.primaryColor} onChange={e => setIdentity({...identity, primaryColor: e.target.value})} />
+                            </div>
+                        </div>
+                        <div className="space-y-2">
+                            <Label>Secondary Color</Label>
+                             <div className="flex gap-2">
+                                <Input type="color" className="w-12 p-1 h-10" value={identity.secondaryColor} onChange={e => setIdentity({...identity, secondaryColor: e.target.value})} />
+                                <Input value={identity.secondaryColor} onChange={e => setIdentity({...identity, secondaryColor: e.target.value})} />
+                            </div>
+                        </div>
+                    </div>
+                    <Button type="submit" className="w-full"><Save className="mr-2 h-4 w-4" /> Save Identity</Button>
+                  </form>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
 
           {/* Profile Editor */}
           <TabsContent value="profile">
@@ -256,8 +333,43 @@ export default function DashboardPage() {
                    <form onSubmit={handleAddTrans} className="space-y-4">
                      <Input name="clientName" placeholder="Client Name" required />
                      <Input name="description" placeholder="Description (e.g. Lost 30lbs)" required />
-                     <Input name="beforeImage" placeholder="Before Image URL" defaultValue="https://via.placeholder.com/300?text=Before" required />
-                     <Input name="afterImage" placeholder="After Image URL" defaultValue="https://via.placeholder.com/300?text=After" required />
+
+                     <div className="space-y-2">
+                       <Label>Before Image</Label>
+                       <div className="flex gap-2 items-center">
+                          <Input name="beforeImage" placeholder="Image URL" required />
+                          <Label htmlFor="upload-before" className="cursor-pointer bg-secondary text-secondary-foreground hover:bg-secondary/80 h-10 px-4 py-2 rounded inline-flex items-center justify-center">
+                             <Upload className="h-4 w-4" />
+                          </Label>
+                          <Input id="upload-before" type="file" accept="image/*" className="hidden" onChange={async (e) => {
+                              const file = e.target.files?.[0];
+                              if (file) {
+                                  const url = await uploadImage(file, `transformations/before_${Date.now()}`);
+                                  const input = document.getElementsByName('beforeImage')[0] as HTMLInputElement;
+                                  if (input) input.value = url;
+                              }
+                          }} />
+                       </div>
+                     </div>
+
+                     <div className="space-y-2">
+                       <Label>After Image</Label>
+                       <div className="flex gap-2 items-center">
+                          <Input name="afterImage" placeholder="Image URL" required />
+                          <Label htmlFor="upload-after" className="cursor-pointer bg-secondary text-secondary-foreground hover:bg-secondary/80 h-10 px-4 py-2 rounded inline-flex items-center justify-center">
+                             <Upload className="h-4 w-4" />
+                          </Label>
+                          <Input id="upload-after" type="file" accept="image/*" className="hidden" onChange={async (e) => {
+                              const file = e.target.files?.[0];
+                              if (file) {
+                                  const url = await uploadImage(file, `transformations/after_${Date.now()}`);
+                                  const input = document.getElementsByName('afterImage')[0] as HTMLInputElement;
+                                  if (input) input.value = url;
+                              }
+                          }} />
+                       </div>
+                     </div>
+
                      <Button type="submit" className="w-full"><Plus className="mr-2 h-4 w-4" /> Add Transformation</Button>
                    </form>
                  </CardContent>
