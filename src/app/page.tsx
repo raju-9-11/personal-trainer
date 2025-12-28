@@ -5,6 +5,13 @@ import { useEffect, useState } from 'react';
 import { useData } from '@/lib/data-provider';
 import { TrainerSummary, LandingPageContent, BrandIdentity, PlatformTestimonial } from '@/lib/types';
 import Image from 'next/image';
+import {
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+  CarouselNext,
+  CarouselPrevious,
+} from "@/components/ui/carousel";
 
 export default function Home() {
   const { getTrainers, getLandingPageContent, getBrandIdentity, getPlatformTestimonials } = useData();
@@ -144,31 +151,44 @@ export default function Home() {
             <p className="text-gray-400">See what's possible when you commit to the process.</p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          <div className="flex justify-center">
              {testimonials.length > 0 ? (
-                 testimonials.map(t => (
-                    <div key={t.id} className="bg-gray-900 rounded-xl p-8 border border-white/10">
-                        <div className="flex gap-4 items-center mb-4">
-                           {t.imageUrl ? (
-                               <Image src={t.imageUrl} alt={t.name} width={48} height={48} className="rounded-full w-12 h-12 object-cover" />
-                           ) : (
-                               <div className="w-12 h-12 bg-primary rounded-full flex items-center justify-center font-bold text-black">
-                                   {t.name.substring(0,2).toUpperCase()}
-                               </div>
-                           )}
-                           <div>
-                              <h4 className="font-bold text-lg">{t.name}</h4>
-                              <p className="text-sm text-gray-400">Client</p>
-                           </div>
-                        </div>
-                        <p className="text-gray-300">&quot;{t.testimonial}&quot;</p>
-                     </div>
-                 ))
+                 <Carousel
+                    opts={{
+                        align: "start",
+                    }}
+                    className="w-full max-w-5xl"
+                 >
+                    <CarouselContent>
+                        {testimonials.map((t) => (
+                            <CarouselItem key={t.id} className="md:basis-1/2 lg:basis-1/2 p-2">
+                                <div className="bg-gray-900 rounded-xl p-8 border border-white/10 h-full">
+                                    <div className="flex gap-4 items-center mb-4">
+                                       {t.imageUrl ? (
+                                           <Image src={t.imageUrl} alt={t.name} width={48} height={48} className="rounded-full w-12 h-12 object-cover" />
+                                       ) : (
+                                           <div className="w-12 h-12 bg-primary rounded-full flex items-center justify-center font-bold text-black">
+                                               {t.name.substring(0,2).toUpperCase()}
+                                           </div>
+                                       )}
+                                       <div>
+                                          <h4 className="font-bold text-lg">{t.name}</h4>
+                                          <p className="text-sm text-gray-400">Client</p>
+                                       </div>
+                                    </div>
+                                    <p className="text-gray-300">&quot;{t.testimonial}&quot;</p>
+                                </div>
+                            </CarouselItem>
+                        ))}
+                    </CarouselContent>
+                    <CarouselPrevious className="hidden md:flex bg-gray-800 text-white border-white/20 hover:bg-gray-700" />
+                    <CarouselNext className="hidden md:flex bg-gray-800 text-white border-white/20 hover:bg-gray-700" />
+                 </Carousel>
              ) : (
                 <>
                  {/* Fallback if no testimonials created yet */}
-                 <div className="bg-gray-900 rounded-xl p-8 border border-white/10 opacity-50">
-                    <p className="text-center">Success stories coming soon.</p>
+                 <div className="bg-gray-900 rounded-xl p-8 border border-white/10 opacity-50 w-full max-w-md text-center">
+                    <p>Success stories coming soon.</p>
                  </div>
                 </>
              )}

@@ -475,7 +475,7 @@ export default function DashboardPage() {
                               </div>
                               <div className="flex items-center space-x-2">
                                 <Switch id="rounded-mode" checked={profile.clientsHandledRounded || false} onCheckedChange={(c) => setProfile({...profile, clientsHandledRounded: c})} />
-                                <Label htmlFor="rounded-mode">Round Clients (55 -> 50+)</Label>
+                                <Label htmlFor="rounded-mode">Round Clients (55 &rarr; 50+)</Label>
                               </div>
                           </div>
 
