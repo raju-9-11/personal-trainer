@@ -1,9 +1,11 @@
-import { DataProviderType, TrainerProfile, Certification, Transformation, GymClass, Testimonial, BrandIdentity, TrainerSummary } from '../types';
+import { DataProviderType, TrainerProfile, Certification, Transformation, GymClass, Testimonial, BrandIdentity, TrainerSummary, LandingPageContent, PlatformTestimonial } from '../types';
 import { getFirebase } from '../firebase';
-import { collection, getDocs, doc, setDoc, addDoc, deleteDoc, updateDoc, Firestore, getDoc, query, where } from 'firebase/firestore';
-import { getAuth } from 'firebase/auth';
+import { collection, getDocs, doc, setDoc, addDoc, deleteDoc, updateDoc, Firestore, getDoc, query, where, Timestamp } from 'firebase/firestore';
+import { User } from 'firebase/auth';
+import { DEFAULT_BRAND_IDENTITY } from '../constants';
 
 const ROOT_COLLECTION = 'trainers';
+const PLATFORM_COLLECTION = 'platform_settings';
 
 const COLLECTIONS = {
   PROFILE: 'profile',
@@ -14,156 +16,142 @@ const COLLECTIONS = {
   TESTIMONIALS: 'testimonials',
 };
 
-const PROFILE_DOC_ID = 'main';
 const IDENTITY_DOC_ID = 'main';
 
-export class FirebaseDataService implements DataProviderType {
-  private db: Firestore;
+// Default values to use when data is missing or service is uninitialized
+const DEFAULT_IDENTITY: BrandIdentity = DEFAULT_BRAND_IDENTITY;
 
-  constructor() {
+const DEFAULT_PROFILE: TrainerProfile = {
+    name: "New Trainer",
+    bio: "",
+    heroTitle: "Welcome",
+    heroSubtitle: "Start your journey",
+    contactEmail: "",
+    contactPhone: "",
+    socialLinks: [],
+};
+
+const DEFAULT_LANDING: LandingPageContent = {
+    heroTitle: "UNLEASH YOUR POTENTIAL",
+    heroSubtitle: "Elite personal training.",
+    heroImageUrl: "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?q=80&w=2070&auto=format&fit=crop"
+};
+
+export class FirebaseDataService implements DataProviderType {
+  private db: Firestore | undefined;
+  private currentUser: User | null;
+
+  constructor(user: User | null) {
     const { db } = getFirebase();
     if (!db) {
-      throw new Error("Failed to initialize Firebase Firestore. Check your configuration.");
+       console.warn("Firebase Firestore not available. Service is in limited mode.");
     }
-    this.db = db;
+    this.db = db || undefined;
+    this.currentUser = user;
+  }
+
+  // Helper to ensure DB is available
+  private ensureDb(): Firestore {
+      if (!this.db) {
+          throw new Error("Firebase Firestore is not initialized. Please check your environment variables and configuration.");
+      }
+      return this.db;
   }
 
   // Helper to determine slug for read/write
-  // For Write: MUST rely on Authenticated User -> Map UID to Slug (Not implemented yet fully, assuming context handles it or passed)
-  // For Read: `slug` is passed.
-
-  // NOTE: In a real app, we need a way to map the currently logged-in user to their slug for write operations.
-  // Since we can't easily query "who am I" without a `users` collection mapping UID -> Slug,
-  // we will assume for now the client might pass the slug or we store it in the Auth Profile.
-  // However, `DataProvider` interface doesn't pass slug for writes.
-  // Solution: We need to look up the slug based on the current Auth UID.
-
   private async getMySlug(): Promise<string> {
-    const auth = getAuth();
-    const user = auth.currentUser;
-    if (!user) throw new Error("Not authenticated");
+    if (!this.currentUser) throw new Error("Not authenticated");
+    const db = this.ensureDb();
 
-    // Query 'trainers' collection where 'ownerUid' == user.uid
-    // This requires a Firestore index on 'ownerUid' for optimal performance.
-    // If you experience performance issues, create an index for 'ownerUid' in the 'trainers' collection.
-    const trainersRef = collection(this.db, ROOT_COLLECTION);
-    const q = query(trainersRef, where('ownerUid', '==', user.uid));
-    const snapshot = await getDocs(q);
-
-    if (snapshot.empty) {
-      throw new Error("No trainer profile associated with this account.");
+    // Super Admin Check
+    if (this.currentUser.uid === 'super-admin-uid') {
+        return 'platform';
     }
 
-    // Assuming one trainer per ownerUid for simplicity. If multiple, this would need refinement.
-    const myDoc = snapshot.docs[0];
-    return myDoc.id; // The slug is the doc ID
+    // Query 'trainers' collection where 'ownerUid' == user.uid
+    const trainersRef = collection(db, ROOT_COLLECTION);
+    const q = query(trainersRef, where('ownerUid', '==', this.currentUser.uid));
+    const snapshot = await getDocs(q);
+
+    if (!snapshot.empty) {
+       return snapshot.docs[0].id;
+    }
+
+    // CREATE NEW TRAINER DOC AUTOMATICALLY
+    console.log("No trainer profile found for user. Creating one...");
+    const newSlug = `trainer-${Date.now()}`; // Simple generation strategy
+
+    // Create the document
+    await setDoc(doc(db, ROOT_COLLECTION, newSlug), {
+        ...DEFAULT_PROFILE,
+        contactEmail: this.currentUser.email || "",
+        ownerUid: this.currentUser.uid,
+        createdAt: Timestamp.now()
+    });
+
+    // Create default identity subcollection
+    await setDoc(doc(db, ROOT_COLLECTION, newSlug, COLLECTIONS.IDENTITY, IDENTITY_DOC_ID), DEFAULT_IDENTITY);
+
+    return newSlug;
   }
-
-
 
   // --- Read ---
   getTrainers = async (): Promise<TrainerSummary[]> => {
     try {
+      if (!this.db) return [];
       const trainersRef = collection(this.db, ROOT_COLLECTION);
       const snapshot = await getDocs(trainersRef);
 
-      if (snapshot.empty) {
-        // Fallback generic data as requested
-        return [
-          {
-            slug: 'generic-trainer-1',
-            name: 'Titan Trainer',
-            heroTitle: 'Generic Fitness Expert',
-          },
-          {
-            slug: 'generic-trainer-2',
-            name: 'Power Coach',
-            heroTitle: 'Strength Specialist',
-          }
-        ];
+      const summaries: TrainerSummary[] = [];
+      for (const docSnap of snapshot.docs) {
+         const data = docSnap.data();
+         summaries.push({
+             slug: docSnap.id,
+             name: data.name || 'Unnamed Trainer',
+             heroTitle: data.heroTitle || 'Personal Trainer',
+             profileImage: data.profileImageUrl
+         });
       }
-
-      return snapshot.docs.map(doc => {
-        const data = doc.data();
-        return {
-          slug: doc.id,
-          name: data.name || 'Unknown Trainer',
-          heroTitle: data.heroTitle || 'Personal Trainer',
-          profileImage: data.profileImageUrl
-        };
-      });
+      return summaries;
     } catch (e) {
       console.error("Error fetching trainers:", e);
-      // Fallback on error to ensure page loads
-      return [
-        {
-          slug: 'error-fallback',
-          name: 'Fallback Trainer',
-          heroTitle: 'System Maintenance',
-        }
-      ];
+      return [];
     }
-  }
-
-  private async _resolveTrainerSlug(slug?: string): Promise<string | null> {
-    if (slug) return slug;
-
-    const auth = getAuth();
-    const user = auth.currentUser;
-    if (user) {
-      return await this.getMySlug();
-    }
-    return null; // No slug provided and not authenticated to resolve one
   }
 
   getProfile = async (slug?: string): Promise<TrainerProfile> => {
-    // If slug is provided, we fetch from trainers/{slug}
-    // If not, we might fail or return a default (or try to infer from auth, but read ops shouldn't rely on auth usually for public pages)
-    const targetSlug = slug || 'trainer1'; // Fallback for safety/dev
+    if (!slug) return DEFAULT_PROFILE;
 
     try {
-      const docRef = doc(this.db, ROOT_COLLECTION, targetSlug);
+      if (!this.db) throw new Error("DB not init");
+      const docRef = doc(this.db, ROOT_COLLECTION, slug);
       const docSnap = await getDoc(docRef);
 
       if (docSnap.exists()) {
-         const data = docSnap.data();
-         // Check if data is nested under 'profile' key or flat. Based on updateProfile, it merges into root.
-         // But types say TrainerProfile has specific fields.
-         // Let's assume the root doc contains the profile fields directly OR under a profile field.
-         // Mock service structure suggests 'profile' is a field.
-         // Let's check updateProfile implementation... it does setDoc(..., profile, {merge: true}).
-         // So the fields are at the root of the trainer document.
-         return data as TrainerProfile;
+         return docSnap.data() as TrainerProfile;
       }
     } catch (e) {
-      console.warn("Error fetching profile, using fallback", e);
+      console.warn("Error fetching profile", e);
     }
-
-    return {
-      name: "Trainer Not Found",
-      bio: "This profile could not be loaded.",
-      heroTitle: "Titan Fitness",
-      heroSubtitle: "",
-      contactEmail: "",
-      contactPhone: "",
-      instagramUrl: "",
-      youtubeUrl: "",
-    };
+    return DEFAULT_PROFILE;
   }
 
   getBrandIdentity = async (slug?: string): Promise<BrandIdentity> => {
-    // Identity might be stored in a subcollection or on the root doc.
-    // Mock service stores it as 'identity' field or separate.
-    // Let's assume it is stored in `trainers/{slug}/brand_identity/main` based on COLLECTIONS.IDENTITY usage in previous code?
-    // Previous code: `collection(this.db, COLLECTIONS.IDENTITY)` which was 'brand_identity' at root?
-    // That implies a single brand for the whole app? The prompt says "multi-tenant".
-    // So it should be `trainers/{slug}/brand_identity/main` OR fields on the root doc.
-
-    const targetSlug = slug || 'trainer1';
+    if (!slug) return DEFAULT_IDENTITY;
 
     try {
-      // Let's try subcollection pattern as it seems more robust for distinct data
-      const identityDoc = await getDoc(doc(this.db, ROOT_COLLECTION, targetSlug, 'brand_identity', 'main'));
+      if (!this.db) {
+        console.warn("DB not init; returning default brand identity");
+        return DEFAULT_IDENTITY;
+      }
+      let docRef;
+      if (slug === 'platform') {
+        docRef = doc(this.db, PLATFORM_COLLECTION, 'identity');
+      } else {
+        docRef = doc(this.db, ROOT_COLLECTION, slug, COLLECTIONS.IDENTITY, IDENTITY_DOC_ID);
+      }
+
+      const identityDoc = await getDoc(docRef);
       if (identityDoc.exists()) {
         return identityDoc.data() as BrandIdentity;
       }
@@ -171,88 +159,161 @@ export class FirebaseDataService implements DataProviderType {
       console.warn("Error fetching identity", e);
     }
 
-    return {
-      brandName: "Titan Fitness",
-      logoUrl: "",
-      primaryColor: "#000000",
-      secondaryColor: "#ffffff"
-    };
+    return DEFAULT_IDENTITY;
+  }
+
+  getLandingPageContent = async (): Promise<LandingPageContent> => {
+      try {
+          if (!this.db) throw new Error("DB not init");
+          const docRef = doc(this.db, PLATFORM_COLLECTION, 'landing');
+          const snap = await getDoc(docRef);
+          if (snap.exists()) {
+              return snap.data() as LandingPageContent;
+          }
+      } catch (e) {
+          console.warn("Error fetching landing content", e);
+      }
+      return DEFAULT_LANDING;
+  }
+
+  getPlatformTestimonials = async (): Promise<PlatformTestimonial[]> => {
+      try {
+          if (!this.db) return [];
+          const snapshot = await getDocs(collection(this.db, PLATFORM_COLLECTION, 'testimonials', 'items'));
+          return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as PlatformTestimonial));
+      } catch (e) {
+          console.warn("Error fetching platform testimonials", e);
+          return [];
+      }
   }
 
   getCertifications = async (slug?: string): Promise<Certification[]> => {
-    if (!slug) return [];
-    const snapshot = await getDocs(collection(this.db, ROOT_COLLECTION, slug, 'certifications'));
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Certification));
+    if (!slug || !this.db) return [];
+    try {
+        const snapshot = await getDocs(collection(this.db, ROOT_COLLECTION, slug, COLLECTIONS.CERTS));
+        return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Certification));
+    } catch (e) {
+        return [];
+    }
   }
 
   getTransformations = async (slug?: string): Promise<Transformation[]> => {
-    const finalSlug = await this._resolveTrainerSlug(slug);
-    if (!finalSlug) return []; // No slug, no transformations
-
-    const snapshot = await getDocs(collection(this.db, ROOT_COLLECTION, finalSlug, 'transformations'));
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Transformation));
+    if (!slug || !this.db) return [];
+    try {
+        const snapshot = await getDocs(collection(this.db, ROOT_COLLECTION, slug, COLLECTIONS.TRANS));
+        return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Transformation));
+    } catch (e) {
+        return [];
+    }
   }
 
   getClasses = async (slug?: string): Promise<GymClass[]> => {
-    const finalSlug = await this._resolveTrainerSlug(slug);
-    if (!finalSlug) return []; // No slug, no classes
-
-    const snapshot = await getDocs(collection(this.db, ROOT_COLLECTION, finalSlug, 'classes'));
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as GymClass));
+    if (!slug || !this.db) return [];
+    try {
+        const snapshot = await getDocs(collection(this.db, ROOT_COLLECTION, slug, COLLECTIONS.CLASSES));
+        return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as GymClass));
+    } catch (e) {
+        return [];
+    }
   }
 
   getTestimonials = async (slug?: string): Promise<Testimonial[]> => {
-    const finalSlug = await this._resolveTrainerSlug(slug);
-    if (!finalSlug) return []; // No slug, no testimonials
-
-    const snapshot = await getDocs(collection(this.db, ROOT_COLLECTION, finalSlug, 'testimonials'));
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Testimonial));
+    if (!slug || !this.db) return [];
+    try {
+        const snapshot = await getDocs(collection(this.db, ROOT_COLLECTION, slug, COLLECTIONS.TESTIMONIALS));
+        return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Testimonial));
+    } catch (e) {
+        return [];
+    }
   }
 
   // --- Write (Scoped to Authenticated User) ---
 
   updateProfile = async (profile: TrainerProfile): Promise<void> => {
     const slug = await this.getMySlug();
-    await setDoc(doc(this.db, ROOT_COLLECTION, slug), profile, { merge: true });
+    if (slug === 'platform') return;
+    const db = this.ensureDb();
+    await setDoc(doc(db, ROOT_COLLECTION, slug), profile, { merge: true });
   }
 
   updateBrandIdentity = async (identity: BrandIdentity): Promise<void> => {
     const slug = await this.getMySlug();
-    await setDoc(doc(this.db, ROOT_COLLECTION, slug, COLLECTIONS.IDENTITY, IDENTITY_DOC_ID), identity, { merge: true });
+    const db = this.ensureDb();
+    if (slug === 'platform') {
+         await setDoc(doc(db, PLATFORM_COLLECTION, 'identity'), identity, { merge: true });
+         return;
+    }
+    await setDoc(doc(db, ROOT_COLLECTION, slug, COLLECTIONS.IDENTITY, IDENTITY_DOC_ID), identity, { merge: true });
+  }
+
+  updateLandingPageContent = async (content: LandingPageContent): Promise<void> => {
+      const slug = await this.getMySlug();
+      const db = this.ensureDb();
+      if (slug !== 'platform') throw new Error("Unauthorized");
+
+      await setDoc(doc(db, PLATFORM_COLLECTION, 'landing'), content, { merge: true });
+  }
+
+  addPlatformTestimonial = async (t: Omit<PlatformTestimonial, 'id'>): Promise<void> => {
+       const slug = await this.getMySlug();
+       const db = this.ensureDb();
+       if (slug !== 'platform') throw new Error("Unauthorized");
+       await addDoc(collection(db, PLATFORM_COLLECTION, 'testimonials', 'items'), t);
+  }
+
+  removePlatformTestimonial = async (id: string): Promise<void> => {
+      const slug = await this.getMySlug();
+      const db = this.ensureDb();
+      if (slug !== 'platform') throw new Error("Unauthorized");
+      await deleteDoc(doc(db, PLATFORM_COLLECTION, 'testimonials', 'items', id));
   }
 
   addCertification = async (cert: Omit<Certification, 'id'>): Promise<void> => {
     const slug = await this.getMySlug();
-    await addDoc(collection(this.db, ROOT_COLLECTION, slug, 'certifications'), cert);
+    if (slug === 'platform') return;
+    const db = this.ensureDb();
+    await addDoc(collection(db, ROOT_COLLECTION, slug, COLLECTIONS.CERTS), cert);
   }
 
   removeCertification = async (id: string): Promise<void> => {
     const slug = await this.getMySlug();
-    await deleteDoc(doc(this.db, ROOT_COLLECTION, slug, 'certifications', id));
+    if (slug === 'platform') return;
+    const db = this.ensureDb();
+    await deleteDoc(doc(db, ROOT_COLLECTION, slug, COLLECTIONS.CERTS, id));
   }
 
   addTransformation = async (trans: Omit<Transformation, 'id'>): Promise<void> => {
     const slug = await this.getMySlug();
-    await addDoc(collection(this.db, ROOT_COLLECTION, slug, 'transformations'), trans);
+    if (slug === 'platform') return;
+    const db = this.ensureDb();
+    await addDoc(collection(db, ROOT_COLLECTION, slug, COLLECTIONS.TRANS), trans);
   }
 
   removeTransformation = async (id: string): Promise<void> => {
     const slug = await this.getMySlug();
-    await deleteDoc(doc(this.db, ROOT_COLLECTION, slug, 'transformations', id));
+    if (slug === 'platform') return;
+    const db = this.ensureDb();
+    await deleteDoc(doc(db, ROOT_COLLECTION, slug, COLLECTIONS.TRANS, id));
   }
 
   addClass = async (gymClass: Omit<GymClass, 'id'>): Promise<void> => {
     const slug = await this.getMySlug();
-    await addDoc(collection(this.db, ROOT_COLLECTION, slug, 'classes'), gymClass);
+    if (slug === 'platform') return;
+    const db = this.ensureDb();
+    await addDoc(collection(db, ROOT_COLLECTION, slug, COLLECTIONS.CLASSES), gymClass);
   }
 
   removeClass = async (id: string): Promise<void> => {
     const slug = await this.getMySlug();
-    await deleteDoc(doc(this.db, ROOT_COLLECTION, slug, 'classes', id));
+    if (slug === 'platform') return;
+    const db = this.ensureDb();
+    await deleteDoc(doc(db, ROOT_COLLECTION, slug, COLLECTIONS.CLASSES, id));
   }
 
   updateClass = async (id: string, updates: Partial<GymClass>): Promise<void> => {
     const slug = await this.getMySlug();
-    await updateDoc(doc(this.db, ROOT_COLLECTION, slug, 'classes', id), updates);
+    if (slug === 'platform') return;
+    const db = this.ensureDb();
+    await updateDoc(doc(db, ROOT_COLLECTION, slug, COLLECTIONS.CLASSES, id), updates);
   }
 }

@@ -12,6 +12,7 @@ interface AuthContextType {
   finishLogin: (email: string, href: string) => Promise<void>;
   logout: () => Promise<void>;
   trainerSlug: string | null;
+  isSuperAdmin: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -21,24 +22,59 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [trainerSlug, setTrainerSlug] = useState<string | null>(null);
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
 
   useEffect(() => {
+    // Check for hardcoded super admin session first
+    const isSuper = sessionStorage.getItem('is_super_admin') === 'true';
+    if (isSuper) {
+        setIsAuthenticated(true);
+        setIsSuperAdmin(true);
+        setTrainerSlug('platform');
+        // Synthesize a fake user for the context
+        setUser({ uid: 'super-admin-uid', email: 'admin@admin.com' } as User);
+        setLoading(false);
+        return;
+    }
+
     const { auth } = getFirebase();
     if (!auth) {
-      // If firebase auth is not available (e.g. config missing), fall back to session mock check
-      const sessionAuth = sessionStorage.getItem('admin_auth');
-      if (sessionAuth === 'true') {
-        setIsAuthenticated(true);
-      }
       setLoading(false);
       return;
     }
 
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser);
       setIsAuthenticated(!!currentUser);
-      if (!currentUser) {
-        setTrainerSlug(null);
+      setIsSuperAdmin(false);
+
+      if (currentUser) {
+          // Resolve slug via DataProvider logic (duplicated here to avoid circular dep or complex injection)
+          // We need to query the 'trainers' collection for ownerUid == currentUser.uid
+          try {
+             const { db } = getFirebase();
+             if (db) {
+                 const { collection, query, where, getDocs } = await import('firebase/firestore');
+                 const trainersRef = collection(db, 'trainers');
+                 const q = query(trainersRef, where('ownerUid', '==', currentUser.uid));
+                 const snapshot = await getDocs(q);
+                 if (!snapshot.empty) {
+                     setTrainerSlug(snapshot.docs[0].id);
+                 } else {
+                     // No profile yet. It will be created on first save/access in dashboard.
+                     // We can leave it null, and Dashboard can handle "New Trainer" state or auto-create.
+                     // But strictly speaking, the user wanted "auto create on save", so initially null is fine.
+                     // However, to view the dashboard properly, we need a slug.
+                     // Let's rely on the dashboard to say "My Profile" if slug is null,
+                     // OR we force creation here? The prompt said "if save changes is pressed... new data should be created".
+                     setTrainerSlug(null);
+                 }
+             }
+          } catch (e) {
+              console.error("Failed to fetch trainer slug", e);
+          }
+      } else {
+          setTrainerSlug(null);
       }
       setLoading(false);
     });
@@ -46,17 +82,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => unsubscribe();
   }, []);
 
-  const login = async (emailOrPassword: string, password?: string) => {
-    // Check if it's the mock password flow
-    if (!password) {
-       // Legacy/Mock login
-       if (emailOrPassword === 'admin123') {
-         setIsAuthenticated(true);
-         setTrainerSlug('trainer1'); // Default for mock mode
-         sessionStorage.setItem('admin_auth', 'true');
-         return true;
-       }
-       return false;
+  const login = async (email: string, password?: string) => {
+    // Super Admin Bypass
+    if (email === 'admin@admin.com' && password === 'admin123') {
+        setIsAuthenticated(true);
+        setIsSuperAdmin(true);
+        setTrainerSlug('platform');
+        setUser({ uid: 'super-admin-uid', email: 'admin@admin.com' } as User);
+        sessionStorage.setItem('is_super_admin', 'true');
+        return true;
     }
 
     // Firebase Auth flow
@@ -67,7 +101,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     try {
-      await signInWithEmailAndPassword(auth, emailOrPassword, password);
+        if (password) {
+            await signInWithEmailAndPassword(auth, email, password);
+        } else {
+            // Assume email link flow if only email provided (though standard login form asks for pass)
+            // But for this task, we mainly care about the admin login form which has email/password
+            throw new Error("Password required");
+        }
       return true;
     } catch (error) {
       console.error("Login failed", error);
@@ -95,11 +135,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setIsAuthenticated(false);
     setUser(null);
     setTrainerSlug(null);
-    sessionStorage.removeItem('admin_auth');
+    setIsSuperAdmin(false);
+    sessionStorage.removeItem('is_super_admin');
   };
 
   return (
-    <AuthContext.Provider value={{ isAuthenticated, user, login, finishLogin, logout, loading, trainerSlug }}>
+    <AuthContext.Provider value={{ isAuthenticated, user, login, finishLogin, logout, loading, trainerSlug, isSuperAdmin }}>
       {!loading && children}
     </AuthContext.Provider>
   );

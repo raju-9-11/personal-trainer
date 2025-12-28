@@ -24,6 +24,21 @@ export function About() {
 
   if (!profile) return null;
 
+  const getExperienceValue = () => {
+      const years = profile.experienceYears || 0;
+      if (years > 0) return `${years}+`;
+      return "0";
+  };
+
+  const getClientsValue = () => {
+      let count = profile.clientsHandled || 0;
+      if (profile.clientsHandledRounded) {
+          count = Math.floor(count / 10) * 10;
+          return `${count}+`;
+      }
+      return `${count}`;
+  };
+
   return (
     <section id="about" className="py-24 bg-muted/20">
       <div className="container px-4 mx-auto">
@@ -45,11 +60,11 @@ export function About() {
             </p>
             <div className="grid grid-cols-2 gap-4">
               <div className="bg-card p-4 rounded-xl border border-border/50 text-center">
-                <span className="block text-3xl font-black text-primary">10+</span>
+                <span className="block text-3xl font-black text-primary">{getExperienceValue()}</span>
                 <span className="text-sm text-muted-foreground uppercase">Years Exp.</span>
               </div>
               <div className="bg-card p-4 rounded-xl border border-border/50 text-center">
-                <span className="block text-3xl font-black text-primary">500+</span>
+                <span className="block text-3xl font-black text-primary">{getClientsValue()}</span>
                 <span className="text-sm text-muted-foreground uppercase">Clients</span>
               </div>
             </div>
@@ -75,6 +90,12 @@ export function About() {
                      </CardHeader>
                      <CardContent>
                        <p className="text-sm text-muted-foreground">Issued: {cert.date}</p>
+                       {(cert.url || cert.imageUrl) && (
+                           <div className="mt-2 flex gap-2 text-xs">
+                               {cert.url && <a href={cert.url} target="_blank" className="text-primary hover:underline">Verify</a>}
+                               {cert.imageUrl && <a href={cert.imageUrl} target="_blank" className="text-primary hover:underline">View</a>}
+                           </div>
+                       )}
                      </CardContent>
                    </Card>
                  ))}

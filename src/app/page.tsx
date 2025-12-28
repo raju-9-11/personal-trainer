@@ -3,19 +3,70 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { useData } from '@/lib/data-provider';
-import { TrainerSummary } from '@/lib/types';
+import { TrainerSummary, LandingPageContent, BrandIdentity, PlatformTestimonial } from '@/lib/types';
+import Image from 'next/image';
+import {
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+  CarouselNext,
+  CarouselPrevious,
+} from "@/components/ui/carousel";
+import { DEFAULT_BRAND_NAME } from '@/lib/constants';
 
 export default function Home() {
-  const { getTrainers } = useData();
+  const { getTrainers, getLandingPageContent, getBrandIdentity, getPlatformTestimonials } = useData();
   const [trainers, setTrainers] = useState<TrainerSummary[]>([]);
+  const [landing, setLanding] = useState<LandingPageContent | null>(null);
+  const [brand, setBrand] = useState<BrandIdentity | null>(null);
+  const [testimonials, setTestimonials] = useState<PlatformTestimonial[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    getTrainers().then(data => {
-      setTrainers(data);
-      setLoading(false);
-    });
-  }, [getTrainers]);
+    const fetchData = async () => {
+        try {
+            const [tData, lData, bData, testData] = await Promise.all([
+                getTrainers(),
+                getLandingPageContent(),
+                getBrandIdentity('platform'),
+                getPlatformTestimonials()
+            ]);
+            setTrainers(tData);
+            setLanding(lData);
+            setBrand(bData);
+            setTestimonials(testData);
+        } catch (e) {
+            console.error("Error loading home page data", e);
+        } finally {
+            setLoading(false);
+        }
+    };
+    fetchData();
+  }, [getTrainers, getLandingPageContent, getBrandIdentity, getPlatformTestimonials]);
+
+  useEffect(() => {
+    if (brand?.brandName) {
+      document.title = `${brand.brandName} | Unleash Your Potential`;
+    } else if (!loading) {
+      document.title = `${DEFAULT_BRAND_NAME} | Unleash Your Potential`;
+    }
+  }, [brand, loading]);
+
+  const heroTitle = landing?.heroTitle || "FIND YOUR TITAN";
+  const heroSubtitle = landing?.heroSubtitle || "Elite personal trainers ready to help you shatter your limits. Choose your coach and start your journey today.";
+  const heroImage = landing?.heroImageUrl || 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?q=80&w=2070&auto=format&fit=crop';
+  const brandName = brand?.brandName || DEFAULT_BRAND_NAME;
+
+  if (loading) {
+      return (
+          <main className="min-h-screen bg-background text-foreground flex items-center justify-center">
+              <div className="flex flex-col items-center gap-4">
+                  <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+                  <p className="text-muted-foreground animate-pulse">Loading Platform...</p>
+              </div>
+          </main>
+      );
+  }
 
   return (
     <main className="min-h-screen bg-background text-foreground">
@@ -24,15 +75,15 @@ export default function Home() {
         <div className="absolute inset-0 bg-black/60 z-10" />
         <div
           className="absolute inset-0 bg-cover bg-center bg-no-repeat"
-          style={{ backgroundImage: 'url(https://images.unsplash.com/photo-1534438327276-14e5300c3a48?q=80&w=2070&auto=format&fit=crop)' }}
+          style={{ backgroundImage: `url(${heroImage})` }}
         />
 
         <div className="relative z-20 container mx-auto px-4 text-center">
           <h1 className="text-5xl md:text-7xl font-bold text-white mb-6 tracking-tight">
-            FIND YOUR <span className="text-primary">TITAN</span>
+            {heroTitle}
           </h1>
           <p className="text-xl md:text-2xl text-gray-200 mb-10 max-w-2xl mx-auto">
-            Elite personal trainers ready to help you shatter your limits. Choose your coach and start your journey today.
+            {heroSubtitle}
           </p>
           <a href="#trainers" className="bg-primary text-primary-foreground hover:bg-primary/90 px-8 py-4 rounded-full text-lg font-semibold transition-all">
             Browse Trainers
@@ -83,32 +134,32 @@ export default function Home() {
             <div className="w-24 h-1 bg-primary mx-auto" />
           </div>
 
-          {loading ? (
-            <div className="text-center">Loading...</div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {trainers.map((trainer) => (
-                <Link key={trainer.slug} href={`/${trainer.slug}`} className="group relative block overflow-hidden rounded-2xl aspect-[3/4]">
-                  <div className="absolute inset-0 bg-gray-900" />
-                  {/* Placeholder image logic if no image provided */}
-                  <div
-                    className="absolute inset-0 bg-cover bg-center transition-transform duration-500 group-hover:scale-110 opacity-70 group-hover:opacity-100"
-                    style={{ backgroundImage: `url(${trainer.profileImage ? trainer.profileImage : 'https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?q=80&w=2070&auto=format&fit=crop'})` }}
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent opacity-90" />
+          <div className="flex flex-wrap justify-center gap-8">
+              {trainers.length === 0 ? (
+                  <p className="text-center w-full col-span-3 text-muted-foreground">No trainers available yet.</p>
+              ) : (
+                  trainers.map((trainer) => (
+                    <Link key={trainer.slug} href={`/${trainer.slug}`} className="group relative block overflow-hidden rounded-2xl aspect-[3/4] w-full max-w-[350px]">
+                      <div className="absolute inset-0 bg-gray-900" />
+                      {/* Placeholder image logic if no image provided */}
+                      <div
+                        className="absolute inset-0 bg-cover bg-center transition-transform duration-500 group-hover:scale-110 opacity-70 group-hover:opacity-100"
+                        style={{ backgroundImage: `url(${trainer.profileImage ? trainer.profileImage : 'https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?q=80&w=2070&auto=format&fit=crop'})` }}
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent opacity-90" />
 
-                  <div className="absolute bottom-0 left-0 p-8 w-full">
-                    <h3 className="text-3xl font-bold text-white mb-2">{trainer.name}</h3>
-                    <p className="text-primary font-medium tracking-widest uppercase text-sm">{trainer.heroTitle}</p>
-                  </div>
-                </Link>
-              ))}
+                      <div className="absolute bottom-0 left-0 p-8 w-full">
+                        <h3 className="text-3xl font-bold text-white mb-2">{trainer.name}</h3>
+                        <p className="text-primary font-medium tracking-widest uppercase text-sm">{trainer.heroTitle}</p>
+                      </div>
+                    </Link>
+                  ))
+              )}
             </div>
-          )}
         </div>
       </section>
 
-      {/* Success Stories Preview */}
+      {/* Success Stories Preview (Testimonials) */}
       <section className="py-24 bg-black text-white">
         <div className="container mx-auto px-4">
            <div className="text-center mb-16">
@@ -116,34 +167,54 @@ export default function Home() {
             <p className="text-gray-400">See what's possible when you commit to the process.</p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-             <div className="bg-gray-900 rounded-xl p-8 border border-white/10">
-                <div className="flex gap-4 items-center mb-4">
-                   <div className="w-12 h-12 bg-primary rounded-full flex items-center justify-center font-bold text-black">JD</div>
-                   <div>
-                      <h4 className="font-bold text-lg">John Doe</h4>
-                      <p className="text-sm text-gray-400">Lost 30lbs</p>
-                   </div>
-                </div>
-                <p className="text-gray-300">"The training program was intense but exactly what I needed. I've never felt stronger."</p>
-             </div>
-             <div className="bg-gray-900 rounded-xl p-8 border border-white/10">
-                <div className="flex gap-4 items-center mb-4">
-                   <div className="w-12 h-12 bg-primary rounded-full flex items-center justify-center font-bold text-black">JS</div>
-                   <div>
-                      <h4 className="font-bold text-lg">Jane Smith</h4>
-                      <p className="text-sm text-gray-400">Marathon Runner</p>
-                   </div>
-                </div>
-                <p className="text-gray-300">"From couch potato to marathon finisher. The coaching was instrumental in my journey."</p>
-             </div>
+          <div className="flex justify-center">
+             {testimonials.length > 0 ? (
+                 <Carousel
+                    opts={{
+                        align: "start",
+                    }}
+                    className="w-full max-w-5xl"
+                 >
+                    <CarouselContent>
+                        {testimonials.map((t) => (
+                            <CarouselItem key={t.id} className="md:basis-1/2 lg:basis-1/2 p-2">
+                                <div className="bg-gray-900 rounded-xl p-8 border border-white/10 h-full">
+                                    <div className="flex gap-4 items-center mb-4">
+                                       {t.imageUrl ? (
+                                           <Image src={t.imageUrl} alt={t.name} width={48} height={48} className="rounded-full w-12 h-12 object-cover" />
+                                       ) : (
+                                           <div className="w-12 h-12 bg-primary rounded-full flex items-center justify-center font-bold text-black">
+                                               {t.name.substring(0,2).toUpperCase()}
+                                           </div>
+                                       )}
+                                       <div>
+                                          <h4 className="font-bold text-lg">{t.name}</h4>
+                                          <p className="text-sm text-gray-400">Client</p>
+                                       </div>
+                                    </div>
+                                    <p className="text-gray-300">&quot;{t.testimonial}&quot;</p>
+                                </div>
+                            </CarouselItem>
+                        ))}
+                    </CarouselContent>
+                    <CarouselPrevious className="hidden md:flex bg-gray-800 text-white border-white/20 hover:bg-gray-700" />
+                    <CarouselNext className="hidden md:flex bg-gray-800 text-white border-white/20 hover:bg-gray-700" />
+                 </Carousel>
+             ) : (
+                <>
+                 {/* Fallback if no testimonials created yet */}
+                 <div className="bg-gray-900 rounded-xl p-8 border border-white/10 opacity-50 w-full max-w-md text-center">
+                    <p>Success stories coming soon.</p>
+                 </div>
+                </>
+             )}
           </div>
         </div>
       </section>
 
       {/* Footer */}
       <footer className="py-8 bg-black border-t border-white/10 text-center text-gray-400 text-sm">
-        <p>&copy; {new Date().getFullYear()} Titan Fitness Platform. All rights reserved.</p>
+        <p>&copy; {new Date().getFullYear()} {brandName}. All rights reserved.</p>
       </footer>
     </main>
   );
