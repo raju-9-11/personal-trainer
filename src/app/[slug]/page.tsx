@@ -6,23 +6,35 @@ import { Classes } from '@/components/sections/classes';
 import { SocialFeed } from '@/components/sections/social-feed';
 import { Contact } from '@/components/sections/contact';
 import { Metadata } from 'next';
+import { FirebaseDataService } from '@/lib/services/firebase-service';
+import { MockDataService } from '@/lib/services/mock-service';
 
 type Props = {
-  params: Promise<{ slug: string }>;
-  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+  params: { slug: string }; // Changed Promise<{ slug: string }> to { slug: string } as generateStaticParams makes it synchronous
+  searchParams: { [key: string]: string | string[] | undefined };
 };
+
+export async function generateStaticParams() {
+  const useMock = process.env.NEXT_PUBLIC_USE_MOCK_DATA === 'true';
+  const service = useMock ? new MockDataService() : new FirebaseDataService();
+  const trainers = await service.getTrainers();
+
+  return trainers.map(trainer => ({
+    slug: trainer.slug,
+  }));
+}
 
 export async function generateMetadata(
   { params, searchParams }: Props
 ): Promise<Metadata> {
-  const slug = (await params).slug;
+  const slug = params.slug;
   return {
     title: `Titan Fitness | ${slug}`,
   };
 }
 
 export default async function TrainerPage({ params }: Props) {
-  const { slug } = await params;
+  const { slug } = params;
 
   return (
     <main className="min-h-screen">

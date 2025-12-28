@@ -1,6 +1,6 @@
 import { DataProviderType, TrainerProfile, Certification, Transformation, GymClass, Testimonial, BrandIdentity, TrainerSummary } from '../types';
 import { getFirebase } from '../firebase';
-import { collection, getDocs, doc, setDoc, addDoc, deleteDoc, updateDoc, Firestore, getDoc } from 'firebase/firestore';
+import { collection, getDocs, doc, setDoc, addDoc, deleteDoc, updateDoc, Firestore, getDoc, query, where } from 'firebase/firestore';
 import { getAuth } from 'firebase/auth';
 
 const ROOT_COLLECTION = 'trainers';
@@ -43,40 +43,77 @@ export class FirebaseDataService implements DataProviderType {
     const user = auth.currentUser;
     if (!user) throw new Error("Not authenticated");
 
-    // Query 'trainers' collection where field 'ownerUid' == user.uid
-    // Since we can't easily add indexes here, let's assume a 'users' collection or similar exists, OR
-    // we iterate (slow) or strict naming.
-    // BETTER: Store 'slug' in the User's Custom Claims or a 'users/{uid}' doc.
-    // FOR NOW: Let's assume we can query `trainers` by ownerUid.
-
-    // Actually, to keep it simple and robust without custom claims:
-    // We will query the `trainers` collection for the document that has `ownerUid == user.uid`.
-    // Note: This requires an index in Firestore.
-
-    // Alternative: The user profile in `users/{uid}` contains `{ slug: "trainer1" }`.
-    // Let's assume `users` collection exists.
-
-    // FALLBACK for this environment:
-    // If we can't find it, we might error out.
-    // But wait, the prompt said "user cannot be created by admin portal but just login...".
-
-    // Let's implement a lookup.
+    // Query 'trainers' collection where 'ownerUid' == user.uid
+    // This requires a Firestore index on 'ownerUid' for optimal performance.
+    // If you experience performance issues, create an index for 'ownerUid' in the 'trainers' collection.
     const trainersRef = collection(this.db, ROOT_COLLECTION);
-    const snapshot = await getDocs(trainersRef);
-    // ^ This fetches ALL trainers. In a real large app this is bad. For this scale, it's fine.
+    const q = query(trainersRef, where('ownerUid', '==', user.uid));
+    const snapshot = await getDocs(q);
 
-    const myDoc = snapshot.docs.find(d => d.data().ownerUid === user.uid);
-    if (!myDoc) {
+    if (snapshot.empty) {
       throw new Error("No trainer profile associated with this account.");
     }
+
+    // Assuming one trainer per ownerUid for simplicity. If multiple, this would need refinement.
+    const myDoc = snapshot.docs[0];
     return myDoc.id; // The slug is the doc ID
   }
 
-  // Helper for Read ops
-  private getTargetSlug(slug?: string): string {
+
+
+  // --- Read ---
+  getTrainers = async (): Promise<TrainerSummary[]> => {
+    try {
+      const trainersRef = collection(this.db, ROOT_COLLECTION);
+      const snapshot = await getDocs(trainersRef);
+
+      if (snapshot.empty) {
+        // Fallback generic data as requested
+        return [
+          {
+            slug: 'generic-trainer-1',
+            name: 'Titan Trainer',
+            heroTitle: 'Generic Fitness Expert',
+          },
+          {
+            slug: 'generic-trainer-2',
+            name: 'Power Coach',
+            heroTitle: 'Strength Specialist',
+          }
+        ];
+      }
+
+      return snapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+          slug: doc.id,
+          name: data.name || 'Unknown Trainer',
+          heroTitle: data.heroTitle || 'Personal Trainer',
+          profileImage: data.profileImageUrl
+        };
+      });
+    } catch (e) {
+      console.error("Error fetching trainers:", e);
+      // Fallback on error to ensure page loads
+      return [
+        {
+          slug: 'error-fallback',
+          name: 'Fallback Trainer',
+          heroTitle: 'System Maintenance',
+        }
+      ];
+    }
+  }
+
+  private async _resolveTrainerSlug(slug?: string): Promise<string | null> {
     if (slug) return slug;
-    // If no slug provided for READ, it might be the home page or admin view needing self-data
-    throw new Error("Slug is required for public read operations.");
+
+    const auth = getAuth();
+    const user = auth.currentUser;
+    if (user) {
+      return await this.getMySlug();
+    }
+    return null; // No slug provided and not authenticated to resolve one
   }
 
   // --- Read ---
@@ -193,20 +230,26 @@ export class FirebaseDataService implements DataProviderType {
   }
 
   getTransformations = async (slug?: string): Promise<Transformation[]> => {
-    if (!slug) throw new Error("Slug required");
-    const snapshot = await getDocs(collection(this.db, ROOT_COLLECTION, slug, 'transformations'));
+    const finalSlug = await this._resolveTrainerSlug(slug);
+    if (!finalSlug) return []; // No slug, no transformations
+
+    const snapshot = await getDocs(collection(this.db, ROOT_COLLECTION, finalSlug, 'transformations'));
     return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Transformation));
   }
 
   getClasses = async (slug?: string): Promise<GymClass[]> => {
-    if (!slug) throw new Error("Slug required");
-    const snapshot = await getDocs(collection(this.db, ROOT_COLLECTION, slug, 'classes'));
+    const finalSlug = await this._resolveTrainerSlug(slug);
+    if (!finalSlug) return []; // No slug, no classes
+
+    const snapshot = await getDocs(collection(this.db, ROOT_COLLECTION, finalSlug, 'classes'));
     return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as GymClass));
   }
 
   getTestimonials = async (slug?: string): Promise<Testimonial[]> => {
-    if (!slug) throw new Error("Slug required");
-    const snapshot = await getDocs(collection(this.db, ROOT_COLLECTION, slug, 'testimonials'));
+    const finalSlug = await this._resolveTrainerSlug(slug);
+    if (!finalSlug) return []; // No slug, no testimonials
+
+    const snapshot = await getDocs(collection(this.db, ROOT_COLLECTION, finalSlug, 'testimonials'));
     return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Testimonial));
   }
 
@@ -218,9 +261,8 @@ export class FirebaseDataService implements DataProviderType {
   }
 
   updateBrandIdentity = async (identity: BrandIdentity): Promise<void> => {
-    const snapshot = await getDocs(collection(this.db, COLLECTIONS.IDENTITY));
-    const docId = snapshot.empty ? IDENTITY_DOC_ID : snapshot.docs[0].id;
-    await setDoc(doc(this.db, COLLECTIONS.IDENTITY, docId), identity, { merge: true });
+    const slug = await this.getMySlug();
+    await setDoc(doc(this.db, ROOT_COLLECTION, slug, COLLECTIONS.IDENTITY, IDENTITY_DOC_ID), identity, { merge: true });
   }
 
   addCertification = async (cert: Omit<Certification, 'id'>): Promise<void> => {
