@@ -18,21 +18,32 @@ const COLLECTIONS = {
 const IDENTITY_DOC_ID = 'main';
 
 export class FirebaseDataService implements DataProviderType {
-  private db: Firestore;
+  private db: Firestore | undefined;
   private currentUser: User | null;
 
   constructor(user: User | null) {
     const { db } = getFirebase();
+    // Allow db to be null, but methods should check for it.
+    // If we throw here, we crash the app if env vars are missing.
     if (!db) {
-      throw new Error("Failed to initialize Firebase Firestore. Check your configuration.");
+       console.warn("Firebase Firestore not available. Service is in limited mode.");
     }
-    this.db = db;
+    this.db = db || undefined;
     this.currentUser = user;
+  }
+
+  // Helper to ensure DB is available
+  private ensureDb(): Firestore {
+      if (!this.db) {
+          throw new Error("Firebase Firestore is not initialized. Please check your environment variables and configuration.");
+      }
+      return this.db;
   }
 
   // Helper to determine slug for read/write
   private async getMySlug(): Promise<string> {
     if (!this.currentUser) throw new Error("Not authenticated");
+    const db = this.ensureDb();
 
     // Super Admin Check
     if (this.currentUser.uid === 'super-admin-uid') {
@@ -40,7 +51,7 @@ export class FirebaseDataService implements DataProviderType {
     }
 
     // Query 'trainers' collection where 'ownerUid' == user.uid
-    const trainersRef = collection(this.db, ROOT_COLLECTION);
+    const trainersRef = collection(db, ROOT_COLLECTION);
     const q = query(trainersRef, where('ownerUid', '==', this.currentUser.uid));
     const snapshot = await getDocs(q);
 
@@ -64,14 +75,14 @@ export class FirebaseDataService implements DataProviderType {
     };
 
     // Create the document
-    await setDoc(doc(this.db, ROOT_COLLECTION, newSlug), {
+    await setDoc(doc(db, ROOT_COLLECTION, newSlug), {
         ...newProfile,
         ownerUid: this.currentUser.uid,
         createdAt: Timestamp.now()
     });
 
     // Create default identity subcollection
-    await setDoc(doc(this.db, ROOT_COLLECTION, newSlug, COLLECTIONS.IDENTITY, IDENTITY_DOC_ID), {
+    await setDoc(doc(db, ROOT_COLLECTION, newSlug, COLLECTIONS.IDENTITY, IDENTITY_DOC_ID), {
         brandName: "My Fitness Brand",
         logoUrl: "",
         primaryColor: "#000000",
@@ -84,6 +95,7 @@ export class FirebaseDataService implements DataProviderType {
   // --- Read ---
   getTrainers = async (): Promise<TrainerSummary[]> => {
     try {
+      if (!this.db) return [];
       const trainersRef = collection(this.db, ROOT_COLLECTION);
       const snapshot = await getDocs(trainersRef);
 
@@ -118,6 +130,7 @@ export class FirebaseDataService implements DataProviderType {
     }
 
     try {
+      if (!this.db) throw new Error("DB not init");
       const docRef = doc(this.db, ROOT_COLLECTION, slug);
       const docSnap = await getDoc(docRef);
 
@@ -148,6 +161,7 @@ export class FirebaseDataService implements DataProviderType {
     }
 
     try {
+      if (!this.db) throw new Error("DB not init");
       let docRef;
       if (slug === 'platform') {
         docRef = doc(this.db, PLATFORM_COLLECTION, 'identity');
@@ -173,6 +187,7 @@ export class FirebaseDataService implements DataProviderType {
 
   getLandingPageContent = async (): Promise<LandingPageContent> => {
       try {
+          if (!this.db) throw new Error("DB not init");
           const docRef = doc(this.db, PLATFORM_COLLECTION, 'landing');
           const snap = await getDoc(docRef);
           if (snap.exists()) {
@@ -190,8 +205,7 @@ export class FirebaseDataService implements DataProviderType {
 
   getPlatformTestimonials = async (): Promise<PlatformTestimonial[]> => {
       try {
-          // Stored in subcollection of platform_settings? Or root?
-          // Let's use 'platform_settings/testimonials/items'
+          if (!this.db) return [];
           const snapshot = await getDocs(collection(this.db, PLATFORM_COLLECTION, 'testimonials', 'items'));
           return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as PlatformTestimonial));
       } catch (e) {
@@ -201,7 +215,7 @@ export class FirebaseDataService implements DataProviderType {
   }
 
   getCertifications = async (slug?: string): Promise<Certification[]> => {
-    if (!slug) return [];
+    if (!slug || !this.db) return [];
     try {
         const snapshot = await getDocs(collection(this.db, ROOT_COLLECTION, slug, COLLECTIONS.CERTS));
         return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Certification));
@@ -211,7 +225,7 @@ export class FirebaseDataService implements DataProviderType {
   }
 
   getTransformations = async (slug?: string): Promise<Transformation[]> => {
-    if (!slug) return [];
+    if (!slug || !this.db) return [];
     try {
         const snapshot = await getDocs(collection(this.db, ROOT_COLLECTION, slug, COLLECTIONS.TRANS));
         return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Transformation));
@@ -221,7 +235,7 @@ export class FirebaseDataService implements DataProviderType {
   }
 
   getClasses = async (slug?: string): Promise<GymClass[]> => {
-    if (!slug) return [];
+    if (!slug || !this.db) return [];
     try {
         const snapshot = await getDocs(collection(this.db, ROOT_COLLECTION, slug, COLLECTIONS.CLASSES));
         return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as GymClass));
@@ -231,7 +245,7 @@ export class FirebaseDataService implements DataProviderType {
   }
 
   getTestimonials = async (slug?: string): Promise<Testimonial[]> => {
-    if (!slug) return [];
+    if (!slug || !this.db) return [];
     try {
         const snapshot = await getDocs(collection(this.db, ROOT_COLLECTION, slug, COLLECTIONS.TESTIMONIALS));
         return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Testimonial));
@@ -245,76 +259,88 @@ export class FirebaseDataService implements DataProviderType {
   updateProfile = async (profile: TrainerProfile): Promise<void> => {
     const slug = await this.getMySlug();
     if (slug === 'platform') return;
-    await setDoc(doc(this.db, ROOT_COLLECTION, slug), profile, { merge: true });
+    const db = this.ensureDb();
+    await setDoc(doc(db, ROOT_COLLECTION, slug), profile, { merge: true });
   }
 
   updateBrandIdentity = async (identity: BrandIdentity): Promise<void> => {
     const slug = await this.getMySlug();
+    const db = this.ensureDb();
     if (slug === 'platform') {
-         await setDoc(doc(this.db, PLATFORM_COLLECTION, 'identity'), identity, { merge: true });
+         await setDoc(doc(db, PLATFORM_COLLECTION, 'identity'), identity, { merge: true });
          return;
     }
-    await setDoc(doc(this.db, ROOT_COLLECTION, slug, COLLECTIONS.IDENTITY, IDENTITY_DOC_ID), identity, { merge: true });
+    await setDoc(doc(db, ROOT_COLLECTION, slug, COLLECTIONS.IDENTITY, IDENTITY_DOC_ID), identity, { merge: true });
   }
 
   updateLandingPageContent = async (content: LandingPageContent): Promise<void> => {
       const slug = await this.getMySlug();
+      const db = this.ensureDb();
       if (slug !== 'platform') throw new Error("Unauthorized");
 
-      await setDoc(doc(this.db, PLATFORM_COLLECTION, 'landing'), content, { merge: true });
+      await setDoc(doc(db, PLATFORM_COLLECTION, 'landing'), content, { merge: true });
   }
 
   addPlatformTestimonial = async (t: Omit<PlatformTestimonial, 'id'>): Promise<void> => {
        const slug = await this.getMySlug();
+       const db = this.ensureDb();
        if (slug !== 'platform') throw new Error("Unauthorized");
-       await addDoc(collection(this.db, PLATFORM_COLLECTION, 'testimonials', 'items'), t);
+       await addDoc(collection(db, PLATFORM_COLLECTION, 'testimonials', 'items'), t);
   }
 
   removePlatformTestimonial = async (id: string): Promise<void> => {
       const slug = await this.getMySlug();
+      const db = this.ensureDb();
       if (slug !== 'platform') throw new Error("Unauthorized");
-      await deleteDoc(doc(this.db, PLATFORM_COLLECTION, 'testimonials', 'items', id));
+      await deleteDoc(doc(db, PLATFORM_COLLECTION, 'testimonials', 'items', id));
   }
 
   addCertification = async (cert: Omit<Certification, 'id'>): Promise<void> => {
     const slug = await this.getMySlug();
     if (slug === 'platform') return;
-    await addDoc(collection(this.db, ROOT_COLLECTION, slug, COLLECTIONS.CERTS), cert);
+    const db = this.ensureDb();
+    await addDoc(collection(db, ROOT_COLLECTION, slug, COLLECTIONS.CERTS), cert);
   }
 
   removeCertification = async (id: string): Promise<void> => {
     const slug = await this.getMySlug();
     if (slug === 'platform') return;
-    await deleteDoc(doc(this.db, ROOT_COLLECTION, slug, COLLECTIONS.CERTS, id));
+    const db = this.ensureDb();
+    await deleteDoc(doc(db, ROOT_COLLECTION, slug, COLLECTIONS.CERTS, id));
   }
 
   addTransformation = async (trans: Omit<Transformation, 'id'>): Promise<void> => {
     const slug = await this.getMySlug();
     if (slug === 'platform') return;
-    await addDoc(collection(this.db, ROOT_COLLECTION, slug, COLLECTIONS.TRANS), trans);
+    const db = this.ensureDb();
+    await addDoc(collection(db, ROOT_COLLECTION, slug, COLLECTIONS.TRANS), trans);
   }
 
   removeTransformation = async (id: string): Promise<void> => {
     const slug = await this.getMySlug();
     if (slug === 'platform') return;
-    await deleteDoc(doc(this.db, ROOT_COLLECTION, slug, COLLECTIONS.TRANS, id));
+    const db = this.ensureDb();
+    await deleteDoc(doc(db, ROOT_COLLECTION, slug, COLLECTIONS.TRANS, id));
   }
 
   addClass = async (gymClass: Omit<GymClass, 'id'>): Promise<void> => {
     const slug = await this.getMySlug();
     if (slug === 'platform') return;
-    await addDoc(collection(this.db, ROOT_COLLECTION, slug, COLLECTIONS.CLASSES), gymClass);
+    const db = this.ensureDb();
+    await addDoc(collection(db, ROOT_COLLECTION, slug, COLLECTIONS.CLASSES), gymClass);
   }
 
   removeClass = async (id: string): Promise<void> => {
     const slug = await this.getMySlug();
     if (slug === 'platform') return;
-    await deleteDoc(doc(this.db, ROOT_COLLECTION, slug, COLLECTIONS.CLASSES, id));
+    const db = this.ensureDb();
+    await deleteDoc(doc(db, ROOT_COLLECTION, slug, COLLECTIONS.CLASSES, id));
   }
 
   updateClass = async (id: string, updates: Partial<GymClass>): Promise<void> => {
     const slug = await this.getMySlug();
     if (slug === 'platform') return;
-    await updateDoc(doc(this.db, ROOT_COLLECTION, slug, COLLECTIONS.CLASSES, id), updates);
+    const db = this.ensureDb();
+    await updateDoc(doc(db, ROOT_COLLECTION, slug, COLLECTIONS.CLASSES, id), updates);
   }
 }
