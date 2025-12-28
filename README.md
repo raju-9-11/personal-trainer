@@ -6,56 +6,43 @@ A high-performance, energetic portfolio web application for personal trainers an
 
 *   **Modern Design:** Built with Next.js, Tailwind CSS, and Shadcn UI.
 *   **Dynamic Content:** Manage classes, profile, and certifications via an Admin Panel.
-*   **Mock/Live Data Modes:**
-    *   **Mock Mode (Default):** Uses local storage to simulate a database. Great for demos and development.
-    *   **Firebase Mode:** Ready to connect to Google Firebase for real-time production data.
+*   **Dual Data Modes:**
+    *   **Mock Mode:** Zero-setup development using local storage.
+    *   **Firebase Mode:** Production-ready real-time database with auto-seeding.
 *   **Admin Panel:** Secure (mock) login to manage content.
 
-## Getting Started
+## Quick Start
 
-1.  Install dependencies:
+1.  **Install dependencies:**
     ```bash
     npm install
     ```
 
-2.  Run the development server:
+2.  **Setup Environment:**
+    ```bash
+    cp .env.example .env.local
+    ```
+    *   Edit `.env.local` to add your Firebase keys (optional for Mock Mode).
+
+3.  **Run Development Server:**
     ```bash
     npm run dev
     ```
+    Open [http://localhost:3000](http://localhost:3000).
 
-3.  Open [http://localhost:3000](http://localhost:3000) with your browser.
+## Documentation
+
+*   [Deployment & CI/CD Guide](docs/DEPLOYMENT.md) - Learn how to deploy to Vercel and set up environment variables.
 
 ## Admin Access
 
-To access the admin panel:
-1.  Go to `/admin/login`.
-2.  Password: `admin123`.
-
-## Switching to Firebase (Production)
-
-To enable real-time data persistence:
-
-1.  Create a project on [Firebase Console](https://console.firebase.google.com/).
-2.  Enable **Firestore Database** and **Authentication**.
-3.  Copy your Firebase configuration keys.
-4.  Create a `.env.local` file in the root directory:
-
-    ```env
-    NEXT_PUBLIC_USE_FIREBASE=true
-    NEXT_PUBLIC_FIREBASE_API_KEY=your_api_key
-    NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=your_project.firebaseapp.com
-    NEXT_PUBLIC_FIREBASE_PROJECT_ID=your_project_id
-    NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=your_project.appspot.com
-    NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
-    NEXT_PUBLIC_FIREBASE_APP_ID=your_app_id
-    ```
-
-5.  Update `src/lib/services/firebase-service.ts` to initialize the Firebase app using these environment variables.
+*   URL: `/admin/login`
+*   Default Password: `admin123`
 
 ## Tech Stack
 
 *   **Framework:** Next.js 14 (App Router)
 *   **Language:** TypeScript
 *   **Styling:** Tailwind CSS, Framer Motion
+*   **Database:** Firebase Firestore (or LocalStorage Mock)
 *   **UI Components:** Shadcn UI
-*   **Icons:** Lucide React
