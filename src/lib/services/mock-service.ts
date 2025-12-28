@@ -146,7 +146,7 @@ export class MockDataService implements DataProviderType {
       slug,
       name: db[slug].profile.name,
       heroTitle: db[slug].profile.heroTitle,
-      profileImage: undefined
+      profileImage: 'https://via.placeholder.com/150?text=Profile'
     }));
   }
 

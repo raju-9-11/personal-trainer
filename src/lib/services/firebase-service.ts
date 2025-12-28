@@ -116,50 +116,6 @@ export class FirebaseDataService implements DataProviderType {
     return null; // No slug provided and not authenticated to resolve one
   }
 
-  // --- Read ---
-  getTrainers = async (): Promise<TrainerSummary[]> => {
-    try {
-      const trainersRef = collection(this.db, ROOT_COLLECTION);
-      const snapshot = await getDocs(trainersRef);
-
-      if (snapshot.empty) {
-        // Fallback generic data as requested
-        return [
-          {
-            slug: 'generic-trainer-1',
-            name: 'Titan Trainer',
-            heroTitle: 'Generic Fitness Expert',
-          },
-          {
-            slug: 'generic-trainer-2',
-            name: 'Power Coach',
-            heroTitle: 'Strength Specialist',
-          }
-        ];
-      }
-
-      return snapshot.docs.map(doc => {
-        const data = doc.data();
-        return {
-          slug: doc.id,
-          name: data.name || 'Unknown Trainer',
-          heroTitle: data.heroTitle || 'Personal Trainer',
-          profileImage: data.profileImageUrl
-        };
-      });
-    } catch (e) {
-      console.error("Error fetching trainers:", e);
-      // Fallback on error to ensure page loads
-      return [
-        {
-          slug: 'error-fallback',
-          name: 'Fallback Trainer',
-          heroTitle: 'System Maintenance',
-        }
-      ];
-    }
-  }
-
   getProfile = async (slug?: string): Promise<TrainerProfile> => {
     // If slug is provided, we fetch from trainers/{slug}
     // If not, we might fail or return a default (or try to infer from auth, but read ops shouldn't rely on auth usually for public pages)

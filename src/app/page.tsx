@@ -93,7 +93,7 @@ export default function Home() {
                   {/* Placeholder image logic if no image provided */}
                   <div
                     className="absolute inset-0 bg-cover bg-center transition-transform duration-500 group-hover:scale-110 opacity-70 group-hover:opacity-100"
-                    style={{ backgroundImage: `url(${trainer.profileImage || 'https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?q=80&w=2070&auto=format&fit=crop'})` }}
+                    style={{ backgroundImage: `url(${trainer.profileImage ? trainer.profileImage : 'https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?q=80&w=2070&auto=format&fit=crop'})` }}
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent opacity-90" />
 
