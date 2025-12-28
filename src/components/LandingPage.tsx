@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/carousel";
 import { DEFAULT_BRAND_NAME } from '@/lib/constants';
 
-export default function Home() {
+export function LandingPage() {
   const { getTrainers, getLandingPageContent, getBrandIdentity, getPlatformTestimonials } = useData();
   const [trainers, setTrainers] = useState<TrainerSummary[]>([]);
   const [landing, setLanding] = useState<LandingPageContent | null>(null);

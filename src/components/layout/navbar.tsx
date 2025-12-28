@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { Menu, X, Dumbbell } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { motion } from 'framer-motion';
-import { useBrandIdentity, useTrainerSlug } from '@/app/[slug]/content';
+import { useBrandIdentity, useTrainerSlug } from '@/components/TrainerContext';
 import { DEFAULT_BRAND_NAME } from '@/lib/constants';
 
 export function Navbar() {

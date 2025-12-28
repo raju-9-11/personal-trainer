@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Navbar } from '@/components/layout/navbar';
 import { Hero } from '@/components/sections/hero';
 import { About } from '@/components/sections/about';
@@ -11,22 +11,9 @@ import { Contact } from '@/components/sections/contact';
 import { useData } from '@/lib/data-provider';
 import { BrandIdentity } from '@/lib/types';
 import { DEFAULT_BRAND_NAME } from '@/lib/constants';
+import { TrainerContext, BrandIdentityContext } from '@/components/TrainerContext';
 
-type BrandIdentityContextValue = {
-  identity: BrandIdentity | null;
-  loading: boolean;
-};
-
-const TrainerContext = createContext<string>("");
-const BrandIdentityContext = createContext<BrandIdentityContextValue>({
-  identity: null,
-  loading: true,
-});
-
-export const useTrainerSlug = () => useContext(TrainerContext);
-export const useBrandIdentity = () => useContext(BrandIdentityContext);
-
-export function TrainerPageContent({ slug }: { slug: string }) {
+export function TrainerPage({ slug }: { slug: string }) {
   const { getBrandIdentity } = useData();
   const [brand, setBrand] = useState<BrandIdentity | null>(null);
   const [brandLoading, setBrandLoading] = useState(true);
@@ -34,7 +21,7 @@ export function TrainerPageContent({ slug }: { slug: string }) {
   useEffect(() => {
     let isActive = true;
     setBrandLoading(true);
-    getBrandIdentity('platform')
+    getBrandIdentity(slug)
       .then((identity) => {
         if (!isActive) return;
         setBrand(identity);
@@ -48,7 +35,7 @@ export function TrainerPageContent({ slug }: { slug: string }) {
     return () => {
       isActive = false;
     };
-  }, [getBrandIdentity]);
+  }, [getBrandIdentity, slug]);
 
   useEffect(() => {
     if (!brandLoading && brand?.brandName) {

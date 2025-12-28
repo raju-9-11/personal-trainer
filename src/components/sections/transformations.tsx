@@ -6,7 +6,7 @@ import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Card, CardContent } from '@/components/ui/card';
 import { ArrowRight } from 'lucide-react';
-import { useTrainerSlug } from '@/app/[slug]/content';
+import { useTrainerSlug } from '@/components/TrainerContext';
 
 export function Transformations() {
   const { getTransformations } = useData();

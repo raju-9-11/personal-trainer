@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { useData } from '@/lib/data-provider';
 import { useEffect, useState } from 'react';
 import { TrainerProfile } from '@/lib/types';
-import { useTrainerSlug } from '@/app/[slug]/content';
+import { useTrainerSlug } from '@/components/TrainerContext';
 
 export function Hero() {
   const { getProfile } = useData();

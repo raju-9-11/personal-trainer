@@ -2,13 +2,13 @@
 
 import { useData } from '@/lib/data-provider';
 import { GymClass } from '@/lib/types';
-import { useEffect, useState } from 'react';
+import { useTrainerSlug } from '@/components/TrainerContext';
 import { motion } from 'framer-motion';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Calendar, Clock, Users } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import { useTrainerSlug } from '@/app/[slug]/content';
+import { useEffect, useState } from 'react';
 
 export function Classes() {
   const { getClasses } = useData();
