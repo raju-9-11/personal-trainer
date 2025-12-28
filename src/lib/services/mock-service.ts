@@ -41,23 +41,77 @@ const TRAINER1_DATA = {
   ]
 };
 
-const TESTTRAINER_DATA = {
+const TRAINER2_DATA = {
   ...TRAINER1_DATA,
   profile: {
     ...TRAINER1_DATA.profile,
-    name: "Test Trainer",
-    heroTitle: "TEST YOUR LIMITS",
-    bio: "I am a test trainer data set designed to demonstrate the platform's capabilities. With a focus on data integrity and user experience, I help developers test their code."
+    name: "Sarah 'Valkyrie' Stone",
+    heroTitle: "CONQUER YOUR GOALS",
+    bio: "Former Olympic weightlifter turned coach. I help you build strength, confidence, and resilience."
   },
   classes: [
-     ...TRAINER1_DATA.classes,
-     { id: '5', title: 'Debugging 101', description: 'Learn to fix bugs fast.', time: 'Tue 10:00 AM', durationMinutes: 60, maxSpots: 10, enrolledSpots: 2 }
+     { id: '5', title: 'Olympic Lifting', description: 'Learn the snatch and clean & jerk.', time: 'Tue 6:00 PM', durationMinutes: 90, maxSpots: 8, enrolledSpots: 8 },
+     { id: '6', title: 'Barbell Club', description: 'Squat, bench, deadlift.', time: 'Thu 6:00 PM', durationMinutes: 90, maxSpots: 12, enrolledSpots: 10 }
   ]
+};
+
+const TRAINER3_DATA = {
+  ...TRAINER1_DATA,
+  profile: {
+    ...TRAINER1_DATA.profile,
+    name: "Marcus 'The Engine' Diesel",
+    heroTitle: "FUEL YOUR PERFORMANCE",
+    bio: "Endurance athlete and triathlon coach. Let's build an engine that never quits."
+  },
+  classes: [
+     { id: '7', title: 'Spin Class', description: 'High intensity cycling.', time: 'Mon 6:00 AM', durationMinutes: 45, maxSpots: 20, enrolledSpots: 18 },
+     { id: '8', title: 'Run Club', description: 'Long distance group run.', time: 'Sat 7:00 AM', durationMinutes: 120, maxSpots: 50, enrolledSpots: 15 }
+  ]
+};
+
+const EMPTY1_DATA = {
+  profile: {
+    name: "New Coach One",
+    bio: "Just getting started on my journey here!",
+    heroTitle: "COMING SOON",
+    heroSubtitle: "Watch this space",
+    contactEmail: "new1@example.com",
+    contactPhone: "",
+    instagramUrl: "",
+    youtubeUrl: "",
+  },
+  identity: TRAINER1_DATA.identity,
+  certs: [],
+  transformations: [],
+  classes: [],
+  testimonials: []
+};
+
+const EMPTY2_DATA = {
+  profile: {
+    name: "New Coach Two",
+    bio: "Excited to join the Titan team.",
+    heroTitle: "FRESH ENERGY",
+    heroSubtitle: "Personal Training",
+    contactEmail: "new2@example.com",
+    contactPhone: "",
+    instagramUrl: "",
+    youtubeUrl: "",
+  },
+  identity: TRAINER1_DATA.identity,
+  certs: [],
+  transformations: [],
+  classes: [],
+  testimonials: []
 };
 
 const INITIAL_DB: Record<string, any> = {
   'trainer1': TRAINER1_DATA,
-  'testtrainer': TESTTRAINER_DATA
+  'trainer2': TRAINER2_DATA,
+  'trainer3': TRAINER3_DATA,
+  'empty1': EMPTY1_DATA,
+  'empty2': EMPTY2_DATA,
+  'testtrainer': { ...TRAINER1_DATA, profile: { ...TRAINER1_DATA.profile, name: "Test Trainer" } }
 };
 
 export class MockDataService implements DataProviderType {
