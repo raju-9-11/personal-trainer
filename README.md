@@ -24,6 +24,17 @@ A high-performance, energetic portfolio web application for personal trainers an
     ```
     *   Edit `.env.local` to add your Firebase keys (optional for Mock Mode).
 
+    **Example `.env.local`:**
+    ```env
+    NEXT_PUBLIC_FIREBASE_API_KEY=AIzaSyBOyAN3J8EoB9Na2K8EjyCYGF6qVg1sFxI
+    NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=personal-trainer-mock.firebaseapp.com
+    NEXT_PUBLIC_FIREBASE_PROJECT_ID=personal-trainer-mock
+    NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=personal-trainer-mock.firebasestorage.app
+    NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=286632355028
+    NEXT_PUBLIC_FIREBASE_APP_ID=1:286632355028:web:99877fc404366700950741
+    NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID=G-8QKJ11C3NL
+    ```
+
 3.  **Run Development Server:**
     ```bash
     npm run dev

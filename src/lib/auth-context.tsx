@@ -2,16 +2,16 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { getFirebase } from './firebase';
-import { signInWithEmailAndPassword, signOut, onAuthStateChanged, User } from 'firebase/auth';
+import { signInWithEmailAndPassword, signOut, onAuthStateChanged, User, isSignInWithEmailLink, signInWithEmailLink } from 'firebase/auth';
 
 interface AuthContextType {
   user: User | null;
   loading: boolean;
   isAuthenticated: boolean;
-  user: User | null;
   login: (emailOrPassword: string, password?: string) => Promise<boolean>;
+  finishLogin: (email: string, href: string) => Promise<void>;
   logout: () => Promise<void>;
-  loading: boolean;
+  trainerSlug: string | null;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -20,6 +20,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [trainerSlug, setTrainerSlug] = useState<string | null>(null);
 
   useEffect(() => {
     const { auth } = getFirebase();
@@ -36,6 +37,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
       setIsAuthenticated(!!currentUser);
+      if (!currentUser) {
+        setTrainerSlug(null);
+      }
       setLoading(false);
     });
 
@@ -48,6 +52,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
        // Legacy/Mock login
        if (emailOrPassword === 'admin123') {
          setIsAuthenticated(true);
+         setTrainerSlug('trainer1'); // Default for mock mode
          sessionStorage.setItem('admin_auth', 'true');
          return true;
        }
@@ -70,6 +75,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const finishLogin = async (email: string, href: string) => {
+    const { auth } = getFirebase();
+    if (!auth) throw new Error("Firebase Auth not initialized");
+
+    if (isSignInWithEmailLink(auth, href)) {
+      await signInWithEmailLink(auth, email, href);
+      window.localStorage.removeItem('emailForSignIn');
+    } else {
+        throw new Error("Invalid sign-in link");
+    }
+  };
+
   const logout = async () => {
     const { auth } = getFirebase();
     if (auth) {
@@ -77,11 +94,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
     setIsAuthenticated(false);
     setUser(null);
+    setTrainerSlug(null);
     sessionStorage.removeItem('admin_auth');
   };
 
   return (
-    <AuthContext.Provider value={{ isAuthenticated, user, login, logout, loading }}>
+    <AuthContext.Provider value={{ isAuthenticated, user, login, finishLogin, logout, loading, trainerSlug }}>
       {!loading && children}
     </AuthContext.Provider>
   );

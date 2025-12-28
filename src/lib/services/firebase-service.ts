@@ -1,7 +1,9 @@
-import { DataProviderType, TrainerProfile, Certification, Transformation, GymClass, Testimonial, BrandIdentity } from '../types';
+import { DataProviderType, TrainerProfile, Certification, Transformation, GymClass, Testimonial, BrandIdentity, TrainerSummary } from '../types';
 import { getFirebase } from '../firebase';
 import { collection, getDocs, doc, setDoc, addDoc, deleteDoc, updateDoc, Firestore, getDoc } from 'firebase/firestore';
 import { getAuth } from 'firebase/auth';
+
+const ROOT_COLLECTION = 'trainers';
 
 const COLLECTIONS = {
   PROFILE: 'profile',
@@ -78,39 +80,115 @@ export class FirebaseDataService implements DataProviderType {
   }
 
   // --- Read ---
-  getProfile = async (): Promise<TrainerProfile> => {
-    const snapshot = await getDocs(collection(this.db, COLLECTIONS.PROFILE));
-    if (snapshot.empty) {
-      console.warn("Profile not found in Firestore. Returning default profile. Please create a document in 'profile' collection.");
-      return {
-        name: "Your Name",
-        bio: "Your Bio",
-        heroTitle: "Your Hero Title",
-        heroSubtitle: "Your Hero Subtitle",
-        contactEmail: "your.email@example.com",
-        contactPhone: "Your Phone",
-        instagramUrl: "",
-        youtubeUrl: "",
-      };
+  getTrainers = async (): Promise<TrainerSummary[]> => {
+    try {
+      const trainersRef = collection(this.db, ROOT_COLLECTION);
+      const snapshot = await getDocs(trainersRef);
+
+      if (snapshot.empty) {
+        // Fallback generic data as requested
+        return [
+          {
+            slug: 'generic-trainer-1',
+            name: 'Titan Trainer',
+            heroTitle: 'Generic Fitness Expert',
+          },
+          {
+            slug: 'generic-trainer-2',
+            name: 'Power Coach',
+            heroTitle: 'Strength Specialist',
+          }
+        ];
+      }
+
+      return snapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+          slug: doc.id,
+          name: data.name || 'Unknown Trainer',
+          heroTitle: data.heroTitle || 'Personal Trainer',
+          profileImage: data.profileImageUrl
+        };
+      });
+    } catch (e) {
+      console.error("Error fetching trainers:", e);
+      // Fallback on error to ensure page loads
+      return [
+        {
+          slug: 'error-fallback',
+          name: 'Fallback Trainer',
+          heroTitle: 'System Maintenance',
+        }
+      ];
     }
-    return snapshot.data() as TrainerProfile;
   }
 
-  getBrandIdentity = async (): Promise<BrandIdentity> => {
-    const snapshot = await getDocs(collection(this.db, COLLECTIONS.IDENTITY));
-    if (snapshot.empty) {
-      return {
-        brandName: "",
-        logoUrl: "",
-        primaryColor: "#000000",
-        secondaryColor: "#ffffff"
-      };
+  getProfile = async (slug?: string): Promise<TrainerProfile> => {
+    // If slug is provided, we fetch from trainers/{slug}
+    // If not, we might fail or return a default (or try to infer from auth, but read ops shouldn't rely on auth usually for public pages)
+    const targetSlug = slug || 'trainer1'; // Fallback for safety/dev
+
+    try {
+      const docRef = doc(this.db, ROOT_COLLECTION, targetSlug);
+      const docSnap = await getDoc(docRef);
+
+      if (docSnap.exists()) {
+         const data = docSnap.data();
+         // Check if data is nested under 'profile' key or flat. Based on updateProfile, it merges into root.
+         // But types say TrainerProfile has specific fields.
+         // Let's assume the root doc contains the profile fields directly OR under a profile field.
+         // Mock service structure suggests 'profile' is a field.
+         // Let's check updateProfile implementation... it does setDoc(..., profile, {merge: true}).
+         // So the fields are at the root of the trainer document.
+         return data as TrainerProfile;
+      }
+    } catch (e) {
+      console.warn("Error fetching profile, using fallback", e);
     }
-    return snapshot.docs[0].data() as BrandIdentity;
+
+    return {
+      name: "Trainer Not Found",
+      bio: "This profile could not be loaded.",
+      heroTitle: "Titan Fitness",
+      heroSubtitle: "",
+      contactEmail: "",
+      contactPhone: "",
+      instagramUrl: "",
+      youtubeUrl: "",
+    };
   }
 
-  getCertifications = async (): Promise<Certification[]> => {
-    const snapshot = await getDocs(collection(this.db, COLLECTIONS.CERTS));
+  getBrandIdentity = async (slug?: string): Promise<BrandIdentity> => {
+    // Identity might be stored in a subcollection or on the root doc.
+    // Mock service stores it as 'identity' field or separate.
+    // Let's assume it is stored in `trainers/{slug}/brand_identity/main` based on COLLECTIONS.IDENTITY usage in previous code?
+    // Previous code: `collection(this.db, COLLECTIONS.IDENTITY)` which was 'brand_identity' at root?
+    // That implies a single brand for the whole app? The prompt says "multi-tenant".
+    // So it should be `trainers/{slug}/brand_identity/main` OR fields on the root doc.
+
+    const targetSlug = slug || 'trainer1';
+
+    try {
+      // Let's try subcollection pattern as it seems more robust for distinct data
+      const identityDoc = await getDoc(doc(this.db, ROOT_COLLECTION, targetSlug, 'brand_identity', 'main'));
+      if (identityDoc.exists()) {
+        return identityDoc.data() as BrandIdentity;
+      }
+    } catch (e) {
+      console.warn("Error fetching identity", e);
+    }
+
+    return {
+      brandName: "Titan Fitness",
+      logoUrl: "",
+      primaryColor: "#000000",
+      secondaryColor: "#ffffff"
+    };
+  }
+
+  getCertifications = async (slug?: string): Promise<Certification[]> => {
+    if (!slug) return [];
+    const snapshot = await getDocs(collection(this.db, ROOT_COLLECTION, slug, 'certifications'));
     return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Certification));
   }
 

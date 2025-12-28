@@ -13,7 +13,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  // const { login } = useAuth();
+  const { login } = useAuth();
   const router = useRouter();
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -38,30 +38,12 @@ export default function LoginPage() {
     }
   };
 
-  const handleMockLogin = (e: React.FormEvent) => {
+  const handleMockLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     // Simulate login
-    loginAsTrainer(mockUser);
+    await login('admin123');
     router.push('/admin/dashboard');
   };
-
-  if (sent) {
-     return (
-        <div className="min-h-screen flex items-center justify-center bg-background p-4">
-          <Card className="w-full max-w-md text-center">
-             <CardHeader>
-                <CardTitle>Check your inbox!</CardTitle>
-                <CardDescription>We sent a login link to {email}</CardDescription>
-             </CardHeader>
-             <CardContent>
-                <p className="text-sm text-muted-foreground">
-                   Click the link in the email to sign in. You can close this tab.
-                </p>
-             </CardContent>
-          </Card>
-        </div>
-     );
-  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
@@ -74,7 +56,7 @@ export default function LoginPage() {
           <CardDescription>Enter your email to sign in password-free</CardDescription>
         </CardHeader>
 
-        <form onSubmit={handleEmailLogin}>
+        <form onSubmit={handleLogin}>
           <CardContent className="space-y-4">
             <div className="space-y-2">
               <Input
@@ -91,15 +73,10 @@ export default function LoginPage() {
               />
               {error && <p className="text-destructive text-sm">{error}</p>}
             </div>
-            <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? "Sending..." : "Send Login Link"}
-            </Button>
-          </CardContent>
-          <CardFooter>
             <Button type="submit" className="w-full" disabled={isLoading}>
               {isLoading ? 'Authenticating...' : 'Login'}
             </Button>
-          </CardFooter>
+          </CardContent>
         </form>
 
         {/* Mock Login Section for Development/Demo Ease */}
@@ -109,10 +86,10 @@ export default function LoginPage() {
               <div className="relative flex-grow">
                  <User className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
                  <Input
-                   value={mockUser}
-                   onChange={(e) => setMockUser(e.target.value)}
+                   defaultValue="trainer1"
                    placeholder="trainer1"
                    className="pl-9 h-10"
+                   readOnly
                  />
               </div>
               <Button variant="secondary" type="submit">Login</Button>

@@ -19,6 +19,8 @@ export function Transformations() {
     }
   }, [getTransformations, slug]);
 
+  if (items.length === 0) return null;
+
   return (
     <section id="transformations" className="py-24 bg-background">
       <div className="container px-4 mx-auto">

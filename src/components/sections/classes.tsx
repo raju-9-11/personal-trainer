@@ -31,45 +31,51 @@ export function Classes() {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {items.map((item, idx) => (
-            <motion.div
-              key={item.id}
-              initial={{ opacity: 0, scale: 0.95 }}
-              whileInView={{ opacity: 1, scale: 1 }}
-              viewport={{ once: true }}
-              transition={{ delay: idx * 0.1 }}
-            >
-              <Card className="h-full flex flex-col border-border/50 hover:border-primary transition-all duration-300 hover:shadow-[0_0_30px_rgba(var(--primary),0.3)]">
-                <CardHeader>
-                  <div className="flex justify-between items-start mb-2">
-                    <Badge variant="secondary" className="mb-2">{item.time.split(' ')[0]}</Badge>
-                    <Badge variant={item.enrolledSpots >= item.maxSpots ? "destructive" : "outline"}>
-                      {item.enrolledSpots >= item.maxSpots ? "FULL" : `${item.maxSpots - item.enrolledSpots} Spots Left`}
-                    </Badge>
-                  </div>
-                  <CardTitle className="text-xl">{item.title}</CardTitle>
-                  <CardDescription>{item.description}</CardDescription>
-                </CardHeader>
-                <CardContent className="flex-grow space-y-4">
-                  <div className="flex items-center text-sm text-muted-foreground">
-                    <Clock className="mr-2 h-4 w-4 text-primary" />
-                    {item.time} ({item.durationMinutes} mins)
-                  </div>
-                  <div className="flex items-center text-sm text-muted-foreground">
-                    <Users className="mr-2 h-4 w-4 text-primary" />
-                    Capacity: {item.maxSpots}
-                  </div>
-                </CardContent>
-                <CardFooter>
-                  <Button className="w-full" disabled={item.enrolledSpots >= item.maxSpots}>
-                    {item.enrolledSpots >= item.maxSpots ? "Join Waitlist" : "Book Class"}
-                  </Button>
-                </CardFooter>
-              </Card>
-            </motion.div>
-          ))}
-        </div>
+        {items.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {items.map((item, idx) => (
+              <motion.div
+                key={item.id}
+                initial={{ opacity: 0, scale: 0.95 }}
+                whileInView={{ opacity: 1, scale: 1 }}
+                viewport={{ once: true }}
+                transition={{ delay: idx * 0.1 }}
+              >
+                <Card className="h-full flex flex-col border-border/50 hover:border-primary transition-all duration-300 hover:shadow-[0_0_30px_rgba(var(--primary),0.3)]">
+                  <CardHeader>
+                    <div className="flex justify-between items-start mb-2">
+                      <Badge variant="secondary" className="mb-2">{item.time.split(' ')[0]}</Badge>
+                      <Badge variant={item.enrolledSpots >= item.maxSpots ? "destructive" : "outline"}>
+                        {item.enrolledSpots >= item.maxSpots ? "FULL" : `${item.maxSpots - item.enrolledSpots} Spots Left`}
+                      </Badge>
+                    </div>
+                    <CardTitle className="text-xl">{item.title}</CardTitle>
+                    <CardDescription>{item.description}</CardDescription>
+                  </CardHeader>
+                  <CardContent className="flex-grow space-y-4">
+                    <div className="flex items-center text-sm text-muted-foreground">
+                      <Clock className="mr-2 h-4 w-4 text-primary" />
+                      {item.time} ({item.durationMinutes} mins)
+                    </div>
+                    <div className="flex items-center text-sm text-muted-foreground">
+                      <Users className="mr-2 h-4 w-4 text-primary" />
+                      Capacity: {item.maxSpots}
+                    </div>
+                  </CardContent>
+                  <CardFooter>
+                    <Button className="w-full" disabled={item.enrolledSpots >= item.maxSpots}>
+                      {item.enrolledSpots >= item.maxSpots ? "Join Waitlist" : "Book Class"}
+                    </Button>
+                  </CardFooter>
+                </Card>
+              </motion.div>
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-12">
+            <p className="text-muted-foreground text-lg">No classes scheduled yet. Check back soon!</p>
+          </div>
+        )}
       </div>
     </section>
   );

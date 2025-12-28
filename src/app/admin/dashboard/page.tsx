@@ -77,11 +77,11 @@ export default function DashboardPage() {
 
     const loadData = async () => {
       const [p, i, c, cer, t] = await Promise.all([
-        getProfile(),
-        getBrandIdentity(),
-        getClasses(),
-        getCertifications(),
-        getTransformations()
+        getProfile(targetSlug),
+        getBrandIdentity(targetSlug),
+        getClasses(targetSlug),
+        getCertifications(targetSlug),
+        getTransformations(targetSlug)
       ]);
       setProfile(p);
       setIdentity(i);
