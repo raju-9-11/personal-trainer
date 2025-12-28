@@ -7,12 +7,14 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { motion } from 'framer-motion';
+import { useTrainerSlug } from '@/app/[slug]/content';
 
 export function Contact() {
   const { register, handleSubmit, formState: { errors } } = useForm();
+  const slug = useTrainerSlug();
 
   const onSubmit = (data: any) => {
-    console.log(data);
+    console.log(`Message for ${slug}:`, data);
     alert("Message sent! (This is a demo)");
   };
 

@@ -7,6 +7,14 @@ export interface TrainerProfile {
   contactPhone: string;
   instagramUrl: string;
   youtubeUrl: string;
+  // profileImageUrl property might be needed if not present, checking existing usages or implicit logic
+}
+
+export interface TrainerSummary {
+  slug: string; // The URL part, e.g., 'trainer1'
+  name: string;
+  heroTitle: string;
+  profileImage?: string; // Optional image for the card
 }
 
 export interface Certification {
@@ -44,13 +52,18 @@ export interface Testimonial {
 
 export interface DataProviderType {
   // Read
-  getProfile: () => Promise<TrainerProfile>;
-  getCertifications: () => Promise<Certification[]>;
-  getTransformations: () => Promise<Transformation[]>;
-  getClasses: () => Promise<GymClass[]>;
-  getTestimonials: () => Promise<Testimonial[]>;
+  // slug is optional. If provided, fetches public data for that trainer.
+  // If not provided, it may rely on authenticated context or throw error depending on implementation.
+  getProfile: (slug?: string) => Promise<TrainerProfile>;
+  getCertifications: (slug?: string) => Promise<Certification[]>;
+  getTransformations: (slug?: string) => Promise<Transformation[]>;
+  getClasses: (slug?: string) => Promise<GymClass[]>;
+  getTestimonials: (slug?: string) => Promise<Testimonial[]>;
 
-  // Write (Admin)
+  // New method to list all trainers for the directory
+  getTrainers: () => Promise<TrainerSummary[]>;
+
+  // Write (Admin) - These typically rely on the authenticated user's context
   updateProfile: (profile: TrainerProfile) => Promise<void>;
   addCertification: (cert: Omit<Certification, 'id'>) => Promise<void>;
   removeCertification: (id: string) => Promise<void>;

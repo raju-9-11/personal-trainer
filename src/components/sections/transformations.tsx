@@ -6,14 +6,18 @@ import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Card, CardContent } from '@/components/ui/card';
 import { ArrowRight } from 'lucide-react';
+import { useTrainerSlug } from '@/app/[slug]/content';
 
 export function Transformations() {
   const { getTransformations } = useData();
+  const slug = useTrainerSlug();
   const [items, setItems] = useState<Transformation[]>([]);
 
   useEffect(() => {
-    getTransformations().then(setItems);
-  }, [getTransformations]);
+    if (slug) {
+      getTransformations(slug).then(setItems);
+    }
+  }, [getTransformations, slug]);
 
   return (
     <section id="transformations" className="py-24 bg-background">

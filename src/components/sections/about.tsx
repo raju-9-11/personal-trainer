@@ -7,16 +7,20 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { motion } from 'framer-motion';
 import { Award, User } from 'lucide-react';
+import { useTrainerSlug } from '@/app/[slug]/content';
 
 export function About() {
   const { getProfile, getCertifications } = useData();
+  const slug = useTrainerSlug();
   const [profile, setProfile] = useState<TrainerProfile | null>(null);
   const [certs, setCerts] = useState<Certification[]>([]);
 
   useEffect(() => {
-    getProfile().then(setProfile);
-    getCertifications().then(setCerts);
-  }, [getProfile, getCertifications]);
+    if (slug) {
+      getProfile(slug).then(setProfile);
+      getCertifications(slug).then(setCerts);
+    }
+  }, [getProfile, getCertifications, slug]);
 
   if (!profile) return null;
 

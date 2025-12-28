@@ -22,14 +22,17 @@ export function getFirebase() {
     try {
       // Check if config is valid
       if (!firebaseConfig.apiKey) {
-        throw new Error("Firebase API Key is missing. Check .env.local");
+        // Return nulls gracefully instead of throwing, allowing the app to fallback to Mock Mode
+        console.warn("Firebase API Key is missing. Check .env.local. Falling back to Mock Mode.");
+        return { app: null, db: null, auth: null };
       }
       app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
       db = getFirestore(app);
       auth = getAuth(app);
     } catch (e) {
       console.error("Firebase Initialization Error:", e);
-      throw e;
+      // Fallback gracefully
+      return { app: null, db: null, auth: null };
     }
   }
   return { app, db, auth };
