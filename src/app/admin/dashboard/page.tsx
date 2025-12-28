@@ -86,6 +86,20 @@ export default function DashboardPage() {
     loadData();
   }, [isAuthenticated, router, isSuperAdmin, trainerSlug, user, getProfile, getBrandIdentity, getClasses, getCertifications, getTransformations, getLandingPageContent, getPlatformTestimonials]);
 
+  // Update Document Title based on identity and active tab
+  useEffect(() => {
+      const baseTitle = identity?.brandName || 'Admin';
+      if (isSuperAdmin) {
+          let section = 'Dashboard';
+          if (activeTab === 'landing') section = 'Landing Page';
+          if (activeTab === 'testimonials') section = 'Testimonials';
+          if (activeTab === 'identity') section = 'Identity';
+          document.title = `${baseTitle} - ${section}`;
+      } else {
+          document.title = `${baseTitle} - Trainer Dashboard`;
+      }
+  }, [identity, activeTab, isSuperAdmin]);
+
   const handleProfileSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (profile) {

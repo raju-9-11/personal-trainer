@@ -48,6 +48,17 @@ export default function Home() {
   const heroImage = landing?.heroImageUrl || 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?q=80&w=2070&auto=format&fit=crop';
   const brandName = brand?.brandName || "TITAN";
 
+  if (loading) {
+      return (
+          <main className="min-h-screen bg-background text-foreground flex items-center justify-center">
+              <div className="flex flex-col items-center gap-4">
+                  <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+                  <p className="text-muted-foreground animate-pulse">Loading Platform...</p>
+              </div>
+          </main>
+      );
+  }
+
   return (
     <main className="min-h-screen bg-background text-foreground">
       {/* Hero Section */}
@@ -114,10 +125,7 @@ export default function Home() {
             <div className="w-24 h-1 bg-primary mx-auto" />
           </div>
 
-          {loading ? (
-            <div className="text-center">Loading...</div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
               {trainers.length === 0 ? (
                   <p className="text-center w-full col-span-3 text-muted-foreground">No trainers available yet.</p>
               ) : (
@@ -139,7 +147,6 @@ export default function Home() {
                   ))
               )}
             </div>
-          )}
         </div>
       </section>
 
