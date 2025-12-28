@@ -17,6 +17,30 @@ const COLLECTIONS = {
 
 const IDENTITY_DOC_ID = 'main';
 
+// Default values to use when data is missing or service is uninitialized
+const DEFAULT_IDENTITY: BrandIdentity = {
+    brandName: "Fitness Brand",
+    logoUrl: "",
+    primaryColor: "#000000",
+    secondaryColor: "#ffffff"
+};
+
+const DEFAULT_PROFILE: TrainerProfile = {
+    name: "New Trainer",
+    bio: "",
+    heroTitle: "Welcome",
+    heroSubtitle: "Start your journey",
+    contactEmail: "",
+    contactPhone: "",
+    socialLinks: [],
+};
+
+const DEFAULT_LANDING: LandingPageContent = {
+    heroTitle: "UNLEASH YOUR POTENTIAL",
+    heroSubtitle: "Elite personal training.",
+    heroImageUrl: "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?q=80&w=2070&auto=format&fit=crop"
+};
+
 export class FirebaseDataService implements DataProviderType {
   private db: Firestore | undefined;
   private currentUser: User | null;
@@ -60,36 +84,17 @@ export class FirebaseDataService implements DataProviderType {
     // CREATE NEW TRAINER DOC AUTOMATICALLY
     console.log("No trainer profile found for user. Creating one...");
     const newSlug = `trainer-${Date.now()}`; // Simple generation strategy
-    const newProfile: TrainerProfile = {
-        name: "New Trainer",
-        bio: "Bio goes here",
-        heroTitle: "Welcome",
-        heroSubtitle: "Let's train",
-        contactEmail: this.currentUser.email || "",
-        contactPhone: "",
-        instagramUrl: "", // Deprecated field default
-        youtubeUrl: "",   // Deprecated field default
-        socialLinks: [],
-        experienceYears: 0,
-        experienceMonths: 0,
-        clientsHandled: 0,
-        clientsHandledRounded: false
-    };
 
     // Create the document
     await setDoc(doc(db, ROOT_COLLECTION, newSlug), {
-        ...newProfile,
+        ...DEFAULT_PROFILE,
+        contactEmail: this.currentUser.email || "",
         ownerUid: this.currentUser.uid,
         createdAt: Timestamp.now()
     });
 
     // Create default identity subcollection
-    await setDoc(doc(db, ROOT_COLLECTION, newSlug, COLLECTIONS.IDENTITY, IDENTITY_DOC_ID), {
-        brandName: "My Fitness Brand",
-        logoUrl: "",
-        primaryColor: "#000000",
-        secondaryColor: "#ffffff"
-    });
+    await setDoc(doc(db, ROOT_COLLECTION, newSlug, COLLECTIONS.IDENTITY, IDENTITY_DOC_ID), DEFAULT_IDENTITY);
 
     return newSlug;
   }
@@ -119,17 +124,7 @@ export class FirebaseDataService implements DataProviderType {
   }
 
   getProfile = async (slug?: string): Promise<TrainerProfile> => {
-    if (!slug) {
-        return {
-          name: "New Trainer",
-          bio: "",
-          heroTitle: "Welcome",
-          heroSubtitle: "",
-          contactEmail: "",
-          contactPhone: "",
-          socialLinks: []
-        };
-    }
+    if (!slug) return DEFAULT_PROFILE;
 
     try {
       if (!this.db) throw new Error("DB not init");
@@ -142,25 +137,11 @@ export class FirebaseDataService implements DataProviderType {
     } catch (e) {
       console.warn("Error fetching profile", e);
     }
-    return {
-      name: "Trainer Not Found",
-      bio: "",
-      heroTitle: "Titan Fitness",
-      heroSubtitle: "",
-      contactEmail: "",
-      contactPhone: "",
-    };
+    return DEFAULT_PROFILE;
   }
 
   getBrandIdentity = async (slug?: string): Promise<BrandIdentity> => {
-    if (!slug) {
-        return {
-          brandName: "My Fitness Brand",
-          logoUrl: "",
-          primaryColor: "#000000",
-          secondaryColor: "#ffffff"
-        };
-    }
+    if (!slug) return DEFAULT_IDENTITY;
 
     try {
       if (!this.db) throw new Error("DB not init");
@@ -179,12 +160,7 @@ export class FirebaseDataService implements DataProviderType {
       console.warn("Error fetching identity", e);
     }
 
-    return {
-      brandName: "Titan Fitness",
-      logoUrl: "",
-      primaryColor: "#000000",
-      secondaryColor: "#ffffff"
-    };
+    return DEFAULT_IDENTITY;
   }
 
   getLandingPageContent = async (): Promise<LandingPageContent> => {
@@ -198,11 +174,7 @@ export class FirebaseDataService implements DataProviderType {
       } catch (e) {
           console.warn("Error fetching landing content", e);
       }
-      return {
-          heroTitle: "FIND YOUR TITAN",
-          heroSubtitle: "Elite personal trainers ready to help you shatter your limits.",
-          heroImageUrl: "https://images.unsplash.com/photo-1534438327276-14e5300c3a48?q=80&w=2070&auto=format&fit=crop"
-      };
+      return DEFAULT_LANDING;
   }
 
   getPlatformTestimonials = async (): Promise<PlatformTestimonial[]> => {
