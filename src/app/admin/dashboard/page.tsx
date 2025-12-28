@@ -14,7 +14,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import Link from 'next/link';
-import { Trash2, Plus, Save, Upload, ExternalLink, Globe } from 'lucide-react';
+import { Trash2, Plus, Save, Upload, ExternalLink, Globe, Loader2 } from 'lucide-react';
 import { getFirebase } from '@/lib/firebase';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import Image from 'next/image';
@@ -41,6 +41,7 @@ export default function DashboardPage() {
   const [landing, setLanding] = useState<LandingPageContent | null>(null);
   const [testimonials, setTestimonials] = useState<PlatformTestimonial[]>([]);
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const { showAlert } = useAlert();
 
   // Track active tab to update page title logic
@@ -102,30 +103,48 @@ export default function DashboardPage() {
 
   const handleProfileSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (profile) {
-      await updateProfile(profile);
-      showAlert('Success', 'Profile updated!');
+    setSaving(true);
+    try {
+        if (profile) {
+          await updateProfile(profile);
+          showAlert('Success', 'Profile updated!');
+        }
+    } catch (e) {
+        showAlert('Error', 'Failed to update profile.');
+    } finally {
+        setSaving(false);
     }
   };
 
   const handleIdentitySave = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (identity) {
-      await updateBrandIdentity(identity);
-      // Update local state is automatic via two-way binding,
-      // but ensure side effects (like doc title) trigger if needed
-      // setIdentity({...identity}); // React batching might make this redundant but safe
-      showAlert('Success', 'Brand Identity updated!');
+    setSaving(true);
+    try {
+        if (identity) {
+          await updateBrandIdentity(identity);
+          showAlert('Success', 'Brand Identity updated!');
+        }
+    } catch (e) {
+        showAlert('Error', 'Failed to update identity.');
+    } finally {
+        setSaving(false);
     }
   };
 
   const handleLandingSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (landing) {
-        await updateLandingPageContent(landing);
-        showAlert('Success', 'Landing Page updated!');
+    setSaving(true);
+    try {
+        if (landing) {
+            await updateLandingPageContent(landing);
+            showAlert('Success', 'Landing Page updated!');
+        }
+    } catch (e) {
+        showAlert('Error', 'Failed to update landing page.');
+    } finally {
+        setSaving(false);
     }
-  }
+  };
 
   const uploadImage = async (file: File, path: string): Promise<string> => {
     const { storage } = getFirebase();
@@ -207,6 +226,11 @@ export default function DashboardPage() {
       return 'Trainer Dashboard';
   };
 
+  // Helper to count social links
+  const countLinks = (platform: SocialLink['platform']) => {
+      return profile?.socialLinks?.filter(l => l.platform === platform).length || 0;
+  };
+
   return (
     <div className="min-h-screen bg-muted/10">
       {/* Header */}
@@ -280,7 +304,9 @@ export default function DashboardPage() {
                                             }} />
                                         </div>
                                     </div>
-                                    <Button type="submit" className="w-full"><Save className="mr-2 h-4 w-4" /> Save Landing Page</Button>
+                                    <Button type="submit" className="w-full" disabled={saving}>
+                                        {saving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Saving...</> : <><Save className="mr-2 h-4 w-4" /> Save Landing Page</>}
+                                    </Button>
                                 </form>
                             )}
                         </CardContent>
@@ -369,7 +395,9 @@ export default function DashboardPage() {
                                         }} />
                                     </div>
                                 </div>
-                                <Button type="submit" className="w-full"><Save className="mr-2 h-4 w-4" /> Save Identity</Button>
+                                <Button type="submit" className="w-full" disabled={saving}>
+                                    {saving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Saving...</> : <><Save className="mr-2 h-4 w-4" /> Save Identity</>}
+                                </Button>
                               </form>
                             )}
                           </CardContent>
@@ -436,7 +464,9 @@ export default function DashboardPage() {
                                     </div>
                                 </div>
                             </div>
-                            <Button type="submit" className="w-full"><Save className="mr-2 h-4 w-4" /> Save Identity</Button>
+                            <Button type="submit" className="w-full" disabled={saving}>
+                                {saving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Saving...</> : <><Save className="mr-2 h-4 w-4" /> Save Identity</>}
+                            </Button>
                           </form>
                         )}
                       </CardContent>
@@ -496,14 +526,10 @@ export default function DashboardPage() {
                                   <Label>Clients Handled</Label>
                                   <Input type="number" value={profile.clientsHandled || 0} onChange={e => setProfile({...profile, clientsHandled: parseInt(e.target.value)})} />
                               </div>
-                              <div className="flex items-center space-x-2">
-                                <Switch id="rounded-mode" checked={profile.clientsHandledRounded || false} onCheckedChange={(c) => setProfile({...profile, clientsHandledRounded: c})} />
-                                <Label htmlFor="rounded-mode">Round Clients (55 &rarr; 50+)</Label>
-                              </div>
                           </div>
 
                           <div className="space-y-4 pt-4 border-t">
-                             <Label>Social Links (Max 4)</Label>
+                             <Label>Social Links</Label>
                              <div className="space-y-2">
                                 {profile.socialLinks?.map((link, idx) => (
                                     <div key={idx} className="flex gap-2">
@@ -536,20 +562,56 @@ export default function DashboardPage() {
                                         </Button>
                                     </div>
                                 ))}
-                                {(!profile.socialLinks || profile.socialLinks.length < 4) && (
-                                    <Button type="button" variant="outline" size="sm" onClick={() => {
-                                        setProfile({
-                                            ...profile,
-                                            socialLinks: [...(profile.socialLinks || []), { platform: 'instagram', url: '' }]
-                                        });
-                                    }}>
-                                        <Plus className="mr-2 h-4 w-4" /> Add Social Link
+
+                                <div className="flex gap-2">
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="sm"
+                                        disabled={countLinks('instagram') >= 4}
+                                        onClick={() => {
+                                            setProfile({
+                                                ...profile,
+                                                socialLinks: [...(profile.socialLinks || []), { platform: 'instagram', url: '' }]
+                                            });
+                                        }}
+                                    >
+                                        <Plus className="mr-2 h-4 w-4" /> Add Instagram
                                     </Button>
-                                )}
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="sm"
+                                        disabled={countLinks('youtube') >= 2}
+                                        onClick={() => {
+                                            setProfile({
+                                                ...profile,
+                                                socialLinks: [...(profile.socialLinks || []), { platform: 'youtube', url: '' }]
+                                            });
+                                        }}
+                                    >
+                                        <Plus className="mr-2 h-4 w-4" /> Add YouTube
+                                    </Button>
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => {
+                                            setProfile({
+                                                ...profile,
+                                                socialLinks: [...(profile.socialLinks || []), { platform: 'facebook', url: '' }]
+                                            });
+                                        }}
+                                    >
+                                        <Plus className="mr-2 h-4 w-4" /> Add Other
+                                    </Button>
+                                </div>
                              </div>
                           </div>
 
-                          <Button type="submit" className="w-full mt-4"><Save className="mr-2 h-4 w-4" /> Save Changes</Button>
+                          <Button type="submit" className="w-full mt-4" disabled={saving}>
+                              {saving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Saving...</> : <><Save className="mr-2 h-4 w-4" /> Save Changes</>}
+                          </Button>
                         </form>
                       </CardContent>
                     </Card>
