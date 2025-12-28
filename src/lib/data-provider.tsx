@@ -9,8 +9,17 @@ const DataContext = createContext<DataProviderType | null>(null);
 
 export function DataProvider({ children }: { children: React.ReactNode }) {
   const service = useMemo(() => {
-    const useFirebase = process.env.NEXT_PUBLIC_USE_FIREBASE === 'true';
-    return useFirebase ? new FirebaseDataService() : new MockDataService();
+    // Default to Firebase Service as requested, but fall back to Mock if explicitly disabled or if config is missing (e.g. build time)
+    const useMock = process.env.NEXT_PUBLIC_USE_MOCK_DATA === 'true';
+    const hasFirebaseConfig = !!process.env.NEXT_PUBLIC_FIREBASE_API_KEY;
+
+    if (useMock || !hasFirebaseConfig) {
+        if (!useMock && !hasFirebaseConfig) {
+            console.warn("Firebase config missing. Falling back to MockDataService.");
+        }
+        return new MockDataService();
+    }
+    return new FirebaseDataService();
   }, []);
 
   return (

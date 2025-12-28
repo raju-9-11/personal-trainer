@@ -1,11 +1,19 @@
-import { DataProviderType, TrainerProfile, Certification, Transformation, GymClass, Testimonial } from '../types';
+import { DataProviderType, TrainerProfile, Certification, Transformation, GymClass, Testimonial, BrandIdentity } from '../types';
 
 const STORAGE_KEYS = {
   PROFILE: 'trainer_profile',
+  IDENTITY: 'trainer_identity',
   CERTS: 'trainer_certs',
   TRANS: 'trainer_trans',
   CLASSES: 'trainer_classes',
   TESTIMONIALS: 'trainer_testimonials',
+};
+
+const INITIAL_IDENTITY: BrandIdentity = {
+  brandName: "Titan Fitness",
+  logoUrl: "https://via.placeholder.com/150?text=TF",
+  primaryColor: "#000000",
+  secondaryColor: "#ffffff",
 };
 
 // Initial Data
@@ -45,19 +53,32 @@ export class MockDataService implements DataProviderType {
 
   private load = <T>(key: string, initial: T): T => {
     if (!this.isClient) return initial;
-    const stored = localStorage.getItem(key);
-    return stored ? JSON.parse(stored) : initial;
+    try {
+        const stored = localStorage.getItem(key);
+        return stored ? JSON.parse(stored) : initial;
+    } catch (e) {
+        console.error("MockDataService load error", e);
+        return initial;
+    }
   }
 
   private save = (key: string, data: any) => {
     if (this.isClient) {
-      localStorage.setItem(key, JSON.stringify(data));
+        try {
+            localStorage.setItem(key, JSON.stringify(data));
+        } catch (e) {
+            console.error("MockDataService save error", e);
+        }
     }
   }
 
   // --- Read ---
   getProfile = async (): Promise<TrainerProfile> => {
     return this.load(STORAGE_KEYS.PROFILE, INITIAL_PROFILE);
+  }
+
+  getBrandIdentity = async (): Promise<BrandIdentity> => {
+    return this.load(STORAGE_KEYS.IDENTITY, INITIAL_IDENTITY);
   }
 
   getCertifications = async (): Promise<Certification[]> => {
@@ -79,6 +100,10 @@ export class MockDataService implements DataProviderType {
   // --- Write ---
   updateProfile = async (profile: TrainerProfile): Promise<void> => {
     this.save(STORAGE_KEYS.PROFILE, profile);
+  }
+
+  updateBrandIdentity = async (identity: BrandIdentity): Promise<void> => {
+    this.save(STORAGE_KEYS.IDENTITY, identity);
   }
 
   addCertification = async (cert: Omit<Certification, 'id'>): Promise<void> => {

@@ -9,17 +9,32 @@ import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/componen
 import { Lock } from 'lucide-react';
 
 export default function LoginPage() {
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
-  const { login } = useAuth();
+  const [isLoading, setIsLoading] = useState(false);
+  // const { login } = useAuth();
   const router = useRouter();
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (login(password)) {
+    setIsLoading(true);
+    setError('');
+
+    // Try mock login first if only password provided (legacy support)
+    if (!email && password === 'admin123') {
+      if (await login('admin123')) {
+        router.push('/admin/dashboard');
+        return;
+      }
+    }
+
+    // Try Firebase Login
+    if (await login(email, password)) {
       router.push('/admin/dashboard');
     } else {
-      setError('Invalid password');
+      setError('Invalid credentials');
+      setIsLoading(false);
     }
   };
 
@@ -36,8 +51,14 @@ export default function LoginPage() {
           <CardContent className="space-y-4">
             <div className="space-y-2">
               <Input
+                type="email"
+                placeholder="Email address"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
+              <Input
                 type="password"
-                placeholder="Enter password (admin123)"
+                placeholder="Password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
               />
@@ -45,7 +66,9 @@ export default function LoginPage() {
             </div>
           </CardContent>
           <CardFooter>
-            <Button type="submit" className="w-full">Unlock Dashboard</Button>
+            <Button type="submit" className="w-full" disabled={isLoading}>
+              {isLoading ? 'Authenticating...' : 'Login'}
+            </Button>
           </CardFooter>
         </form>
       </Card>
