@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { Menu, X, Dumbbell } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { motion } from 'framer-motion';
-import { useBrandIdentity, useTrainerSlug } from '@/app/[slug]/content';
+import { useBrandIdentity, useTrainerSlug } from '@/app/trainer/content';
 import { DEFAULT_BRAND_NAME } from '@/lib/constants';
 
 export function Navbar() {
@@ -28,7 +28,7 @@ export function Navbar() {
   }, [brandName]);
 
   const toggleMenu = () => setIsOpen(!isOpen);
-  const profileHref = slug ? `/${slug}` : '/';
+  const profileHref = slug ? `/trainer?slug=${slug}` : '/';
 
   // Links must be relative to the slug page
   const links = [

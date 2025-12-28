@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { useData } from '@/lib/data-provider';
 import { useEffect, useState } from 'react';
 import { TrainerProfile } from '@/lib/types';
-import { useTrainerSlug } from '@/app/[slug]/content';
+import { useTrainerSlug } from '@/app/trainer/content';
 
 export function Hero() {
   const { getProfile } = useData();
@@ -62,10 +62,10 @@ export function Hero() {
           className="flex flex-col md:flex-row gap-4"
         >
           <Button size="lg" className="text-lg px-8 py-6 rounded-full" asChild>
-            <Link href={`/${slug}#contact`}>Start Your Journey</Link>
+            <Link href={`/trainer?slug=${slug}#contact`}>Start Your Journey</Link>
           </Button>
           <Button size="lg" variant="outline" className="text-lg px-8 py-6 rounded-full" asChild>
-            <Link href={`/${slug}#classes`}>View Classes</Link>
+            <Link href={`/trainer?slug=${slug}#classes`}>View Classes</Link>
           </Button>
         </motion.div>
       </div>

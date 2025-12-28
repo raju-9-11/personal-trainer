@@ -23,7 +23,7 @@ export default function LoginPage() {
 
     // Try Login (handles both Firebase and Super Admin Bypass internally in AuthContext)
     if (await login(email, password)) {
-      router.push('/admin/dashboard');
+      router.push('/admin/dashboard/');
     } else {
       setError('Invalid credentials');
       setIsLoading(false);

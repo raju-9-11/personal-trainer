@@ -139,7 +139,7 @@ export default function Home() {
                   <p className="text-center w-full col-span-3 text-muted-foreground">No trainers available yet.</p>
               ) : (
                   trainers.map((trainer) => (
-                    <Link key={trainer.slug} href={`/${trainer.slug}`} className="group relative block overflow-hidden rounded-2xl aspect-[3/4] w-full max-w-[350px]">
+                    <Link key={trainer.slug} href={`/trainer?slug=${trainer.slug}`} className="group relative block overflow-hidden rounded-2xl aspect-[3/4] w-full max-w-[350px]">
                       <div className="absolute inset-0 bg-gray-900" />
                       {/* Placeholder image logic if no image provided */}
                       <div

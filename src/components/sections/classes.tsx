@@ -8,7 +8,7 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription }
 import { Button } from '@/components/ui/button';
 import { Calendar, Clock, Users } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import { useTrainerSlug } from '@/app/[slug]/content';
+import { useTrainerSlug } from '@/app/trainer/content';
 
 export function Classes() {
   const { getClasses } = useData();

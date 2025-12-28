@@ -4,6 +4,142 @@ import { collection, getDocs, doc, setDoc, addDoc, deleteDoc, updateDoc, Firesto
 import { User } from 'firebase/auth';
 import { DEFAULT_BRAND_IDENTITY } from '../constants';
 
+const FIREBASE_PROJECT_ID = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
+const FIREBASE_API_KEY = process.env.NEXT_PUBLIC_FIREBASE_API_KEY;
+const FIRESTORE_REST_BASE = FIREBASE_PROJECT_ID
+  ? `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT_ID}/databases/(default)/documents`
+  : null;
+
+type FirestoreValue = {
+  nullValue?: null;
+  booleanValue?: boolean;
+  integerValue?: string;
+  doubleValue?: number;
+  timestampValue?: string;
+  stringValue?: string;
+  bytesValue?: string;
+  referenceValue?: string;
+  geoPointValue?: { latitude: number; longitude: number };
+  arrayValue?: { values?: FirestoreValue[] };
+  mapValue?: { fields?: Record<string, FirestoreValue> };
+};
+
+type FirestoreDocumentResponse = {
+  name?: string;
+  fields?: Record<string, FirestoreValue>;
+};
+
+type RestDocument = {
+  id: string;
+  data: Record<string, any>;
+};
+
+const decodeFirestoreValue = (value?: FirestoreValue): any => {
+  if (!value) return null;
+  if (value.nullValue !== undefined) return null;
+  if (value.booleanValue !== undefined) return value.booleanValue;
+  if (value.integerValue !== undefined) return Number(value.integerValue);
+  if (value.doubleValue !== undefined) return value.doubleValue;
+  if (value.timestampValue !== undefined) return value.timestampValue;
+  if (value.stringValue !== undefined) return value.stringValue;
+  if (value.bytesValue !== undefined) return value.bytesValue;
+  if (value.referenceValue !== undefined) return value.referenceValue;
+  if (value.geoPointValue !== undefined) return value.geoPointValue;
+  if (value.arrayValue?.values) {
+    return value.arrayValue.values.map((entry) => decodeFirestoreValue(entry));
+  }
+  if (value.mapValue?.fields) {
+    return Object.entries(value.mapValue.fields).reduce<Record<string, any>>((acc, [key, val]) => {
+      acc[key] = decodeFirestoreValue(val);
+      return acc;
+    }, {});
+  }
+  return null;
+};
+
+const toRestDocument = (doc: FirestoreDocumentResponse | undefined): RestDocument | null => {
+  if (!doc?.fields || !doc.name) {
+    return null;
+  }
+  const id = doc.name.split('/').pop() || '';
+  const data = Object.entries(doc.fields).reduce<Record<string, any>>((acc, [key, value]) => {
+    acc[key] = decodeFirestoreValue(value);
+    return acc;
+  }, {});
+  return { id, data };
+};
+
+const fetchFirestoreDocument = async (path: string): Promise<RestDocument | null> => {
+  if (!FIRESTORE_REST_BASE || !FIREBASE_API_KEY) return null;
+  try {
+    const url = new URL(`${FIRESTORE_REST_BASE}/${path}`);
+    url.searchParams.set('key', FIREBASE_API_KEY);
+    const response = await fetch(url.toString());
+    if (response.status === 404) {
+      return null;
+    }
+    if (!response.ok) {
+      console.warn(`Firestore REST document fetch failed for ${path}`, await response.text());
+      return null;
+    }
+    const json: FirestoreDocumentResponse = await response.json();
+    return toRestDocument(json);
+  } catch (e) {
+    console.warn('Error fetching Firestore document via REST', e);
+    return null;
+  }
+};
+
+const fetchFirestoreCollection = async (path: string): Promise<RestDocument[]> => {
+  if (!FIRESTORE_REST_BASE || !FIREBASE_API_KEY) return [];
+  const documents: RestDocument[] = [];
+  let pageToken: string | undefined = undefined;
+
+  try {
+    while (true) {
+      const url = new URL(`${FIRESTORE_REST_BASE}/${path}`);
+      url.searchParams.set('key', FIREBASE_API_KEY);
+      url.searchParams.set('pageSize', '100');
+      if (pageToken) {
+        url.searchParams.set('pageToken', pageToken);
+      }
+      const response = await fetch(url.toString());
+      if (!response.ok) {
+        console.warn(`Firestore REST collection fetch failed for ${path}`, await response.text());
+        break;
+      }
+      const json = (await response.json()) as {
+        documents?: FirestoreDocumentResponse[];
+        nextPageToken?: string;
+      };
+      if (Array.isArray(json.documents)) {
+        for (const doc of json.documents) {
+          const parsed = toRestDocument(doc);
+          if (parsed) {
+            documents.push(parsed);
+          }
+        }
+      }
+      if (!json.nextPageToken) {
+        break;
+      }
+      pageToken = json.nextPageToken;
+    }
+  } catch (e) {
+    console.warn('Error fetching Firestore collection via REST', e);
+  }
+
+  return documents;
+};
+
+export const fetchTrainerSlugs = async (): Promise<string[]> => {
+  const docs = await fetchFirestoreCollection(ROOT_COLLECTION);
+  if (!docs.length) {
+    return [];
+  }
+  return docs.map((doc) => doc.id).filter(Boolean);
+};
+
 const ROOT_COLLECTION = 'trainers';
 const PLATFORM_COLLECTION = 'platform_settings';
 
@@ -97,134 +233,224 @@ export class FirebaseDataService implements DataProviderType {
 
   // --- Read ---
   getTrainers = async (): Promise<TrainerSummary[]> => {
-    try {
-      if (!this.db) return [];
-      const trainersRef = collection(this.db, ROOT_COLLECTION);
-      const snapshot = await getDocs(trainersRef);
+    const restFallback = async () => {
+      const docs = await fetchFirestoreCollection(ROOT_COLLECTION);
+      return docs.map(({ id, data }) => ({
+        slug: id,
+        name: data.name || 'Unnamed Trainer',
+        heroTitle: data.heroTitle || 'Personal Trainer',
+        profileImage: data.profileImageUrl,
+      }));
+    };
 
-      const summaries: TrainerSummary[] = [];
-      for (const docSnap of snapshot.docs) {
-         const data = docSnap.data();
-         summaries.push({
-             slug: docSnap.id,
-             name: data.name || 'Unnamed Trainer',
-             heroTitle: data.heroTitle || 'Personal Trainer',
-             profileImage: data.profileImageUrl
-         });
+    if (this.db) {
+      try {
+        const trainersRef = collection(this.db, ROOT_COLLECTION);
+        const snapshot = await getDocs(trainersRef);
+
+        const summaries: TrainerSummary[] = [];
+        for (const docSnap of snapshot.docs) {
+           const data = docSnap.data();
+           summaries.push({
+               slug: docSnap.id,
+               name: data.name || 'Unnamed Trainer',
+               heroTitle: data.heroTitle || 'Personal Trainer',
+               profileImage: data.profileImageUrl
+           });
+        }
+        return summaries;
+      } catch (e) {
+        console.warn("Firestore getTrainers failed, falling back to REST", e);
+        return restFallback();
       }
-      return summaries;
-    } catch (e) {
-      console.error("Error fetching trainers:", e);
-      return [];
     }
+
+    return restFallback();
   }
 
   getProfile = async (slug?: string): Promise<TrainerProfile> => {
     if (!slug) return DEFAULT_PROFILE;
 
-    try {
-      if (!this.db) throw new Error("DB not init");
-      const docRef = doc(this.db, ROOT_COLLECTION, slug);
-      const docSnap = await getDoc(docRef);
-
-      if (docSnap.exists()) {
-         return docSnap.data() as TrainerProfile;
+    const restFallback = async () => {
+      const restDoc = await fetchFirestoreDocument(`${ROOT_COLLECTION}/${slug}`);
+      if (restDoc?.data) {
+        return { ...DEFAULT_PROFILE, ...restDoc.data } as TrainerProfile;
       }
-    } catch (e) {
-      console.warn("Error fetching profile", e);
+      return DEFAULT_PROFILE;
+    };
+
+    if (this.db) {
+      try {
+        const docRef = doc(this.db, ROOT_COLLECTION, slug);
+        const docSnap = await getDoc(docRef);
+
+        if (docSnap.exists()) {
+           return docSnap.data() as TrainerProfile;
+        }
+      } catch (e) {
+        console.warn("Error fetching profile via Firestore, trying REST", e);
+        return restFallback();
+      }
+      return DEFAULT_PROFILE;
     }
-    return DEFAULT_PROFILE;
+
+    return restFallback();
   }
 
   getBrandIdentity = async (slug?: string): Promise<BrandIdentity> => {
     if (!slug) return DEFAULT_IDENTITY;
 
-    try {
-      if (!this.db) {
-        console.warn("DB not init; returning default brand identity");
-        return DEFAULT_IDENTITY;
-      }
-      let docRef;
-      if (slug === 'platform') {
-        docRef = doc(this.db, PLATFORM_COLLECTION, 'identity');
-      } else {
-        docRef = doc(this.db, ROOT_COLLECTION, slug, COLLECTIONS.IDENTITY, IDENTITY_DOC_ID);
-      }
+    const restPath = slug === 'platform'
+      ? `${PLATFORM_COLLECTION}/identity`
+      : `${ROOT_COLLECTION}/${slug}/${COLLECTIONS.IDENTITY}/${IDENTITY_DOC_ID}`;
 
-      const identityDoc = await getDoc(docRef);
-      if (identityDoc.exists()) {
-        return identityDoc.data() as BrandIdentity;
+    const restFallback = async () => {
+      const restDoc = await fetchFirestoreDocument(restPath);
+      if (restDoc?.data) {
+        return { ...DEFAULT_IDENTITY, ...restDoc.data } as BrandIdentity;
       }
-    } catch (e) {
-      console.warn("Error fetching identity", e);
+      return DEFAULT_IDENTITY;
+    };
+
+    if (this.db) {
+      try {
+        let docRef;
+        if (slug === 'platform') {
+          docRef = doc(this.db, PLATFORM_COLLECTION, 'identity');
+        } else {
+          docRef = doc(this.db, ROOT_COLLECTION, slug, COLLECTIONS.IDENTITY, IDENTITY_DOC_ID);
+        }
+        const identityDoc = await getDoc(docRef);
+        if (identityDoc.exists()) {
+          return identityDoc.data() as BrandIdentity;
+        }
+      } catch (e) {
+        console.warn("Error fetching identity via Firestore, trying REST", e);
+        return restFallback();
+      }
+      return DEFAULT_IDENTITY;
     }
 
-    return DEFAULT_IDENTITY;
+    return restFallback();
   }
 
   getLandingPageContent = async (): Promise<LandingPageContent> => {
-      try {
-          if (!this.db) throw new Error("DB not init");
-          const docRef = doc(this.db, PLATFORM_COLLECTION, 'landing');
-          const snap = await getDoc(docRef);
-          if (snap.exists()) {
-              return snap.data() as LandingPageContent;
+      const restFallback = async () => {
+          const restDoc = await fetchFirestoreDocument(`${PLATFORM_COLLECTION}/landing`);
+          if (restDoc?.data) {
+            return restDoc.data as LandingPageContent;
           }
-      } catch (e) {
-          console.warn("Error fetching landing content", e);
+          return DEFAULT_LANDING;
+      };
+
+      if (this.db) {
+        try {
+            const docRef = doc(this.db, PLATFORM_COLLECTION, 'landing');
+            const snap = await getDoc(docRef);
+            if (snap.exists()) {
+                return snap.data() as LandingPageContent;
+            }
+        } catch (e) {
+            console.warn("Error fetching landing content via Firestore, trying REST", e);
+            return restFallback();
+        }
+        return DEFAULT_LANDING;
       }
-      return DEFAULT_LANDING;
+      return restFallback();
   }
 
   getPlatformTestimonials = async (): Promise<PlatformTestimonial[]> => {
-      try {
-          if (!this.db) return [];
-          const snapshot = await getDocs(collection(this.db, PLATFORM_COLLECTION, 'testimonials', 'items'));
-          return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as PlatformTestimonial));
-      } catch (e) {
-          console.warn("Error fetching platform testimonials", e);
-          return [];
+      const restFallback = async () => {
+        const docs = await fetchFirestoreCollection(`${PLATFORM_COLLECTION}/testimonials/items`);
+        return docs.map(({ id, data }) => ({ id, ...data })) as PlatformTestimonial[];
+      };
+
+      if (this.db) {
+        try {
+            const snapshot = await getDocs(collection(this.db, PLATFORM_COLLECTION, 'testimonials', 'items'));
+            return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as PlatformTestimonial));
+        } catch (e) {
+            console.warn("Error fetching platform testimonials via Firestore, trying REST", e);
+            return restFallback();
+        }
       }
+      return restFallback();
   }
 
   getCertifications = async (slug?: string): Promise<Certification[]> => {
-    if (!slug || !this.db) return [];
-    try {
-        const snapshot = await getDocs(collection(this.db, ROOT_COLLECTION, slug, COLLECTIONS.CERTS));
-        return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Certification));
-    } catch (e) {
-        return [];
+    if (!slug) return [];
+    const restFallback = async () => {
+      const docs = await fetchFirestoreCollection(`${ROOT_COLLECTION}/${slug}/${COLLECTIONS.CERTS}`);
+      return docs.map(({ id, data }) => ({ id, ...data })) as Certification[];
+    };
+
+    if (this.db) {
+      try {
+          const snapshot = await getDocs(collection(this.db, ROOT_COLLECTION, slug, COLLECTIONS.CERTS));
+          return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Certification));
+      } catch (e) {
+          console.warn("Error fetching certifications via Firestore, trying REST", e);
+          return restFallback();
+      }
     }
+    return restFallback();
   }
 
   getTransformations = async (slug?: string): Promise<Transformation[]> => {
-    if (!slug || !this.db) return [];
-    try {
-        const snapshot = await getDocs(collection(this.db, ROOT_COLLECTION, slug, COLLECTIONS.TRANS));
-        return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Transformation));
-    } catch (e) {
-        return [];
+    if (!slug) return [];
+    const restFallback = async () => {
+      const docs = await fetchFirestoreCollection(`${ROOT_COLLECTION}/${slug}/${COLLECTIONS.TRANS}`);
+      return docs.map(({ id, data }) => ({ id, ...data })) as Transformation[];
+    };
+
+    if (this.db) {
+      try {
+          const snapshot = await getDocs(collection(this.db, ROOT_COLLECTION, slug, COLLECTIONS.TRANS));
+          return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Transformation));
+      } catch (e) {
+          console.warn("Error fetching transformations via Firestore, trying REST", e);
+          return restFallback();
+      }
     }
+    return restFallback();
   }
 
   getClasses = async (slug?: string): Promise<GymClass[]> => {
-    if (!slug || !this.db) return [];
-    try {
-        const snapshot = await getDocs(collection(this.db, ROOT_COLLECTION, slug, COLLECTIONS.CLASSES));
-        return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as GymClass));
-    } catch (e) {
-        return [];
+    if (!slug) return [];
+    const restFallback = async () => {
+      const docs = await fetchFirestoreCollection(`${ROOT_COLLECTION}/${slug}/${COLLECTIONS.CLASSES}`);
+      return docs.map(({ id, data }) => ({ id, ...data })) as GymClass[];
+    };
+
+    if (this.db) {
+      try {
+          const snapshot = await getDocs(collection(this.db, ROOT_COLLECTION, slug, COLLECTIONS.CLASSES));
+          return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as GymClass));
+      } catch (e) {
+          console.warn("Error fetching classes via Firestore, trying REST", e);
+          return restFallback();
+      }
     }
+    return restFallback();
   }
 
   getTestimonials = async (slug?: string): Promise<Testimonial[]> => {
-    if (!slug || !this.db) return [];
-    try {
-        const snapshot = await getDocs(collection(this.db, ROOT_COLLECTION, slug, COLLECTIONS.TESTIMONIALS));
-        return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Testimonial));
-    } catch (e) {
-        return [];
+    if (!slug) return [];
+    const restFallback = async () => {
+      const docs = await fetchFirestoreCollection(`${ROOT_COLLECTION}/${slug}/${COLLECTIONS.TESTIMONIALS}`);
+      return docs.map(({ id, data }) => ({ id, ...data })) as Testimonial[];
+    };
+
+    if (this.db) {
+      try {
+          const snapshot = await getDocs(collection(this.db, ROOT_COLLECTION, slug, COLLECTIONS.TESTIMONIALS));
+          return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Testimonial));
+      } catch (e) {
+          console.warn("Error fetching testimonials via Firestore, trying REST", e);
+          return restFallback();
+      }
     }
+    return restFallback();
   }
 
   // --- Write (Scoped to Authenticated User) ---

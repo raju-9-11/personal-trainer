@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { useData } from '@/lib/data-provider';
 import { useEffect, useState } from 'react';
 import { TrainerProfile, SocialLink } from '@/lib/types';
-import { useTrainerSlug } from '@/app/[slug]/content';
+import { useTrainerSlug } from '@/app/trainer/content';
 
 export function SocialFeed() {
   const { getProfile } = useData();
