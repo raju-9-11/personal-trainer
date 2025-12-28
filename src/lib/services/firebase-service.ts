@@ -2,6 +2,7 @@ import { DataProviderType, TrainerProfile, Certification, Transformation, GymCla
 import { getFirebase } from '../firebase';
 import { collection, getDocs, doc, setDoc, addDoc, deleteDoc, updateDoc, Firestore, getDoc, query, where, Timestamp } from 'firebase/firestore';
 import { User } from 'firebase/auth';
+import { DEFAULT_BRAND_IDENTITY } from '../constants';
 
 const ROOT_COLLECTION = 'trainers';
 const PLATFORM_COLLECTION = 'platform_settings';
@@ -18,12 +19,7 @@ const COLLECTIONS = {
 const IDENTITY_DOC_ID = 'main';
 
 // Default values to use when data is missing or service is uninitialized
-const DEFAULT_IDENTITY: BrandIdentity = {
-    brandName: "Fitness Brand",
-    logoUrl: "",
-    primaryColor: "#000000",
-    secondaryColor: "#ffffff"
-};
+const DEFAULT_IDENTITY: BrandIdentity = DEFAULT_BRAND_IDENTITY;
 
 const DEFAULT_PROFILE: TrainerProfile = {
     name: "New Trainer",
@@ -144,7 +140,10 @@ export class FirebaseDataService implements DataProviderType {
     if (!slug) return DEFAULT_IDENTITY;
 
     try {
-      if (!this.db) throw new Error("DB not init");
+      if (!this.db) {
+        console.warn("DB not init; returning default brand identity");
+        return DEFAULT_IDENTITY;
+      }
       let docRef;
       if (slug === 'platform') {
         docRef = doc(this.db, PLATFORM_COLLECTION, 'identity');

@@ -12,6 +12,7 @@ import {
   CarouselNext,
   CarouselPrevious,
 } from "@/components/ui/carousel";
+import { DEFAULT_BRAND_NAME } from '@/lib/constants';
 
 export default function Home() {
   const { getTrainers, getLandingPageContent, getBrandIdentity, getPlatformTestimonials } = useData();
@@ -43,10 +44,18 @@ export default function Home() {
     fetchData();
   }, [getTrainers, getLandingPageContent, getBrandIdentity, getPlatformTestimonials]);
 
+  useEffect(() => {
+    if (brand?.brandName) {
+      document.title = `${brand.brandName} | Unleash Your Potential`;
+    } else if (!loading) {
+      document.title = `${DEFAULT_BRAND_NAME} | Unleash Your Potential`;
+    }
+  }, [brand, loading]);
+
   const heroTitle = landing?.heroTitle || "FIND YOUR TITAN";
   const heroSubtitle = landing?.heroSubtitle || "Elite personal trainers ready to help you shatter your limits. Choose your coach and start your journey today.";
   const heroImage = landing?.heroImageUrl || 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?q=80&w=2070&auto=format&fit=crop';
-  const brandName = brand?.brandName || "TITAN";
+  const brandName = brand?.brandName || DEFAULT_BRAND_NAME;
 
   if (loading) {
       return (

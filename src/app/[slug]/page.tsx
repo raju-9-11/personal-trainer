@@ -1,14 +1,8 @@
-import { Navbar } from '@/components/layout/navbar';
-import { Hero } from '@/components/sections/hero';
-import { About } from '@/components/sections/about';
-import { Transformations } from '@/components/sections/transformations';
-import { Classes } from '@/components/sections/classes';
-import { SocialFeed } from '@/components/sections/social-feed';
-import { Contact } from '@/components/sections/contact';
 import { Metadata } from 'next';
 import { FirebaseDataService } from '@/lib/services/firebase-service';
 import { TrainerPageContent } from './content';
 import { TrainerSummary } from '@/lib/types';
+import { DEFAULT_BRAND_NAME } from '@/lib/constants';
 
 type Props = {
   params: Promise<{ slug: string }>;
@@ -36,8 +30,18 @@ export async function generateMetadata(
 ): Promise<Metadata> {
   const params = await props.params;
   const slug = params.slug;
+  let brandName = DEFAULT_BRAND_NAME;
+  try {
+    const service = new FirebaseDataService(null);
+    const identity = await service.getBrandIdentity('platform');
+    if (identity?.brandName) {
+      brandName = identity.brandName;
+    }
+  } catch (e) {
+    console.warn('Failed to fetch trainer brand identity for metadata', e);
+  }
   return {
-    title: `Titan Fitness | ${slug}`,
+    title: `${brandName} | ${slug}`,
   };
 }
 

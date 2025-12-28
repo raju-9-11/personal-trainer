@@ -4,27 +4,31 @@ import * as React from 'react';
 import Link from 'next/link';
 import { Menu, X, Dumbbell } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { cn } from '@/lib/utils';
 import { motion } from 'framer-motion';
-import { useTrainerSlug } from '@/app/[slug]/content';
-import { useData } from '@/lib/data-provider';
+import { useBrandIdentity, useTrainerSlug } from '@/app/[slug]/content';
+import { DEFAULT_BRAND_NAME } from '@/lib/constants';
 
 export function Navbar() {
   const [isOpen, setIsOpen] = React.useState(false);
   const slug = useTrainerSlug();
-  const { getProfile } = useData();
-  const [brandName, setBrandName] = React.useState("Titan Fitness");
-
-  React.useEffect(() => {
-    if (slug) {
-        getProfile(slug).then(p => {
-             // Extract brand name from bio or just use a generic logic if strict branding per trainer isn't defined yet
-             // Using defaults
-        });
+  const { identity, loading } = useBrandIdentity();
+  const resolvedName = identity?.brandName;
+  const brandName = resolvedName || (loading ? '' : DEFAULT_BRAND_NAME);
+  const isLoadingIdentity = loading && !resolvedName;
+  const [brandLabel, highlightedLabel] = React.useMemo(() => {
+    const trimmed = brandName.trim();
+    if (!trimmed) {
+      return ['', ''];
     }
-  }, [slug, getProfile]);
+    const parts = trimmed.split(/\s+/);
+    if (parts.length === 1) {
+      return [parts[0], ''];
+    }
+    return [parts.slice(0, -1).join(' '), parts[parts.length - 1]];
+  }, [brandName]);
 
   const toggleMenu = () => setIsOpen(!isOpen);
+  const profileHref = slug ? `/${slug}` : '/';
 
   // Links must be relative to the slug page
   const links = [
@@ -44,9 +48,22 @@ export function Navbar() {
     >
       <div className="container mx-auto px-4 h-16 flex items-center justify-between">
         {/* Logo */}
-        <Link href={`/${slug}`} className="flex items-center space-x-2 font-bold text-xl uppercase tracking-tighter hover:text-primary transition-colors">
+        <Link href={profileHref} className="flex items-center space-x-2 font-bold text-xl uppercase tracking-tighter hover:text-primary transition-colors">
           <Dumbbell className="h-6 w-6 text-primary" />
-          <span>Titan<span className="text-primary">Fitness</span></span>
+          {isLoadingIdentity ? (
+            <span className="text-sm font-medium text-muted-foreground animate-pulse">Loading...</span>
+          ) : (
+            <span>
+              {highlightedLabel ? (
+                <>
+                  {brandLabel}{' '}
+                  <span className="text-primary">{highlightedLabel}</span>
+                </>
+              ) : (
+                brandLabel || DEFAULT_BRAND_NAME
+              )}
+            </span>
+          )}
         </Link>
 
         {/* Desktop Menu */}

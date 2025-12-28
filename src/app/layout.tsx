@@ -5,6 +5,7 @@ import { DataProvider } from "@/lib/data-provider";
 import { AuthProvider } from "@/lib/auth-context";
 import { CustomAlert } from "@/components/ui/custom-alert";
 import { FirebaseDataService } from "@/lib/services/firebase-service";
+import { DEFAULT_BRAND_NAME } from "@/lib/constants";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -17,7 +18,7 @@ const geistMono = Geist_Mono({
 });
 
 export async function generateMetadata(): Promise<Metadata> {
-  let brandName = "Titan Fitness";
+  let brandName = DEFAULT_BRAND_NAME;
   let description = "Elite Personal Training & Fitness Coaching";
 
   try {
