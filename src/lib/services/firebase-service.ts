@@ -29,7 +29,17 @@ export class FirebaseDataService implements DataProviderType {
   getProfile = async (): Promise<TrainerProfile> => {
     const snapshot = await getDocs(collection(this.db, COLLECTIONS.PROFILE));
     if (snapshot.empty) {
-      throw new Error("Profile not found in Firestore. Please create a document in 'profile' collection.");
+      console.warn("Profile not found in Firestore. Returning default profile. Please create a document in 'profile' collection.");
+      return {
+        name: "Your Name",
+        bio: "Your Bio",
+        heroTitle: "Your Hero Title",
+        heroSubtitle: "Your Hero Subtitle",
+        contactEmail: "your.email@example.com",
+        contactPhone: "Your Phone",
+        instagramUrl: "",
+        youtubeUrl: "",
+      };
     }
     return snapshot.docs[0].data() as TrainerProfile;
   }
