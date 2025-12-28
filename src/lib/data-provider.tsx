@@ -35,7 +35,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <DataContext.Provider value={service}>
-      {children}
+      {service ? children : null}
     </DataContext.Provider>
   );
 }
