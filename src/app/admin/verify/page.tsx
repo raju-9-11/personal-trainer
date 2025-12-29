@@ -22,7 +22,7 @@ export default function VerifyPage() {
     finishLogin(email, window.location.href)
       .then(() => {
         setStatus('Success! Redirecting...');
-        setTimeout(() => router.push('/admin/dashboard'), 1500);
+        setTimeout(() => router.push('/admin/dashboard/'), 1500);
       })
       .catch((err) => {
         console.error(err);

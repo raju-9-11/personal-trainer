@@ -50,7 +50,7 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (!isAuthenticated) {
-      router.push('/admin/login');
+      router.push('/admin/login/');
       return;
     }
 
