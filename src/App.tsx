@@ -5,6 +5,7 @@ import TrainerPage from './pages/TrainerPage'
 import AdminPage from './pages/AdminPage'
 import LoginPage from './pages/admin/LoginPage'
 import DashboardPage from './pages/admin/DashboardPage'
+import NotFoundPage from './pages/NotFoundPage'
 
 function ScrollToTop() {
   const { pathname, search } = useLocation()
@@ -26,6 +27,7 @@ function App() {
         <Route path="/admin" element={<AdminPage />} />
         <Route path="/admin/login" element={<LoginPage />} />
         <Route path="/admin/dashboard" element={<DashboardPage />} />
+        <Route path="*" element={<NotFoundPage />} />
       </Routes>
     </>
   )

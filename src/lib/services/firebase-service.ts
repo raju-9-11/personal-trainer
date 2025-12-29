@@ -4,8 +4,8 @@ import { collection, getDocs, doc, setDoc, addDoc, deleteDoc, updateDoc, Firesto
 import { User } from 'firebase/auth';
 import { DEFAULT_BRAND_IDENTITY } from '../constants';
 
-const FIREBASE_PROJECT_ID = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
-const FIREBASE_API_KEY = process.env.NEXT_PUBLIC_FIREBASE_API_KEY;
+const FIREBASE_PROJECT_ID = import.meta.env.VITE_FIREBASE_PROJECT_ID;
+const FIREBASE_API_KEY = import.meta.env.VITE_FIREBASE_API_KEY;
 const FIRESTORE_REST_BASE = FIREBASE_PROJECT_ID
   ? `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT_ID}/databases/(default)/documents`
   : null;
