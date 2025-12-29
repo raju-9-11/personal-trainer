@@ -6,7 +6,6 @@
     "indexes": "firestore.indexes.json"
   },
   "hosting": {
-    "source": ".",
     "public": "out",
     "ignore": [
       "firebase.json",

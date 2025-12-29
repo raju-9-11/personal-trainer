@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import Link from 'next/link';
+import { Link } from 'react-router-dom';
 import { Menu, X, Dumbbell } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { motion } from 'framer-motion';
@@ -48,7 +48,7 @@ export function Navbar() {
     >
       <div className="container mx-auto px-4 h-16 flex items-center justify-between">
         {/* Logo */}
-        <Link href={profileHref} className="flex items-center space-x-2 font-bold text-xl uppercase tracking-tighter hover:text-primary transition-colors">
+        <Link to={profileHref} className="flex items-center space-x-2 font-bold text-xl uppercase tracking-tighter hover:text-primary transition-colors">
           <Dumbbell className="h-6 w-6 text-primary" />
           {isLoadingIdentity ? (
             <span className="text-sm font-medium text-muted-foreground animate-pulse">Loading...</span>
@@ -69,16 +69,16 @@ export function Navbar() {
         {/* Desktop Menu */}
         <div className="hidden md:flex items-center space-x-6">
           {links.map((link) => (
-            <Link
+            <a
               key={link.href}
               href={link.href}
               className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors"
             >
               {link.label}
-            </Link>
+            </a>
           ))}
           <Button variant="default" size="sm" asChild>
-            <Link href="#contact">Book Now</Link>
+            <a href="#contact">Book Now</a>
           </Button>
         </div>
 
@@ -99,17 +99,17 @@ export function Navbar() {
         >
           <div className="container mx-auto px-4 py-4 flex flex-col space-y-4">
             {links.map((link) => (
-              <Link
+              <a
                 key={link.href}
                 href={link.href}
                 className="text-lg font-medium hover:text-primary transition-colors"
                 onClick={() => setIsOpen(false)}
               >
                 {link.label}
-              </Link>
+              </a>
             ))}
             <Button className="w-full" asChild>
-              <Link href="#contact" onClick={() => setIsOpen(false)}>Book Your Session</Link>
+              <a href="#contact" onClick={() => setIsOpen(false)}>Book Your Session</a>
             </Button>
           </div>
         </motion.div>

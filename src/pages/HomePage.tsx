@@ -1,7 +1,5 @@
-'use client';
-
-import { Link } from 'react-router-dom';
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useData } from '@/lib/data-provider';
 import { TrainerSummary, LandingPageContent, BrandIdentity, PlatformTestimonial } from '@/lib/types';
 import {
@@ -13,7 +11,7 @@ import {
 } from "@/components/ui/carousel";
 import { DEFAULT_BRAND_NAME } from '@/lib/constants';
 
-export function LandingPage() {
+export default function HomePage() {
   const { getTrainers, getLandingPageContent, getBrandIdentity, getPlatformTestimonials } = useData();
   const [trainers, setTrainers] = useState<TrainerSummary[]>([]);
   const [landing, setLanding] = useState<LandingPageContent | null>(null);
@@ -140,7 +138,6 @@ export function LandingPage() {
                   trainers.map((trainer) => (
                     <Link key={trainer.slug} to={`/trainer?slug=${trainer.slug}`} className="group relative block overflow-hidden rounded-2xl aspect-[3/4] w-full max-w-[350px]">
                       <div className="absolute inset-0 bg-gray-900" />
-                      {/* Placeholder image logic if no image provided */}
                       <div
                         className="absolute inset-0 bg-cover bg-center transition-transform duration-500 group-hover:scale-110 opacity-70 group-hover:opacity-100"
                         style={{ backgroundImage: `url(${trainer.profileImage ? trainer.profileImage : 'https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?q=80&w=2070&auto=format&fit=crop'})` }}
@@ -201,7 +198,6 @@ export function LandingPage() {
                  </Carousel>
              ) : (
                 <>
-                 {/* Fallback if no testimonials created yet */}
                  <div className="bg-gray-900 rounded-xl p-8 border border-white/10 opacity-50 w-full max-w-md text-center">
                     <p>Success stories coming soon.</p>
                  </div>
