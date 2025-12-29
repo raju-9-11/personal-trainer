@@ -8,6 +8,9 @@ import { useData } from '@/lib/data-provider';
 import { useEffect, useState } from 'react';
 import { TrainerProfile, SocialLink } from '@/lib/types';
 import { useTrainerSlug } from '@/components/TrainerContext';
+import ReactPlayer from 'react-player';
+
+// Switch to main import to avoid build resolution issues
 
 export function SocialFeed() {
   const { getProfile } = useData();
@@ -48,55 +51,12 @@ export function SocialFeed() {
 
   const instagramLinks = getLinksByPlatform('instagram');
   const youtubeLinks = getLinksByPlatform('youtube');
-  const instagramProfileLink = instagramLinks[0]?.url || profile?.instagramUrl || '';
-  const youtubeProfileLink = youtubeLinks[0]?.url || profile?.youtubeUrl || '';
 
-  const getYoutubeId = (url: string): string | null => {
-    try {
-      const parsed = new URL(url);
-      if (parsed.hostname.includes('youtu.be')) {
-        return parsed.pathname.replace('/', '');
-      }
-      if (parsed.hostname.includes('youtube.com')) {
-        if (parsed.searchParams.get('v')) {
-          return parsed.searchParams.get('v');
-        }
-        const segments = parsed.pathname.split('/').filter(Boolean);
-        if (segments[0] === 'shorts' && segments[1]) {
-          return segments[1];
-        }
-        const embedIndex = segments.findIndex(segment => segment === 'embed');
-        if (embedIndex !== -1 && segments[embedIndex + 1]) {
-          return segments[embedIndex + 1];
-        }
-      }
-    } catch (e) {
-      return null;
-    }
-    return null;
-  };
-
-  const getYoutubeThumbnail = (url: string): string | null => {
-    const id = getYoutubeId(url);
-    return id ? `https://img.youtube.com/vi/${id}/hqdefault.jpg` : null;
-  };
-
-  const getInstagramCode = (url: string): { type: 'p' | 'reel' | 'tv'; id: string } | null => {
-    try {
-      const parsed = new URL(url);
-      if (!parsed.hostname.includes('instagram.com')) return null;
-      const segments = parsed.pathname.split('/').filter(Boolean);
-      if (segments.length < 2) return null;
-      const type = segments[0];
-      const id = segments[1];
-      if (['p', 'reel', 'tv'].includes(type) && id) {
-        return { type: type as 'p' | 'reel' | 'tv', id };
-      }
-    } catch (e) {
-      return null;
-    }
-    return null;
-  };
+  // Use profile specific URLs for the profile buttons if available, otherwise fallback to the first link found
+  // However, usually "instagramUrl" on profile is the profile link, and socialLinks are posts.
+  // We will assume profile.instagramUrl is the profile link.
+  const instagramProfileLink = profile?.instagramUrl || (instagramLinks.length > 0 ? instagramLinks[0].url : '');
+  const youtubeProfileLink = profile?.youtubeUrl || (youtubeLinks.length > 0 ? youtubeLinks[0].url : '');
 
   useEffect(() => {
     if (instagramLinks.length === 0) return;
@@ -200,33 +160,23 @@ export function SocialFeed() {
               <h3 className="text-lg font-bold mb-6 flex items-center gap-2">
                  <Youtube className="text-primary" /> Recent Training Videos
               </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 w-full">
                 {youtubeLinks.map((link, idx) => {
-                  const thumbnail = getYoutubeThumbnail(link.url);
                   return (
-                    <Card key={idx} className="w-full max-w-md aspect-video bg-black rounded-xl overflow-hidden relative group cursor-pointer border-none">
-                      <a href={link.url} target="_blank" rel="noopener noreferrer" className="block w-full h-full">
-                        <div className="w-full h-full bg-muted/20 relative">
-                          {thumbnail ? (
-                            <img
-                              src={thumbnail}
-                              alt={`Training video preview ${idx + 1}`}
-                              className="w-full h-full object-cover"
-                              loading="lazy"
-                            />
-                          ) : (
-                            <div className="w-full h-full bg-muted flex items-center justify-center text-muted-foreground font-semibold">
-                              Video {idx + 1}
-                            </div>
-                          )}
-                          <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <div className="w-16 h-16 rounded-full bg-primary/90 flex items-center justify-center group-hover:scale-110 transition-transform">
-                              <Play className="h-6 w-6 text-black fill-black ml-1" />
-                            </div>
-                            <span className="text-xs uppercase tracking-wide text-white/80">Watch on YouTube</span>
-                          </div>
-                        </div>
-                      </a>
+                    <Card key={idx} className="w-full aspect-video bg-black rounded-xl overflow-hidden relative border-none shadow-lg">
+                       <ReactPlayer
+                          // @ts-ignore
+                          url={link.url}
+                          width="100%"
+                          height="100%"
+                          controls
+                          light={true}
+                          playIcon={
+                              <div className="w-16 h-16 rounded-full bg-primary/90 flex items-center justify-center hover:scale-110 transition-transform cursor-pointer">
+                                  <Play className="h-6 w-6 text-black fill-black ml-1" />
+                              </div>
+                          }
+                        />
                     </Card>
                   );
                 })}

@@ -2,15 +2,17 @@
 
 import * as React from 'react';
 import { Link } from 'react-router-dom';
-import { Menu, X, Dumbbell } from 'lucide-react';
+import { Menu, X, Dumbbell, Sun, Moon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { motion } from 'framer-motion';
 import { useBrandIdentity, useTrainerSlug } from '@/components/TrainerContext';
 import { DEFAULT_BRAND_NAME } from '@/lib/constants';
+import { useTheme } from '@/components/ThemeContext';
 
 export function Navbar() {
   const [isOpen, setIsOpen] = React.useState(false);
   const slug = useTrainerSlug();
+  const { theme, toggleTheme } = useTheme();
   const { identity, loading } = useBrandIdentity();
   const resolvedName = identity?.brandName;
   const brandName = resolvedName || (loading ? '' : DEFAULT_BRAND_NAME);
@@ -77,13 +79,19 @@ export function Navbar() {
               {link.label}
             </a>
           ))}
+          <Button variant="ghost" size="icon" onClick={toggleTheme} aria-label="Toggle Theme">
+              {theme === 'dark' ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+          </Button>
           <Button variant="default" size="sm" asChild>
             <a href="#contact">Book Now</a>
           </Button>
         </div>
 
         {/* Mobile Menu Toggle */}
-        <div className="md:hidden">
+        <div className="md:hidden flex items-center gap-2">
+          <Button variant="ghost" size="icon" onClick={toggleTheme} aria-label="Toggle Theme">
+              {theme === 'dark' ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+          </Button>
           <Button variant="ghost" size="icon" onClick={toggleMenu} aria-label="Toggle Menu">
             {isOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
           </Button>

@@ -43,6 +43,12 @@ export interface Transformation {
   description: string;
   beforeImage: string;
   afterImage: string;
+  // Enhanced fields
+  duration?: string;
+  weightLost?: string;
+  muscleGained?: string;
+  keyChallenges?: string;
+  trainerNote?: string;
 }
 
 export interface GymClass {
@@ -50,6 +56,8 @@ export interface GymClass {
   title: string;
   description: string;
   time: string;
+  dateIso?: string; // For countdown
+  price?: number; // 0 for free
   durationMinutes: number;
   maxSpots: number;
   enrolledSpots: number;

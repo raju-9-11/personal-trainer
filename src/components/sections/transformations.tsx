@@ -7,11 +7,13 @@ import { motion } from 'framer-motion';
 import { Card, CardContent } from '@/components/ui/card';
 import { ArrowRight } from 'lucide-react';
 import { useTrainerSlug } from '@/components/TrainerContext';
+import { TransformationDetailModal } from '@/components/ui/transformation-detail-modal';
 
 export function Transformations() {
   const { getTransformations } = useData();
   const slug = useTrainerSlug();
   const [items, setItems] = useState<Transformation[]>([]);
+  const [selectedItem, setSelectedItem] = useState<Transformation | null>(null);
 
   useEffect(() => {
     if (slug) {
@@ -40,15 +42,18 @@ export function Transformations() {
               viewport={{ once: true }}
               transition={{ delay: idx * 0.1 }}
             >
-              <Card className="overflow-hidden border-border/50 h-full">
+              <Card
+                className="overflow-hidden border-border/50 h-full cursor-pointer hover:border-primary/50 transition-colors group"
+                onClick={() => setSelectedItem(item)}
+              >
                 <CardContent className="p-0">
                   <div className="grid grid-cols-2 gap-0.5 bg-border">
-                    <div className="relative aspect-[3/4] group">
+                    <div className="relative aspect-[3/4] group-hover:opacity-90 transition-opacity">
                        {/* Placeholder for real images */}
                        <div className="absolute inset-0 bg-muted flex items-center justify-center text-muted-foreground font-bold">BEFORE</div>
                        <img src={item.beforeImage} alt="Before" className="w-full h-full object-cover relative z-10" />
                     </div>
-                    <div className="relative aspect-[3/4] group">
+                    <div className="relative aspect-[3/4] group-hover:opacity-90 transition-opacity">
                        <div className="absolute inset-0 bg-primary/20 flex items-center justify-center text-primary font-bold">AFTER</div>
                        <img src={item.afterImage} alt="After" className="w-full h-full object-cover relative z-10" />
                     </div>
@@ -56,11 +61,11 @@ export function Transformations() {
                   <div className="p-6">
                     <div className="flex items-center justify-between mb-2">
                       <h3 className="font-bold text-lg">{item.clientName}</h3>
-                      <div className="bg-primary/10 text-primary p-2 rounded-full">
+                      <div className="bg-primary/10 text-primary p-2 rounded-full group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
                         <ArrowRight size={16} />
                       </div>
                     </div>
-                    <p className="text-sm text-muted-foreground">{item.description}</p>
+                    <p className="text-sm text-muted-foreground line-clamp-2">{item.description}</p>
                   </div>
                 </CardContent>
               </Card>
@@ -68,6 +73,14 @@ export function Transformations() {
           ))}
         </div>
       </div>
+
+      {selectedItem && (
+        <TransformationDetailModal
+            item={selectedItem}
+            isOpen={!!selectedItem}
+            onClose={() => setSelectedItem(null)}
+        />
+      )}
     </section>
   );
 }

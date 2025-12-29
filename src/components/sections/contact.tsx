@@ -14,8 +14,21 @@ export function Contact() {
   const slug = useTrainerSlug();
 
   const onSubmit = (data: any) => {
+    // In a real application, this would send data to a backend or EmailJS
     console.log(`Message for ${slug}:`, data);
-    alert("Message sent! (This is a demo)");
+    // Simulate API call
+    const btn = document.getElementById('contact-submit-btn') as HTMLButtonElement;
+    if(btn) {
+        const originalText = btn.innerText;
+        btn.disabled = true;
+        btn.innerText = "Sending...";
+        setTimeout(() => {
+            alert("Message sent! I'll get back to you soon.");
+            btn.disabled = false;
+            btn.innerText = originalText;
+            (document.getElementById('contact-form') as HTMLFormElement)?.reset();
+        }, 1500);
+    }
   };
 
   return (
@@ -34,7 +47,7 @@ export function Contact() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+              <form id="contact-form" onSubmit={handleSubmit(onSubmit)} className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-2">
                     <Label htmlFor="name">Name</Label>
@@ -59,7 +72,7 @@ export function Contact() {
                   {errors.message && <span className="text-red-500 text-xs">Message is required</span>}
                 </div>
 
-                <Button type="submit" size="lg" className="w-full text-lg">Send Message</Button>
+                <Button id="contact-submit-btn" type="submit" size="lg" className="w-full text-lg">Send Message</Button>
               </form>
             </CardContent>
           </Card>
