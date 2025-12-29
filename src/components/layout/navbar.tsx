@@ -53,7 +53,7 @@ export function Navbar() {
         <Link to={profileHref} className="flex items-center space-x-2 font-bold text-xl uppercase tracking-tighter hover:text-primary transition-colors">
           <Dumbbell className="h-6 w-6 text-primary" />
           {isLoadingIdentity ? (
-            <span className="text-sm font-medium text-muted-foreground animate-pulse">Loading...</span>
+            <span className="text-sm font-medium text-muted-foreground animate-pulse opacity-0">...</span>
           ) : (
             <span>
               {highlightedLabel ? (

@@ -3,6 +3,8 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { getFirebase } from './firebase';
 import { signInWithEmailAndPassword, signOut, onAuthStateChanged, User, isSignInWithEmailLink, signInWithEmailLink } from 'firebase/auth';
+import { BootLoader } from '@/components/ui/boot-loader';
+import { AnimatePresence } from 'framer-motion';
 
 interface AuthContextType {
   user: User | null;
@@ -141,6 +143,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <AuthContext.Provider value={{ isAuthenticated, user, login, finishLogin, logout, loading, trainerSlug, isSuperAdmin }}>
+      <AnimatePresence>
+        {loading && <BootLoader message="Authenticating..." />}
+      </AnimatePresence>
       {!loading && children}
     </AuthContext.Provider>
   );

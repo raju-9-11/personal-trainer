@@ -18,6 +18,8 @@ import { Trash2, Plus, Save, Upload, ExternalLink, Globe, Loader2 } from 'lucide
 import { getFirebase } from '@/lib/firebase';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { useAlert } from '@/components/ui/custom-alert';
+import { BootLoader } from '@/components/ui/boot-loader';
+import { AnimatePresence } from 'framer-motion';
 
 export default function DashboardPage() {
   const { isAuthenticated, logout, trainerSlug, user, isSuperAdmin } = useAuth();
@@ -211,7 +213,11 @@ export default function DashboardPage() {
       (e.target as HTMLFormElement).reset();
   };
 
-  if (loading) return <div className="p-8">Loading Dashboard...</div>;
+  if (loading) return (
+      <AnimatePresence>
+          <BootLoader message="Loading Dashboard..." />
+      </AnimatePresence>
+  );
 
   const getPageTitle = () => {
       if (isSuperAdmin) {
