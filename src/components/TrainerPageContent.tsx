@@ -47,8 +47,10 @@ export function TrainerPageContent({ slug }: { slug: string }) {
       });
     return () => {
       isActive = false;
-      // Reset variables on cleanup if needed, but might be jarring.
-      // Better to let next page load overwrite them.
+      // Reset variables on cleanup to ensure they don't leak to other pages or trainers
+      const root = document.documentElement;
+      root.style.removeProperty('--primary');
+      root.style.removeProperty('--secondary');
     };
   }, [getBrandIdentity, slug]);
 
