@@ -2,11 +2,10 @@
 
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
-import Link from 'next/link';
 import { useData } from '@/lib/data-provider';
 import { useEffect, useState } from 'react';
 import { TrainerProfile } from '@/lib/types';
-import { useTrainerSlug } from '@/app/trainer/content';
+import { useTrainerSlug } from '@/components/TrainerContext';
 
 export function Hero() {
   const { getProfile } = useData();
@@ -62,10 +61,10 @@ export function Hero() {
           className="flex flex-col md:flex-row gap-4"
         >
           <Button size="lg" className="text-lg px-8 py-6 rounded-full" asChild>
-            <Link href={`/trainer?slug=${slug}#contact`}>Start Your Journey</Link>
+            <a href="#contact">Start Your Journey</a>
           </Button>
           <Button size="lg" variant="outline" className="text-lg px-8 py-6 rounded-full" asChild>
-            <Link href={`/trainer?slug=${slug}#classes`}>View Classes</Link>
+            <a href="#classes">View Classes</a>
           </Button>
         </motion.div>
       </div>

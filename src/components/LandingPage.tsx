@@ -1,10 +1,9 @@
 'use client';
 
-import Link from 'next/link';
+import { Link } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { useData } from '@/lib/data-provider';
 import { TrainerSummary, LandingPageContent, BrandIdentity, PlatformTestimonial } from '@/lib/types';
-import Image from 'next/image';
 import {
   Carousel,
   CarouselContent,
@@ -14,7 +13,7 @@ import {
 } from "@/components/ui/carousel";
 import { DEFAULT_BRAND_NAME } from '@/lib/constants';
 
-export default function Home() {
+export function LandingPage() {
   const { getTrainers, getLandingPageContent, getBrandIdentity, getPlatformTestimonials } = useData();
   const [trainers, setTrainers] = useState<TrainerSummary[]>([]);
   const [landing, setLanding] = useState<LandingPageContent | null>(null);
@@ -139,7 +138,7 @@ export default function Home() {
                   <p className="text-center w-full col-span-3 text-muted-foreground">No trainers available yet.</p>
               ) : (
                   trainers.map((trainer) => (
-                    <Link key={trainer.slug} href={`/trainer?slug=${trainer.slug}`} className="group relative block overflow-hidden rounded-2xl aspect-[3/4] w-full max-w-[350px]">
+                    <Link key={trainer.slug} to={`/trainer?slug=${trainer.slug}`} className="group relative block overflow-hidden rounded-2xl aspect-[3/4] w-full max-w-[350px]">
                       <div className="absolute inset-0 bg-gray-900" />
                       {/* Placeholder image logic if no image provided */}
                       <div
@@ -181,7 +180,7 @@ export default function Home() {
                                 <div className="bg-gray-900 rounded-xl p-8 border border-white/10 h-full">
                                     <div className="flex gap-4 items-center mb-4">
                                        {t.imageUrl ? (
-                                           <Image src={t.imageUrl} alt={t.name} width={48} height={48} className="rounded-full w-12 h-12 object-cover" />
+                                           <img src={t.imageUrl} alt={t.name} className="rounded-full w-12 h-12 object-cover" />
                                        ) : (
                                            <div className="w-12 h-12 bg-primary rounded-full flex items-center justify-center font-bold text-black">
                                                {t.name.substring(0,2).toUpperCase()}

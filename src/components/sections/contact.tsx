@@ -7,7 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { motion } from 'framer-motion';
-import { useTrainerSlug } from '@/app/trainer/content';
+import { useTrainerSlug } from '@/components/TrainerContext';
 
 export function Contact() {
   const { register, handleSubmit, formState: { errors } } = useForm();

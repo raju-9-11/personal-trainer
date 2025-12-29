@@ -1,11 +1,9 @@
-'use client';
-
 import { useMemo } from 'react';
-import { useSearchParams } from 'next/navigation';
-import { TrainerPageContent } from './content';
+import { useSearchParams } from 'react-router-dom';
+import { TrainerPageContent } from '@/components/TrainerPageContent';
 
 export default function TrainerPage() {
-  const searchParams = useSearchParams();
+  const [searchParams] = useSearchParams();
   const slug = useMemo(() => searchParams.get('slug')?.trim(), [searchParams]);
 
   if (!slug) {

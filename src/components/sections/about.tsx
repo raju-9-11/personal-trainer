@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { motion } from 'framer-motion';
 import { Award, User } from 'lucide-react';
-import { useTrainerSlug } from '@/app/trainer/content';
+import { useTrainerSlug } from '@/components/TrainerContext';
 
 export function About() {
   const { getProfile, getCertifications } = useData();
