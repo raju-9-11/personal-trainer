@@ -172,11 +172,11 @@ export function LandingPage() {
                     opts={{
                         align: "start",
                     }}
-                    className="w-full max-w-5xl"
+                    className="w-full max-w-5xl mx-auto"
                  >
-                    <CarouselContent>
+                    <CarouselContent className="-ml-2 md:-ml-4">
                         {testimonials.map((t) => (
-                            <CarouselItem key={t.id} className="md:basis-1/2 lg:basis-1/2 p-2">
+                            <CarouselItem key={t.id} className="pl-2 md:pl-4 md:basis-1/2 lg:basis-1/2 p-2">
                                 <div className="bg-gray-900 rounded-xl p-8 border border-white/10 h-full">
                                     <div className="flex gap-4 items-center mb-4">
                                        {t.imageUrl ? (

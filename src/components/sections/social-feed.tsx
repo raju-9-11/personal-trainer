@@ -120,12 +120,10 @@ export function SocialFeed() {
               <div className="flex flex-wrap justify-center gap-6 w-full">
                 {instagramLinks.map((link, idx) => {
                   return (
-                    <motion.div
+                    <div
                       key={idx}
-                      whileHover={{ scale: 1.02 }}
-                      className="bg-card rounded-xl overflow-hidden relative group cursor-pointer w-full max-w-[320px] border border-border/50 shadow-lg"
+                      className="w-full max-w-[350px] overflow-hidden rounded-lg shadow-lg border border-border/50 bg-background"
                     >
-                      <div className="w-full bg-background relative rounded-xl overflow-hidden p-2">
                         <blockquote
                           className="instagram-media w-full"
                           data-instgrm-permalink={link.url}
@@ -133,7 +131,7 @@ export function SocialFeed() {
                           style={{
                             minWidth: '300px',
                             width: '100%',
-                            background: 'white', // Instagram iframe usually expects white background
+                            background: 'white',
                             border: 0,
                             margin: 0,
                             padding: 0,
@@ -143,11 +141,7 @@ export function SocialFeed() {
                             Loading post...
                           </div>
                         </blockquote>
-                        <div className="absolute inset-0 pointer-events-none bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-4 justify-center">
-                           <span className="text-white text-xs font-bold tracking-widest">View on Instagram</span>
-                        </div>
-                      </div>
-                    </motion.div>
+                    </div>
                   );
                 })}
               </div>
@@ -162,16 +156,17 @@ export function SocialFeed() {
               </h3>
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 w-full">
                 {youtubeLinks.map((link, idx) => {
+                  const embedUrl = link.url.replace("watch?v=", "embed/").replace("youtu.be/", "youtube.com/embed/");
                   return (
                     <Card key={idx} className="w-full aspect-video bg-black rounded-xl overflow-hidden relative border-none shadow-lg">
-                       <ReactPlayer
-                          // @ts-ignore
-                          url={link.url}
-                          width="100%"
-                          height="100%"
-                          controls
-                          light={false} // Disabled light mode to ensure player loads if thumbnail fails
-                        />
+                       <iframe
+                          src={embedUrl}
+                          className="w-full h-full"
+                          title={`YouTube video player ${idx}`}
+                          frameBorder="0"
+                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                          allowFullScreen
+                       ></iframe>
                     </Card>
                   );
                 })}

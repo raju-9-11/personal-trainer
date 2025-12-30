@@ -103,7 +103,7 @@ export function TrainerPageContent({ slug }: { slug: string }) {
     <TrainerContext.Provider value={slug}>
       <BrandIdentityContext.Provider value={{ identity: brand, loading: brandLoading }}>
         <AnimatePresence>
-            {brandLoading && <BootLoader message={brand?.brandName ? `Loading ${brand.brandName}` : `Loading Profile...`} />}
+            {brandLoading && <BootLoader message={brand?.brandName ? `Loading ${brand.brandName}` : `Loading ${slug.toUpperCase()}`} />}
         </AnimatePresence>
 
         {!brandLoading && (
