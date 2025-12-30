@@ -7,6 +7,7 @@ import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/com
 import { Shield, Sun, Moon, ArrowLeft } from 'lucide-react';
 import { useTheme } from '@/components/ThemeContext';
 import { Link } from 'react-router-dom';
+import { useEffect } from 'react';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -16,6 +17,10 @@ export default function LoginPage() {
   const { login } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    document.title = 'Trainer Login';
+  }, []);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -49,7 +54,7 @@ export default function LoginPage() {
           <div className="mx-auto bg-primary/10 w-12 h-12 rounded-full flex items-center justify-center mb-4">
             <Shield className="text-primary h-6 w-6" />
           </div>
-          <CardTitle className="text-2xl">Trainer Portal</CardTitle>
+          <CardTitle className="text-2xl">Trainer Login</CardTitle>
           <CardDescription>Enter your credentials to access the dashboard</CardDescription>
         </CardHeader>
 
