@@ -85,6 +85,7 @@ export interface BrandIdentity {
   secondaryColor: string; // Deprecated but kept for compatibility, ignored if using auto-palette
   // New fields
   baseColor?: string; // Preferred over primaryColor if present
+  themePresetId?: string;
 }
 
 export interface LandingPageContent {

@@ -54,7 +54,8 @@ export function TrainerPageContent({ slug }: { slug: string }) {
     if (!baseColor) return;
 
     const root = document.documentElement;
-    const palettes = generatePalette(baseColor);
+    // Pass secondary color if available
+    const palettes = generatePalette(baseColor, brand.secondaryColor);
     const palette = theme === 'dark' ? palettes.dark : palettes.light;
 
     root.style.setProperty('--primary', palette.primary);

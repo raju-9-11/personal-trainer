@@ -53,7 +53,7 @@ export function BootLoader({ message }: { message?: string }) {
         className="relative mb-8"
       >
         <div className="absolute inset-0 bg-primary/20 rounded-full blur-xl animate-pulse" />
-        <Activity className="h-24 w-24 text-primary relative z-10" />
+        <Activity className="h-24 w-24 text-foreground relative z-10" />
       </motion.div>
 
       <motion.div
@@ -62,7 +62,7 @@ export function BootLoader({ message }: { message?: string }) {
         transition={{ delay: 0.2 }}
         className="text-center space-y-4 max-w-md"
       >
-        <h2 className="text-xl md:text-2xl font-bold tracking-tight text-primary">
+        <h2 className="text-xl md:text-2xl font-bold tracking-tight text-foreground">
           {message || quote}
         </h2>
         
@@ -75,7 +75,7 @@ export function BootLoader({ message }: { message?: string }) {
                         key={i}
                         animate={{ scaleY: [1, 1.5, 1] }}
                         transition={{ duration: 1, repeat: Infinity, delay: i * 0.1 }}
-                        className="w-1 h-4 bg-primary/60"
+                        className="w-1 h-4 bg-foreground/60"
                     />
                 ))}
             </div>

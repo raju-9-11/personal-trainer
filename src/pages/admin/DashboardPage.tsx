@@ -21,6 +21,7 @@ import { useAlert } from '@/components/ui/custom-alert';
 import { BootLoader } from '@/components/ui/boot-loader';
 import { AnimatePresence } from 'framer-motion';
 import { useTheme } from '@/components/ThemeContext';
+import { THEME_PRESETS } from '@/lib/theme-presets';
 
 export default function DashboardPage() {
   const { isAuthenticated, logout, trainerSlug, user, isSuperAdmin } = useAuth();
@@ -462,22 +463,37 @@ export default function DashboardPage() {
                                     }} />
                                 </div>
                             </div>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div className="space-y-2">
-                                    <Label>Primary Color</Label>
-                                    <div className="flex gap-2">
-                                        <Input type="color" className="w-12 p-1 h-10" value={identity.primaryColor} onChange={e => setIdentity({...identity, primaryColor: e.target.value})} />
-                                        <Input value={identity.primaryColor} onChange={e => setIdentity({...identity, primaryColor: e.target.value})} />
-                                    </div>
-                                </div>
-                                <div className="space-y-2">
-                                    <Label>Secondary Color</Label>
-                                     <div className="flex gap-2">
-                                        <Input type="color" className="w-12 p-1 h-10" value={identity.secondaryColor} onChange={e => setIdentity({...identity, secondaryColor: e.target.value})} />
-                                        <Input value={identity.secondaryColor} onChange={e => setIdentity({...identity, secondaryColor: e.target.value})} />
-                                    </div>
+                            
+                            <div className="space-y-4">
+                                <Label>Color Theme</Label>
+                                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                                    {THEME_PRESETS.map((preset) => (
+                                        <div 
+                                            key={preset.id}
+                                            onClick={() => setIdentity({
+                                                ...identity, 
+                                                themePresetId: preset.id,
+                                                primaryColor: preset.primary,
+                                                secondaryColor: preset.secondary,
+                                                baseColor: preset.primary 
+                                            })}
+                                            className={`
+                                                cursor-pointer rounded-lg border-2 p-2 flex flex-col gap-2 transition-all hover:scale-105
+                                                ${identity.themePresetId === preset.id ? 'border-primary ring-2 ring-primary/20' : 'border-border'}
+                                            `}
+                                        >
+                                            <div className="flex h-12 w-full rounded overflow-hidden shadow-sm">
+                                                <div className="h-full w-1/2" style={{ backgroundColor: preset.primary }} />
+                                                <div className="h-full w-1/2" style={{ backgroundColor: preset.secondary }} />
+                                            </div>
+                                            <div className="text-center">
+                                                <span className="text-sm font-medium">{preset.name}</span>
+                                            </div>
+                                        </div>
+                                    ))}
                                 </div>
                             </div>
+
                             <Button type="submit" className="w-full" disabled={saving}>
                                 {saving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Saving...</> : <><Save className="mr-2 h-4 w-4" /> Save Identity</>}
                             </Button>

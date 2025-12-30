@@ -20,25 +20,31 @@ export interface DualThemePalette {
   dark: ThemePalette;
 }
 
-export function generatePalette(baseColor: string): DualThemePalette {
+export function generatePalette(baseColor: string, secondaryOverride?: string): DualThemePalette {
   const base = colord(baseColor);
+  const secondaryBase = secondaryOverride ? colord(secondaryOverride) : null;
   
   // --- Light Mode Palette ---
   // Background is usually White (#ffffff)
   let lightPrimary = base;
   if (lightPrimary.contrast('#ffffff') < 3) {
-    // If too light for white bg, darken it
-    // e.g. Yellow -> Darker Gold
     while (lightPrimary.contrast('#ffffff') < 3 && lightPrimary.isLight()) {
         lightPrimary = lightPrimary.darken(0.1);
     }
+  }
+
+  let lightSecondary = secondaryBase || lightPrimary.mix('#ffffff', 0.1);
+  if (lightSecondary.contrast('#ffffff') < 3) {
+     while (lightSecondary.contrast('#ffffff') < 3 && lightSecondary.isLight()) {
+         lightSecondary = lightSecondary.darken(0.1);
+     }
   }
   
   const lightPalette: ThemePalette = {
     primary: lightPrimary.toHex(),
     primaryForeground: lightPrimary.isDark() ? '#ffffff' : '#000000',
-    secondary: lightPrimary.mix('#ffffff', 0.1).toHex(),
-    secondaryForeground: colord(lightPrimary.mix('#ffffff', 0.1)).isDark() ? '#ffffff' : '#000000',
+    secondary: lightSecondary.toHex(),
+    secondaryForeground: lightSecondary.isDark() ? '#ffffff' : '#000000',
     accent: lightPrimary.rotate(180).toHex(),
     accentForeground: colord(lightPrimary.rotate(180)).isDark() ? '#ffffff' : '#000000',
   };
@@ -47,24 +53,34 @@ export function generatePalette(baseColor: string): DualThemePalette {
   // Background is usually Dark (#000000 or very dark slate)
   let darkPrimary = base;
   if (darkPrimary.contrast('#000000') < 3) {
-    // If too dark for black bg, lighten it
-    // e.g. Navy Blue -> Sky Blue
-    // e.g. Black -> Grey -> White
     while (darkPrimary.contrast('#000000') < 3 && darkPrimary.isDark()) {
         darkPrimary = darkPrimary.lighten(0.1);
     }
-    // If it's still not enough (e.g. pure black didn't lighten enough or logic loop), force a minimum brightness
     if (darkPrimary.contrast('#000000') < 3) {
-        darkPrimary = colord('#ffffff'); // Fallback to white if all else fails
+        darkPrimary = colord('#ffffff'); 
     }
+  }
+
+  // For dark mode secondary:
+  // If override provided, use it (and ensure contrast).
+  // If NOT provided, we previously mixed with black.
+  let darkSecondary = secondaryBase || darkPrimary.mix('#000000', 0.6);
+  
+  // Ensure contrast for secondary in dark mode
+  if (darkSecondary.contrast('#000000') < 3) {
+      while (darkSecondary.contrast('#000000') < 3 && darkSecondary.isDark()) {
+          darkSecondary = darkSecondary.lighten(0.1);
+      }
+      if (darkSecondary.contrast('#000000') < 3) {
+        darkSecondary = colord('#94a3b8'); // Slate-400 fallback
+      }
   }
 
   const darkPalette: ThemePalette = {
     primary: darkPrimary.toHex(),
     primaryForeground: darkPrimary.isDark() ? '#ffffff' : '#000000',
-    // For dark mode secondary, we often want a dark surface color, not a mix of primary
-    secondary: darkPrimary.mix('#000000', 0.6).toHex(),
-    secondaryForeground: '#ffffff',
+    secondary: darkSecondary.toHex(),
+    secondaryForeground: darkSecondary.isDark() ? '#ffffff' : '#000000',
     accent: darkPrimary.rotate(180).toHex(),
     accentForeground: colord(darkPrimary.rotate(180)).isDark() ? '#ffffff' : '#000000',
   };
