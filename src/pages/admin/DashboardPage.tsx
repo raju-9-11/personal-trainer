@@ -14,16 +14,18 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Link } from 'react-router-dom';
-import { Trash2, Plus, Save, Upload, ExternalLink, Globe, Loader2 } from 'lucide-react';
+import { Trash2, Plus, Save, Upload, ExternalLink, Globe, Loader2, Sun, Moon } from 'lucide-react';
 import { getFirebase } from '@/lib/firebase';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { useAlert } from '@/components/ui/custom-alert';
 import { BootLoader } from '@/components/ui/boot-loader';
 import { AnimatePresence } from 'framer-motion';
+import { useTheme } from '@/components/ThemeContext';
 
 export default function DashboardPage() {
   const { isAuthenticated, logout, trainerSlug, user, isSuperAdmin } = useAuth();
   const navigate = useNavigate();
+  const { theme, toggleTheme } = useTheme();
   const {
     getProfile, updateProfile,
     getBrandIdentity, updateBrandIdentity,
@@ -261,6 +263,9 @@ export default function DashboardPage() {
         </div>
         <div className="flex items-center gap-4">
            <span className="text-sm text-muted-foreground hidden md:inline-block">Logged in as {user?.email}</span>
+           <Button variant="ghost" size="icon" onClick={toggleTheme}>
+              {theme === 'dark' ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+           </Button>
            <Button variant="outline" onClick={() => { logout(); navigate('/'); }}>Logout</Button>
         </div>
       </header>

@@ -117,15 +117,15 @@ export function SocialFeed() {
               <h3 className="text-lg font-bold mb-6 flex items-center gap-2">
                  <Instagram className="text-primary" /> Latest Posts
               </h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 w-full">
+              <div className="flex flex-wrap justify-center gap-6 w-full">
                 {instagramLinks.map((link, idx) => {
                   return (
                     <motion.div
                       key={idx}
                       whileHover={{ scale: 1.02 }}
-                      className="bg-muted rounded-xl overflow-hidden relative group cursor-pointer"
+                      className="bg-card rounded-xl overflow-hidden relative group cursor-pointer max-w-[320px] w-full border border-border shadow-md"
                     >
-                      <div className="w-full bg-secondary relative rounded-xl overflow-hidden">
+                      <div className="w-full bg-background relative rounded-xl overflow-hidden p-2">
                         <blockquote
                           className="instagram-media w-full"
                           data-instgrm-permalink={link.url}
@@ -133,7 +133,7 @@ export function SocialFeed() {
                           style={{
                             minWidth: '300px',
                             width: '100%',
-                            background: '#fff',
+                            background: 'white', // Instagram iframe usually expects white background
                             border: 0,
                             margin: 0,
                             padding: 0,
@@ -170,12 +170,7 @@ export function SocialFeed() {
                           width="100%"
                           height="100%"
                           controls
-                          light={true}
-                          playIcon={
-                              <div className="w-16 h-16 rounded-full bg-primary/90 flex items-center justify-center hover:scale-110 transition-transform cursor-pointer">
-                                  <Play className="h-6 w-6 text-black fill-black ml-1" />
-                              </div>
-                          }
+                          light={false} // Disabled light mode to ensure player loads if thumbnail fails
                         />
                     </Card>
                   );

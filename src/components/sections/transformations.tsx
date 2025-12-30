@@ -8,6 +8,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { ArrowRight } from 'lucide-react';
 import { useTrainerSlug } from '@/components/TrainerContext';
 import { TransformationDetailModal } from '@/components/ui/transformation-detail-modal';
+import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '@/components/ui/carousel';
 
 export function Transformations() {
   const { getTransformations } = useData();
@@ -33,45 +34,53 @@ export function Transformations() {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {items.map((item, idx) => (
-            <motion.div
-              key={item.id}
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ delay: idx * 0.1 }}
-            >
-              <Card
-                className="overflow-hidden border-border/50 h-full cursor-pointer hover:border-primary/50 transition-colors group"
-                onClick={() => setSelectedItem(item)}
-              >
-                <CardContent className="p-0">
-                  <div className="grid grid-cols-2 gap-0.5 bg-border">
-                    <div className="relative aspect-[3/4] group-hover:opacity-90 transition-opacity">
-                       {/* Placeholder for real images */}
-                       <div className="absolute inset-0 bg-muted flex items-center justify-center text-muted-foreground font-bold">BEFORE</div>
-                       <img src={item.beforeImage} alt="Before" className="w-full h-full object-cover relative z-10" />
-                    </div>
-                    <div className="relative aspect-[3/4] group-hover:opacity-90 transition-opacity">
-                       <div className="absolute inset-0 bg-primary/20 flex items-center justify-center text-primary font-bold">AFTER</div>
-                       <img src={item.afterImage} alt="After" className="w-full h-full object-cover relative z-10" />
-                    </div>
-                  </div>
-                  <div className="p-6">
-                    <div className="flex items-center justify-between mb-2">
-                      <h3 className="font-bold text-lg">{item.clientName}</h3>
-                      <div className="bg-primary/10 text-primary p-2 rounded-full group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
-                        <ArrowRight size={16} />
+        <Carousel className="w-full max-w-5xl mx-auto">
+          <CarouselContent className="-ml-4">
+            {items.map((item, idx) => (
+              <CarouselItem key={item.id} className="pl-4 md:basis-1/2 lg:basis-1/3 p-4">
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: idx * 0.1 }}
+                  className="h-full"
+                >
+                  <Card
+                    className="overflow-hidden border-border/50 h-full cursor-pointer hover:border-primary/50 transition-colors group bg-card"
+                    onClick={() => setSelectedItem(item)}
+                  >
+                    <CardContent className="p-0">
+                      <div className="grid grid-cols-2 gap-0.5 bg-border">
+                        <div className="relative aspect-[3/4] group-hover:opacity-90 transition-opacity">
+                          {/* Placeholder for real images */}
+                          <div className="absolute inset-0 bg-muted flex items-center justify-center text-muted-foreground font-bold">BEFORE</div>
+                          <img src={item.beforeImage} alt="Before" className="w-full h-full object-cover relative z-10" />
+                        </div>
+                        <div className="relative aspect-[3/4] group-hover:opacity-90 transition-opacity">
+                          <div className="absolute inset-0 bg-primary/20 flex items-center justify-center text-primary font-bold">AFTER</div>
+                          <img src={item.afterImage} alt="After" className="w-full h-full object-cover relative z-10" />
+                        </div>
                       </div>
-                    </div>
-                    <p className="text-sm text-muted-foreground line-clamp-2">{item.description}</p>
-                  </div>
-                </CardContent>
-              </Card>
-            </motion.div>
-          ))}
-        </div>
+                      <div className="p-6">
+                        <div className="flex items-center justify-between mb-2">
+                          <h3 className="font-bold text-lg">{item.clientName}</h3>
+                          <div className="bg-primary/10 text-primary p-2 rounded-full group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
+                            <ArrowRight size={16} />
+                          </div>
+                        </div>
+                        <p className="text-sm text-muted-foreground line-clamp-2">{item.description}</p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </motion.div>
+              </CarouselItem>
+            ))}
+          </CarouselContent>
+          <div className="hidden md:flex justify-end gap-2 mt-4">
+              <CarouselPrevious className="static translate-y-0" />
+              <CarouselNext className="static translate-y-0" />
+          </div>
+        </Carousel>
       </div>
 
       {selectedItem && (
