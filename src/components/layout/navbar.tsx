@@ -141,7 +141,7 @@ export function Navbar() {
             </a>
           ))}
           <Button variant="ghost" size="icon" onClick={toggleTheme} aria-label="Toggle Theme">
-              {theme === 'dark' ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+              {theme === 'dark' ? <Sun className="h-5 w-5 text-yellow-500" /> : <Moon className="h-5 w-5 text-slate-700" />}
           </Button>
           <Button variant="default" size="sm" asChild>
             <a href="#contact">Book Now</a>
@@ -151,7 +151,7 @@ export function Navbar() {
         {/* Mobile Menu Toggle */}
         <div className="md:hidden flex items-center gap-2">
           <Button variant="ghost" size="icon" onClick={toggleTheme} aria-label="Toggle Theme">
-              {theme === 'dark' ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+              {theme === 'dark' ? <Sun className="h-5 w-5 text-yellow-500" /> : <Moon className="h-5 w-5 text-slate-700" />}
           </Button>
           <Button variant="ghost" size="icon" onClick={toggleMenu} aria-label="Toggle Menu">
             {isOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}

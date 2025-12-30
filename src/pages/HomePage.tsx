@@ -13,6 +13,7 @@ import { DEFAULT_BRAND_NAME } from '@/lib/constants';
 import { BootLoader } from '@/components/ui/boot-loader';
 import { AnimatePresence } from 'framer-motion';
 import { Footer } from '@/components/layout/footer';
+import { HomeNavbar } from '@/components/layout/home-navbar';
 
 export default function HomePage() {
   const { getTrainers, getLandingPageContent, getBrandIdentity, getPlatformTestimonials } = useData();
@@ -67,6 +68,7 @@ export default function HomePage() {
     }
   return (
     <main className="min-h-screen bg-background text-foreground">
+      <HomeNavbar />
       {/* Hero Section */}
       <section className="relative h-[80vh] flex items-center justify-center overflow-hidden">
         <div className="absolute inset-0 bg-black/60 z-10" />

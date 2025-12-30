@@ -55,26 +55,6 @@ function App() {
             <Route path="/payment" element={<MockPaymentPage />} />
             <Route path="*" element={<NotFoundPage />} />
           </Routes>
-          
-          {!isAdminPage && (
-            <>
-              <div className="fixed top-4 right-4 z-50">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={toggleTheme}
-                  className="rounded-full bg-background/50 backdrop-blur-sm border border-border/50 shadow-sm hover:bg-accent transition-all duration-300"
-                  aria-label="Toggle Theme"
-                >
-                  {theme === 'dark' ? (
-                    <Sun className="h-5 w-5 text-yellow-500" />
-                  ) : (
-                    <Moon className="h-5 w-5 text-slate-700" />
-                  )}
-                </Button>
-              </div>
-            </>
-          )}
         </>
       )}
     </>
