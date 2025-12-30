@@ -266,7 +266,7 @@ export default function DashboardPage() {
            <Button variant="ghost" size="icon" onClick={toggleTheme}>
               {theme === 'dark' ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
            </Button>
-           <Button variant="outline" onClick={() => { logout(); navigate('/'); }}>Logout</Button>
+           <Button variant="outline" onClick={() => { logout(); navigate('/admin/login'); }}>Logout</Button>
         </div>
       </header>
 

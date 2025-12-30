@@ -4,8 +4,9 @@ import { useAuth } from '@/lib/auth-context';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
-import { Shield, Sun, Moon } from 'lucide-react';
+import { Shield, Sun, Moon, ArrowLeft } from 'lucide-react';
 import { useTheme } from '@/components/ThemeContext';
+import { Link } from 'react-router-dom';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -31,6 +32,13 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4 relative">
+      <div className="absolute top-4 left-4">
+          <Button variant="ghost" asChild className="gap-2">
+              <Link to="/">
+                  <ArrowLeft className="h-4 w-4" /> Back to Home
+              </Link>
+          </Button>
+      </div>
       <div className="absolute top-4 right-4">
           <Button variant="ghost" size="icon" onClick={toggleTheme} aria-label="Toggle Theme">
               {theme === 'dark' ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
