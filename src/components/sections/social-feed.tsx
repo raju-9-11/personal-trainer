@@ -86,7 +86,7 @@ export function SocialFeed() {
   }, [instagramLinks]);
 
   return (
-    <section className="py-24 bg-background overflow-hidden">
+    <section className="py-24 bg-primary/5 dark:bg-white/5 overflow-hidden border-y border-border/5">
       <div className="container px-4 mx-auto">
         <div className="flex flex-col md:flex-row justify-between items-end mb-16 gap-6">
            <div>

@@ -25,7 +25,7 @@ export function Hero() {
   if (!profile) return null;
 
   return (
-    <section className="relative h-[90vh] flex items-center justify-center overflow-hidden bg-background">
+    <section className="relative min-h-screen flex items-center justify-center overflow-hidden bg-background">
       {/* Background Graphic Element - Energetic Gradient Blob */}
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-primary/20 rounded-full blur-[120px] pointer-events-none" />
 

@@ -25,7 +25,7 @@ export function Transformations() {
   if (items.length === 0) return null;
 
   return (
-    <section id="transformations" className="py-24 bg-background">
+    <section id="transformations" className="py-24 bg-primary/5 dark:bg-white/5 border-y border-border/5">
       <div className="container px-4 mx-auto">
         <div className="text-center mb-16">
           <h2 className="text-4xl font-black uppercase mb-4">Real Results</h2>

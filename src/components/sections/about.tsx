@@ -40,7 +40,7 @@ export function About() {
   };
 
   return (
-    <section id="about" className="py-24 bg-muted/20">
+    <section id="about" className="py-24 bg-background">
       <div className="container px-4 mx-auto">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
           {/* Left: Bio */}

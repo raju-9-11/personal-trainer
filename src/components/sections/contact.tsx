@@ -32,14 +32,14 @@ export function Contact() {
   };
 
   return (
-    <section id="contact" className="py-24 bg-muted/30">
+    <section id="contact" className="py-24 bg-background border-t border-border/5">
       <div className="container px-4 mx-auto max-w-4xl">
         <motion.div
            initial={{ opacity: 0, y: 20 }}
            whileInView={{ opacity: 1, y: 0 }}
            viewport={{ once: true }}
         >
-          <Card className="border-border/50 shadow-2xl">
+          <Card className="border-border/50 shadow-2xl bg-card dark:bg-white/[0.03] dark:backdrop-blur-md">
             <CardHeader className="text-center">
               <CardTitle className="text-3xl font-black uppercase">Start Your Transformation</CardTitle>
               <CardDescription>

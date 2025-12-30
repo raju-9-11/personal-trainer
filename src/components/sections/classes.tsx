@@ -41,7 +41,7 @@ export function Classes() {
   }, [getClasses, slug]);
 
   return (
-    <section id="classes" className="py-24 bg-muted/20">
+    <section id="classes" className="py-24 bg-background">
       <div className="container px-4 mx-auto">
         <div className="text-center mb-16">
           <h2 className="text-4xl font-black uppercase mb-4">Class Schedule</h2>
