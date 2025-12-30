@@ -2,7 +2,7 @@
 
 import { motion } from 'framer-motion';
 import { Card } from '@/components/ui/card';
-import { Instagram, Youtube, Facebook, Twitter, Globe, Play } from 'lucide-react';
+import { Instagram, Youtube, Facebook, Twitter, Globe, Play, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useData } from '@/lib/data-provider';
 import { useEffect, useState } from 'react';
@@ -88,21 +88,21 @@ export function SocialFeed() {
   return (
     <section className="py-24 bg-background overflow-hidden">
       <div className="container px-4 mx-auto">
-        <div className="flex flex-col md:flex-row justify-between items-end mb-12 gap-6">
+        <div className="flex flex-col md:flex-row justify-between items-end mb-16 gap-6">
            <div>
              <h2 className="text-4xl font-black uppercase mb-2">Connect</h2>
              <p className="text-muted-foreground">Follow the journey</p>
            </div>
            <div className="flex flex-wrap gap-4">
              {instagramProfileLink && (
-               <Button variant="outline" className="gap-2" asChild>
+               <Button variant="outline" className="gap-2 hover:border-primary hover:text-primary hover:bg-primary/5 transition-all duration-300" asChild>
                  <a href={instagramProfileLink} target="_blank" rel="noopener noreferrer">
                    <Instagram className="h-4 w-4" /> Instagram
                  </a>
                </Button>
              )}
              {youtubeProfileLink && (
-               <Button variant="outline" className="gap-2" asChild>
+               <Button variant="outline" className="gap-2 hover:border-primary hover:text-primary hover:bg-primary/5 transition-all duration-300" asChild>
                  <a href={youtubeProfileLink} target="_blank" rel="noopener noreferrer">
                    <Youtube className="h-4 w-4" /> YouTube
                  </a>
@@ -117,31 +117,27 @@ export function SocialFeed() {
               <h3 className="text-lg font-bold mb-6 flex items-center gap-2 self-start">
                  <Instagram className="text-primary" /> Latest Posts
               </h3>
-              <div className="flex flex-wrap justify-center gap-6 w-full">
+              <div className="flex flex-wrap justify-start gap-4 w-full">
                 {instagramLinks.map((link, idx) => {
                   return (
-                    <div
+                    <Card 
                       key={idx}
-                      className="w-full max-w-[350px] overflow-hidden rounded-lg shadow-lg border border-border/50 bg-background"
+                      className="group relative w-full max-w-[280px] aspect-square flex flex-col items-center justify-center gap-4 bg-muted/20 border-border/50 hover:border-primary/50 transition-all hover:bg-muted/40 cursor-pointer overflow-hidden"
+                      onClick={() => window.open(link.url, '_blank')}
                     >
-                        <blockquote
-                          className="instagram-media w-full"
-                          data-instgrm-permalink={link.url}
-                          data-instgrm-version="14"
-                          style={{
-                            minWidth: '300px',
-                            width: '100%',
-                            background: 'white',
-                            border: 0,
-                            margin: 0,
-                            padding: 0,
-                          }}
-                        >
-                          <div className="flex items-center justify-center py-8 text-muted-foreground text-sm">
-                            Loading post...
-                          </div>
-                        </blockquote>
-                    </div>
+                        <div className="absolute inset-0 bg-linear-to-tr from-primary/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                        
+                        <div className="h-16 w-16 rounded-full bg-background flex items-center justify-center shadow-xs group-hover:scale-110 transition-transform duration-300 z-10">
+                            <Instagram className="h-8 w-8 text-primary" />
+                        </div>
+                        
+                        <div className="text-center z-10 space-y-1">
+                            <p className="font-bold text-foreground">Instagram Post</p>
+                            <p className="text-xs text-muted-foreground flex items-center justify-center gap-1 group-hover:text-primary transition-colors">
+                                View on Instagram <ExternalLink className="h-3 w-3" />
+                            </p>
+                        </div>
+                    </Card>
                   );
                 })}
               </div>
@@ -154,7 +150,7 @@ export function SocialFeed() {
               <h3 className="text-lg font-bold mb-6 flex items-center gap-2">
                  <Youtube className="text-primary" /> Recent Training Videos
               </h3>
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 w-full">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 w-full">
                 {youtubeLinks.map((link, idx) => {
                   const embedUrl = link.url.replace("watch?v=", "embed/").replace("youtu.be/", "youtube.com/embed/");
                   return (

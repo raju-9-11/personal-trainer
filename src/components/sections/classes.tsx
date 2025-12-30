@@ -22,15 +22,19 @@ export function Classes() {
   useEffect(() => {
     if (slug) {
       getClasses(slug).then((data) => {
-        // Filter out past classes
         const now = new Date();
         const upcoming = data.filter(c => {
-             // Basic filtering: if dateIso exists, use it. If not, don't filter (legacy)
+             // If dateIso is present, use it for accurate filtering
              if ((c as any).dateIso) {
                  return new Date((c as any).dateIso) > now;
              }
-             return true;
+             // Fallback for legacy data (optional: keep or hide)
+             // Let's assume if no dateIso, it's a recurring weekly class, so we show it? 
+             // Or better, hide it to clean up.
+             return false; 
         });
+        // Sort by date
+        upcoming.sort((a, b) => new Date((a as any).dateIso).getTime() - new Date((b as any).dateIso).getTime());
         setItems(upcoming);
       });
     }
@@ -58,11 +62,11 @@ export function Classes() {
                     transition={{ delay: idx * 0.1 }}
                     className={`h-full ${item.enrolledSpots >= item.maxSpots ? 'opacity-80' : ''}`}
                 >
-                    <Card className={`h-full flex flex-col bg-card border-border/50 hover:border-primary transition-all duration-300 hover:shadow-[0_0_30px_rgba(var(--primary),0.3)] ${item.enrolledSpots >= item.maxSpots ? '' : 'shadow-lg border-primary/20'}`}>
+                    <Card className={`h-full flex flex-col bg-background/50 border border-border/40 hover:border-primary/50 transition-all duration-300 hover:shadow-[0_0_30px_rgba(var(--primary),0.2)] dark:bg-white/[0.03] dark:backdrop-blur-md ${item.enrolledSpots >= item.maxSpots ? '' : 'shadow-sm'}`}>
                     <CardHeader>
                         <div className="flex justify-between items-start mb-2">
                         <div className="flex flex-col gap-1">
-                            <Badge variant="secondary" className="w-fit">{item.time.split(' ')[0]}</Badge>
+                            <Badge variant="secondary" className="w-fit bg-background/80 border border-border/50 text-foreground/80 font-semibold shadow-xs backdrop-blur-sm">{item.time.split(' ')[0]}</Badge>
                             <CountdownTimer targetDate={(item as any).dateIso || new Date().toISOString()} />
                         </div>
                         <Badge variant={item.enrolledSpots >= item.maxSpots ? "destructive" : "outline"}>

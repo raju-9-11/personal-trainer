@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { Activity } from 'lucide-react';
+import { Flame, Dumbbell, BicepsFlexed, Activity, Zap, Trophy, Heart, Sparkles, Leaf } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 const WITTY_QUOTES = [
@@ -25,13 +25,27 @@ const WITTY_QUOTES = [
   "Pain is weakness leaving the body."
 ];
 
+const ICONS = [Flame, Dumbbell, Activity, BicepsFlexed, Heart, Sparkles, Leaf, Trophy];
+
 export function BootLoader({ message }: { message?: string }) {
   const [quote, setQuote] = useState("");
+  const [Icon, setIcon] = useState<any>(null);
 
   useEffect(() => {
     // Pick a random quote on mount
     setQuote(WITTY_QUOTES[Math.floor(Math.random() * WITTY_QUOTES.length)]);
+
+    // Pick one icon for the entire session
+    let iconIndex = sessionStorage.getItem('boot_icon_index');
+    if (iconIndex === null) {
+        const newIndex = Math.floor(Math.random() * ICONS.length);
+        sessionStorage.setItem('boot_icon_index', newIndex.toString());
+        iconIndex = newIndex.toString();
+    }
+    setIcon(() => ICONS[parseInt(iconIndex!)]);
   }, []);
+
+  if (!Icon) return null;
 
   return (
     <motion.div
@@ -40,21 +54,23 @@ export function BootLoader({ message }: { message?: string }) {
       transition={{ duration: 0.5 }}
       className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-background text-foreground px-4"
     >
-      <motion.div
-        animate={{
-          scale: [1, 1.2, 1],
-        }}
-        transition={{
-          duration: 1.5,
-          repeat: Infinity,
-          ease: "easeInOut",
-          times: [0, 0.5, 1]
-        }}
-        className="relative mb-8"
-      >
+      <div className="relative mb-8 h-24 w-24 flex items-center justify-center">
         <div className="absolute inset-0 bg-primary/20 rounded-full blur-xl animate-pulse" />
-        <Activity className="h-24 w-24 text-foreground relative z-10" />
-      </motion.div>
+        <motion.div
+            animate={{
+              scale: [1, 1.1, 1],
+              opacity: [0.9, 1, 0.9]
+            }}
+            transition={{
+              duration: 2,
+              repeat: Infinity,
+              ease: "easeInOut",
+            }}
+            className="relative z-10"
+          >
+            <Icon className="h-24 w-24 text-foreground" />
+          </motion.div>
+      </div>
 
       <motion.div
         initial={{ opacity: 0, y: 10 }}
@@ -62,12 +78,10 @@ export function BootLoader({ message }: { message?: string }) {
         transition={{ delay: 0.2 }}
         className="text-center space-y-4 max-w-md"
       >
-        <h2 className="text-xl md:text-2xl font-bold tracking-tight text-foreground">
+        <h2 className="text-xl md:text-2xl font-bold tracking-tight text-foreground min-h-[3.5rem] flex items-center justify-center">
           {message || quote}
         </h2>
         
-        {/* Only show the loading bars if a specific message was passed (like 'Authenticating'), 
-            otherwise the quote acts as the loading text */}
         {message && (
              <div className="flex gap-1 justify-center mt-4">
                 {[0, 1, 2].map((i) => (

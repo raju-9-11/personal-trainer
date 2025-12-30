@@ -34,17 +34,12 @@ export function generatePalette(baseColor: string, secondaryOverride?: string): 
   }
 
   let lightSecondary = secondaryBase || lightPrimary.mix('#ffffff', 0.1);
-  if (lightSecondary.contrast('#ffffff') < 3) {
-     while (lightSecondary.contrast('#ffffff') < 3 && lightSecondary.isLight()) {
-         lightSecondary = lightSecondary.darken(0.1);
-     }
-  }
   
   const lightPalette: ThemePalette = {
     primary: lightPrimary.toHex(),
     primaryForeground: lightPrimary.isDark() ? '#ffffff' : '#000000',
     secondary: lightSecondary.toHex(),
-    secondaryForeground: lightSecondary.isDark() ? '#ffffff' : '#000000',
+    secondaryForeground: lightPrimary.toHex(), // Use primary color for text on subtle background
     accent: lightPrimary.rotate(180).toHex(),
     accentForeground: colord(lightPrimary.rotate(180)).isDark() ? '#ffffff' : '#000000',
   };
@@ -61,26 +56,14 @@ export function generatePalette(baseColor: string, secondaryOverride?: string): 
     }
   }
 
-  // For dark mode secondary:
-  // If override provided, use it (and ensure contrast).
-  // If NOT provided, we previously mixed with black.
-  let darkSecondary = secondaryBase || darkPrimary.mix('#000000', 0.6);
+  // For dark mode secondary: Make it a subtle 10% tint of the primary on black
+  let darkSecondary = secondaryBase || darkPrimary.mix('#000000', 0.1);
   
-  // Ensure contrast for secondary in dark mode
-  if (darkSecondary.contrast('#000000') < 3) {
-      while (darkSecondary.contrast('#000000') < 3 && darkSecondary.isDark()) {
-          darkSecondary = darkSecondary.lighten(0.1);
-      }
-      if (darkSecondary.contrast('#000000') < 3) {
-        darkSecondary = colord('#94a3b8'); // Slate-400 fallback
-      }
-  }
-
   const darkPalette: ThemePalette = {
     primary: darkPrimary.toHex(),
     primaryForeground: darkPrimary.isDark() ? '#ffffff' : '#000000',
     secondary: darkSecondary.toHex(),
-    secondaryForeground: darkSecondary.isDark() ? '#ffffff' : '#000000',
+    secondaryForeground: darkPrimary.toHex(), // Use primary color for text on subtle background
     accent: darkPrimary.rotate(180).toHex(),
     accentForeground: colord(darkPrimary.rotate(180)).isDark() ? '#ffffff' : '#000000',
   };
