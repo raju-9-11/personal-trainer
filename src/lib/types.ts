@@ -81,8 +81,10 @@ export interface PlatformTestimonial {
 export interface BrandIdentity {
   brandName: string;
   logoUrl: string;
-  primaryColor: string;
-  secondaryColor: string;
+  primaryColor: string; // Now acts as Base Color
+  secondaryColor: string; // Deprecated but kept for compatibility, ignored if using auto-palette
+  // New fields
+  baseColor?: string; // Preferred over primaryColor if present
 }
 
 export interface LandingPageContent {

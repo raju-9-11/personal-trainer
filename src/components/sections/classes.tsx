@@ -73,15 +73,15 @@ export function Classes() {
                         <CardDescription>{item.description}</CardDescription>
                     </CardHeader>
                     <CardContent className="flex-grow space-y-4">
-                        <div className="flex items-center text-sm text-muted-foreground">
+                        <div className="flex items-center text-sm font-medium">
                         <Clock className="mr-2 h-4 w-4 text-primary" />
                         {item.time} ({item.durationMinutes} mins)
                         </div>
-                        <div className="flex items-center text-sm text-muted-foreground">
+                        <div className="flex items-center text-sm font-medium">
                         <Users className="mr-2 h-4 w-4 text-primary" />
                         Capacity: {item.maxSpots}
                         </div>
-                        <div className="flex items-center text-sm text-muted-foreground">
+                        <div className="flex items-center text-sm font-medium">
                         {/* Placeholder for price */}
                         Price: {(item as any).price ? `$${(item as any).price}` : 'Free'}
                         </div>

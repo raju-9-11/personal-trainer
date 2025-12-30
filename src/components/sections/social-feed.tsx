@@ -113,8 +113,8 @@ export function SocialFeed() {
 
         {/* Instagram Grid - Dynamic to # of links */}
         {instagramLinks.length > 0 && (
-            <div className="mb-12 flex flex-col text-left">
-              <h3 className="text-lg font-bold mb-6 flex items-center gap-2">
+            <div className="mb-12 flex flex-col items-center text-center">
+              <h3 className="text-lg font-bold mb-6 flex items-center gap-2 self-start">
                  <Instagram className="text-primary" /> Latest Posts
               </h3>
               <div className="flex flex-wrap justify-center gap-6 w-full">
@@ -123,7 +123,7 @@ export function SocialFeed() {
                     <motion.div
                       key={idx}
                       whileHover={{ scale: 1.02 }}
-                      className="bg-card rounded-xl overflow-hidden relative group cursor-pointer max-w-[320px] w-full border border-border shadow-md"
+                      className="bg-card rounded-xl overflow-hidden relative group cursor-pointer w-full max-w-[320px] border border-border/50 shadow-lg"
                     >
                       <div className="w-full bg-background relative rounded-xl overflow-hidden p-2">
                         <blockquote
