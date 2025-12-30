@@ -73,14 +73,6 @@ function App() {
                   )}
                 </Button>
               </div>
-
-              <Link 
-                to="/admin/login" 
-                className="fixed bottom-4 right-4 z-50 p-2 text-muted-foreground/10 hover:text-primary/40 transition-all duration-500 rounded-full hover:bg-muted/50"
-                title="Trainer Portal"
-              >
-                <Lock className="w-3 h-3" />
-              </Link>
             </>
           )}
         </>

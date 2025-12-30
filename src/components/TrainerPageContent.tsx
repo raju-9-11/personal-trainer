@@ -7,6 +7,7 @@ import { Transformations } from '@/components/sections/transformations';
 import { Classes } from '@/components/sections/classes';
 import { SocialFeed } from '@/components/sections/social-feed';
 import { Contact } from '@/components/sections/contact';
+import { Footer } from '@/components/layout/footer';
 import { useData } from '@/lib/data-provider';
 import { BrandIdentity } from '@/lib/types';
 import { DEFAULT_BRAND_NAME } from '@/lib/constants';
@@ -108,10 +109,7 @@ export function TrainerPageContent({ slug }: { slug: string }) {
                 <Classes />
                 <SocialFeed />
                 <Contact />
-
-                <footer className="py-8 bg-background border-t border-border/50 text-center text-muted-foreground text-sm">
-                  <p>&copy; {new Date().getFullYear()} {brandName}. All rights reserved.</p>
-                </footer>
+                <Footer />
           </div>
         )}
       </BrandIdentityContext.Provider>

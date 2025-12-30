@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
-import { useData } from '@/lib/data-provider';
+import { Footer } from '@/components/layout/footer';
+
+export default function HomePage() {
+  const { getTrainers, getLandingPageContent, getBrandIdentity, getPlatformTestimonials } = useData();
 import { TrainerSummary, LandingPageContent, BrandIdentity, PlatformTestimonial } from '@/lib/types';
 import {
   Carousel,
@@ -206,13 +207,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="py-8 bg-black border-t border-white/10 text-center text-gray-400 text-sm flex flex-col items-center gap-2">
-        <p>&copy; {new Date().getFullYear()} {brandName}. All rights reserved.</p>
-        <Link to="/admin/login" className="text-xs text-gray-700 hover:text-gray-500 transition-colors">
-            Trainer Portal
-        </Link>
-      </footer>
+      <Footer />
     </main>
   );
 }
