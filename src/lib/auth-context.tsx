@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { getFirebase } from './firebase';
 import { signInWithEmailAndPassword, signOut, onAuthStateChanged, User, isSignInWithEmailLink, signInWithEmailLink } from 'firebase/auth';
+import { collection, query, where, getDocs } from 'firebase/firestore';
 import { BootLoader } from '@/components/ui/boot-loader';
 import { AnimatePresence } from 'framer-motion';
 
@@ -56,7 +57,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           try {
              const { db } = getFirebase();
              if (db) {
-                 const { collection, query, where, getDocs } = await import('firebase/firestore');
                  const trainersRef = collection(db, 'trainers');
                  const q = query(trainersRef, where('ownerUid', '==', currentUser.uid));
                  const snapshot = await getDocs(q);
@@ -64,11 +64,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                      setTrainerSlug(snapshot.docs[0].id);
                  } else {
                      // No profile yet. It will be created on first save/access in dashboard.
-                     // We can leave it null, and Dashboard can handle "New Trainer" state or auto-create.
-                     // But strictly speaking, the user wanted "auto create on save", so initially null is fine.
-                     // However, to view the dashboard properly, we need a slug.
-                     // Let's rely on the dashboard to say "My Profile" if slug is null,
-                     // OR we force creation here? The prompt said "if save changes is pressed... new data should be created".
                      setTrainerSlug(null);
                  }
              }
