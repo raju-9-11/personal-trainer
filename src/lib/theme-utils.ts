@@ -15,51 +15,66 @@ export interface ThemePalette {
   foreground?: string;
 }
 
-export function generatePalette(baseColor: string): ThemePalette {
+export interface DualThemePalette {
+  light: ThemePalette;
+  dark: ThemePalette;
+}
+
+export function generatePalette(baseColor: string): DualThemePalette {
   const base = colord(baseColor);
-  const isDark = base.isDark();
+  
+  // --- Light Mode Palette ---
+  // Background is usually White (#ffffff)
+  let lightPrimary = base;
+  if (lightPrimary.contrast('#ffffff') < 3) {
+    // If too light for white bg, darken it
+    // e.g. Yellow -> Darker Gold
+    while (lightPrimary.contrast('#ffffff') < 3 && lightPrimary.isLight()) {
+        lightPrimary = lightPrimary.darken(0.1);
+    }
+  }
+  
+  const lightPalette: ThemePalette = {
+    primary: lightPrimary.toHex(),
+    primaryForeground: lightPrimary.isDark() ? '#ffffff' : '#000000',
+    secondary: lightPrimary.mix('#ffffff', 0.1).toHex(),
+    secondaryForeground: colord(lightPrimary.mix('#ffffff', 0.1)).isDark() ? '#ffffff' : '#000000',
+    accent: lightPrimary.rotate(180).toHex(),
+    accentForeground: colord(lightPrimary.rotate(180)).isDark() ? '#ffffff' : '#000000',
+  };
 
-  // Generate Primary
-  const primary = base.toHex();
-  const primaryForeground = base.isDark() ? '#ffffff' : '#000000';
+  // --- Dark Mode Palette ---
+  // Background is usually Dark (#000000 or very dark slate)
+  let darkPrimary = base;
+  if (darkPrimary.contrast('#000000') < 3) {
+    // If too dark for black bg, lighten it
+    // e.g. Navy Blue -> Sky Blue
+    // e.g. Black -> Grey -> White
+    while (darkPrimary.contrast('#000000') < 3 && darkPrimary.isDark()) {
+        darkPrimary = darkPrimary.lighten(0.1);
+    }
+    // If it's still not enough (e.g. pure black didn't lighten enough or logic loop), force a minimum brightness
+    if (darkPrimary.contrast('#000000') < 3) {
+        darkPrimary = colord('#ffffff'); // Fallback to white if all else fails
+    }
+  }
 
-  // Generate Secondary (Complementary or Analogous)
-  // Let's use a tint/shade of the primary for a monochromatic professional look,
-  // or a very subtle mix for secondary.
-  const secondary = base.mix(isDark ? '#ffffff' : '#000000', 0.1).toHex();
-  const secondaryForeground = colord(secondary).isDark() ? '#ffffff' : '#000000';
-
-  // Generate Accent (Complementary)
-  const accent = base.rotate(180).toHex();
-  const accentForeground = colord(accent).isDark() ? '#ffffff' : '#000000';
+  const darkPalette: ThemePalette = {
+    primary: darkPrimary.toHex(),
+    primaryForeground: darkPrimary.isDark() ? '#ffffff' : '#000000',
+    // For dark mode secondary, we often want a dark surface color, not a mix of primary
+    secondary: darkPrimary.mix('#000000', 0.6).toHex(),
+    secondaryForeground: '#ffffff',
+    accent: darkPrimary.rotate(180).toHex(),
+    accentForeground: colord(darkPrimary.rotate(180)).isDark() ? '#ffffff' : '#000000',
+  };
 
   return {
-    primary,
-    primaryForeground,
-    secondary,
-    secondaryForeground,
-    accent,
-    accentForeground,
+    light: lightPalette,
+    dark: darkPalette
   };
 }
 
 export function hexToOklch(hex: string): string {
-    // Tailwind v4 uses OKLCH. We need to convert hex to the specific format "L C H"
-    // colord doesn't support OKLCH output natively in the format Tailwind usually expects ("l c h"),
-    // but we can approximate or just set the hex directly in the style property if we change how we inject it.
-    // However, globals.css uses `oklch(...)`.
-    // To be safe and simple, we might just override the variable with the HEX value if the browser supports it in the variable,
-    // OR we can rely on `color-mix` or similar.
-    // Actually, Tailwind variables in the `@theme` block in globals.css seem to expect specific formats if used with `<alpha-value>`.
-    // But if we just set `--primary: #hex`, standard CSS works fine.
-    // The issue is if Tailwind classes use `bg-primary/50`. If `--primary` is a hex, `bg-primary/50` might not work automatically
-    // unless defined with `@color` in newer CSS or using `rgb` components.
-
-    // Let's try to stick to hex for simplicity first, as modern browsers and Tailwind v4 often handle it well
-    // if configured correctly, or we fallback to RGB.
-    // For robust "slash opacity" support (e.g. text-primary/50), we usually need the color values to be strictly the channels.
-
-    // Let's assume for now we will inject HEX and see if it breaks transparency modifiers.
-    // If it does, we will convert to HSL or RGB channels.
     return hex;
 }

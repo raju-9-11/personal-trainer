@@ -35,7 +35,7 @@ function App() {
   return (
     <ThemeProvider>
       <AnimatePresence>
-        {booting && <BootLoader message="Initializing Platform" />}
+        {booting && <BootLoader />}
       </AnimatePresence>
       {!booting && (
         <>

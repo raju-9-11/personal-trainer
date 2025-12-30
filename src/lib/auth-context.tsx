@@ -144,7 +144,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   return (
     <AuthContext.Provider value={{ isAuthenticated, user, login, finishLogin, logout, loading, trainerSlug, isSuperAdmin }}>
       <AnimatePresence>
-        {loading && <BootLoader message="Authenticating..." />}
+        {loading && <BootLoader />}
       </AnimatePresence>
       {!loading && children}
     </AuthContext.Provider>

@@ -215,11 +215,15 @@ export default function DashboardPage() {
       (e.target as HTMLFormElement).reset();
   };
 
-  if (loading) return (
+    if (loading) return (
+
       <AnimatePresence>
-          <BootLoader message="Loading Dashboard..." />
+
+        <BootLoader />
+
       </AnimatePresence>
-  );
+
+    );
 
   const getPageTitle = () => {
       if (isSuperAdmin) {

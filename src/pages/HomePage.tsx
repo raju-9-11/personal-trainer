@@ -57,14 +57,13 @@ export default function HomePage() {
   const brandName = brand?.brandName || DEFAULT_BRAND_NAME;
 
   // Replaced spinner with BootLoader
-  if (loading) {
+    if (loading) {
       return (
         <AnimatePresence>
-            <BootLoader message="Loading Platform..." />
+          <BootLoader />
         </AnimatePresence>
       );
-  }
-
+    }
   return (
     <main className="min-h-screen bg-background text-foreground">
       {/* Hero Section */}

@@ -19,7 +19,7 @@ export default function LoginPage() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    document.title = 'Trainer Login';
+    document.title = 'Trainer Portal';
   }, []);
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -54,7 +54,7 @@ export default function LoginPage() {
           <div className="mx-auto bg-primary/10 w-12 h-12 rounded-full flex items-center justify-center mb-4">
             <Shield className="text-primary h-6 w-6" />
           </div>
-          <CardTitle className="text-2xl">Trainer Login</CardTitle>
+          <CardTitle className="text-2xl">Trainer Portal</CardTitle>
           <CardDescription>Enter your credentials to access the dashboard</CardDescription>
         </CardHeader>
 
