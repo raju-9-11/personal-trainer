@@ -6,14 +6,17 @@ import './app/globals.css'
 import { DataProvider } from '@/lib/data-provider'
 import { AuthProvider } from '@/lib/auth-context'
 import { CustomAlert } from '@/components/ui/custom-alert'
+import { ThemeProvider } from './components/ThemeContext'
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <BrowserRouter>
       <AuthProvider>
         <DataProvider>
-          <App />
-          <CustomAlert />
+          <ThemeProvider>
+            <App />
+            <CustomAlert />
+          </ThemeProvider>
         </DataProvider>
       </AuthProvider>
     </BrowserRouter>

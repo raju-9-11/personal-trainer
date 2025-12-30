@@ -1,8 +1,10 @@
-import { Routes, Route, useLocation } from 'react-router-dom'
+import { Routes, Route, useLocation, Link } from 'react-router-dom'
 import { useEffect, useState } from 'react'
-import { ThemeProvider } from './components/ThemeContext'
+import { useTheme } from './components/ThemeContext'
 import { BootLoader } from './components/ui/boot-loader'
 import { AnimatePresence } from 'framer-motion'
+import { Lock, Sun, Moon } from 'lucide-react'
+import { Button } from './components/ui/button'
 import HomePage from './pages/HomePage'
 import TrainerPage from './pages/TrainerPage'
 import AdminPage from './pages/AdminPage'
@@ -23,6 +25,8 @@ function ScrollToTop() {
 
 function App() {
   const [booting, setBooting] = useState(true)
+  const { theme, toggleTheme } = useTheme()
+  const location = useLocation()
 
   useEffect(() => {
     // Simulate enterprise-level boot sequence
@@ -32,8 +36,10 @@ function App() {
     return () => clearTimeout(timer)
   }, [])
 
+  const isAdminPage = location.pathname.startsWith('/admin')
+
   return (
-    <ThemeProvider>
+    <>
       <AnimatePresence>
         {booting && <BootLoader />}
       </AnimatePresence>
@@ -49,9 +55,37 @@ function App() {
             <Route path="/payment" element={<MockPaymentPage />} />
             <Route path="*" element={<NotFoundPage />} />
           </Routes>
+          
+          {!isAdminPage && (
+            <>
+              <div className="fixed top-4 right-4 z-50">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={toggleTheme}
+                  className="rounded-full bg-background/50 backdrop-blur-sm border border-border/50 shadow-sm hover:bg-accent transition-all duration-300"
+                  aria-label="Toggle Theme"
+                >
+                  {theme === 'dark' ? (
+                    <Sun className="h-5 w-5 text-yellow-500" />
+                  ) : (
+                    <Moon className="h-5 w-5 text-slate-700" />
+                  )}
+                </Button>
+              </div>
+
+              <Link 
+                to="/admin/login" 
+                className="fixed bottom-4 right-4 z-50 p-2 text-muted-foreground/10 hover:text-primary/40 transition-all duration-500 rounded-full hover:bg-muted/50"
+                title="Trainer Portal"
+              >
+                <Lock className="w-3 h-3" />
+              </Link>
+            </>
+          )}
         </>
       )}
-    </ThemeProvider>
+    </>
   )
 }
 
