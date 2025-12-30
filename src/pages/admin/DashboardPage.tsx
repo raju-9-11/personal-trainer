@@ -14,18 +14,24 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Link } from 'react-router-dom';
-import { Trash2, Plus, Save, Upload, ExternalLink, Globe, Loader2 } from 'lucide-react';
+import { Trash2, Plus, Save, Upload, ExternalLink, Globe, Loader2, Sun, Moon, Pencil } from 'lucide-react';
 import { getFirebase } from '@/lib/firebase';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { useAlert } from '@/components/ui/custom-alert';
+import { BootLoader } from '@/components/ui/boot-loader';
+import { AnimatePresence } from 'framer-motion';
+import { useTheme } from '@/components/ThemeContext';
+import { THEME_PRESETS } from '@/lib/theme-presets';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 
 export default function DashboardPage() {
   const { isAuthenticated, logout, trainerSlug, user, isSuperAdmin } = useAuth();
   const navigate = useNavigate();
+  const { theme, toggleTheme } = useTheme();
   const {
     getProfile, updateProfile,
     getBrandIdentity, updateBrandIdentity,
-    getClasses, addClass, removeClass,
+    getClasses, addClass, removeClass, updateClass,
     getCertifications, addCertification, removeCertification,
     getTransformations, addTransformation, removeTransformation,
     getLandingPageContent, updateLandingPageContent,
@@ -35,6 +41,16 @@ export default function DashboardPage() {
   const [profile, setProfile] = useState<TrainerProfile | null>(null);
   const [identity, setIdentity] = useState<BrandIdentity | null>(null);
   const [classes, setClasses] = useState<GymClass[]>([]);
+  const [editingClass, setEditingClass] = useState<GymClass | null>(null);
+  const [isPaidAdd, setIsPaidAdd] = useState(false);
+  const [isPaidEdit, setIsPaidEdit] = useState(false);
+  
+  useEffect(() => {
+    if (editingClass) {
+        setIsPaidEdit(!!editingClass.price && editingClass.price > 0);
+    }
+  }, [editingClass]);
+
   const [certs, setCerts] = useState<Certification[]>([]);
   const [trans, setTrans] = useState<Transformation[]>([]);
   const [landing, setLanding] = useState<LandingPageContent | null>(null);
@@ -159,10 +175,26 @@ export default function DashboardPage() {
   const handleAddClass = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
+    const dateValue = formData.get('time') as string;
+    const date = new Date(dateValue);
+    
+    // Format for display: e.g. "Mon 10:00 AM"
+    const displayTime = date.toLocaleDateString('en-US', { 
+        weekday: 'short', 
+        hour: 'numeric', 
+        minute: '2-digit', 
+        hour12: true 
+    }).replace(',', '');
+
+    const isPaid = formData.get('isPaid') === 'on';
+    const price = isPaid ? parseFloat(formData.get('price') as string || '0') : 0;
+
     await addClass({
       title: formData.get('title') as string,
       description: formData.get('description') as string,
-      time: formData.get('time') as string,
+      time: displayTime,
+      dateIso: date.toISOString(),
+      price: price,
       durationMinutes: parseInt(formData.get('duration') as string),
       maxSpots: parseInt(formData.get('spots') as string),
       enrolledSpots: 0,
@@ -170,6 +202,41 @@ export default function DashboardPage() {
     });
     setClasses(await getClasses(trainerSlug || undefined));
     (e.target as HTMLFormElement).reset();
+    setIsPaidAdd(false);
+  };
+
+  const handleUpdateClass = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!editingClass) return;
+
+    const formData = new FormData(e.currentTarget);
+    const dateValue = formData.get('time') as string;
+    const date = new Date(dateValue);
+    
+    // Format for display: e.g. "Mon 10:00 AM"
+    const displayTime = date.toLocaleDateString('en-US', { 
+        weekday: 'short', 
+        hour: 'numeric', 
+        minute: '2-digit', 
+        hour12: true 
+    }).replace(',', '');
+
+    const isPaid = formData.get('isPaid') === 'on';
+    const price = isPaid ? parseFloat(formData.get('price') as string || '0') : 0;
+
+    await updateClass(editingClass.id, {
+      title: formData.get('title') as string,
+      description: formData.get('description') as string,
+      time: displayTime,
+      dateIso: date.toISOString(),
+      price: price,
+      durationMinutes: parseInt(formData.get('duration') as string),
+      maxSpots: parseInt(formData.get('spots') as string),
+      imageUrl: formData.get('imageUrl') as string || undefined
+    });
+    
+    setClasses(await getClasses(trainerSlug || undefined));
+    setEditingClass(null);
   };
 
   const handleAddCert = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -211,7 +278,15 @@ export default function DashboardPage() {
       (e.target as HTMLFormElement).reset();
   };
 
-  if (loading) return <div className="p-8">Loading Dashboard...</div>;
+    if (loading) return (
+
+      <AnimatePresence>
+
+        <BootLoader />
+
+      </AnimatePresence>
+
+    );
 
   const getPageTitle = () => {
       if (isSuperAdmin) {
@@ -255,7 +330,10 @@ export default function DashboardPage() {
         </div>
         <div className="flex items-center gap-4">
            <span className="text-sm text-muted-foreground hidden md:inline-block">Logged in as {user?.email}</span>
-           <Button variant="outline" onClick={() => { logout(); navigate('/'); }}>Logout</Button>
+           <Button variant="ghost" size="icon" onClick={toggleTheme}>
+              {theme === 'dark' ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+           </Button>
+           <Button variant="outline" onClick={() => { logout(); navigate('/admin/login'); }}>Logout</Button>
         </div>
       </header>
 
@@ -447,22 +525,37 @@ export default function DashboardPage() {
                                     }} />
                                 </div>
                             </div>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div className="space-y-2">
-                                    <Label>Primary Color</Label>
-                                    <div className="flex gap-2">
-                                        <Input type="color" className="w-12 p-1 h-10" value={identity.primaryColor} onChange={e => setIdentity({...identity, primaryColor: e.target.value})} />
-                                        <Input value={identity.primaryColor} onChange={e => setIdentity({...identity, primaryColor: e.target.value})} />
-                                    </div>
-                                </div>
-                                <div className="space-y-2">
-                                    <Label>Secondary Color</Label>
-                                     <div className="flex gap-2">
-                                        <Input type="color" className="w-12 p-1 h-10" value={identity.secondaryColor} onChange={e => setIdentity({...identity, secondaryColor: e.target.value})} />
-                                        <Input value={identity.secondaryColor} onChange={e => setIdentity({...identity, secondaryColor: e.target.value})} />
-                                    </div>
+                            
+                            <div className="space-y-4">
+                                <Label>Color Theme</Label>
+                                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                                    {THEME_PRESETS.map((preset) => (
+                                        <div 
+                                            key={preset.id}
+                                            onClick={() => setIdentity({
+                                                ...identity, 
+                                                themePresetId: preset.id,
+                                                primaryColor: preset.primary,
+                                                secondaryColor: preset.secondary,
+                                                baseColor: preset.primary 
+                                            })}
+                                            className={`
+                                                cursor-pointer rounded-lg border-2 p-2 flex flex-col gap-2 transition-all hover:scale-105
+                                                ${identity.themePresetId === preset.id ? 'border-primary ring-2 ring-primary/20' : 'border-border'}
+                                            `}
+                                        >
+                                            <div className="flex h-12 w-full rounded overflow-hidden shadow-sm">
+                                                <div className="h-full w-1/2" style={{ backgroundColor: preset.primary }} />
+                                                <div className="h-full w-1/2" style={{ backgroundColor: preset.secondary }} />
+                                            </div>
+                                            <div className="text-center">
+                                                <span className="text-sm font-medium">{preset.name}</span>
+                                            </div>
+                                        </div>
+                                    ))}
                                 </div>
                             </div>
+
                             <Button type="submit" className="w-full" disabled={saving}>
                                 {saving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Saving...</> : <><Save className="mr-2 h-4 w-4" /> Save Identity</>}
                             </Button>
@@ -528,7 +621,30 @@ export default function DashboardPage() {
                           </div>
 
                           <div className="space-y-4 pt-4 border-t">
-                             <Label>Social Links</Label>
+                             <Label className="text-lg">Social Profiles</Label>
+                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <Label>Instagram Profile URL</Label>
+                                    <Input 
+                                        placeholder="https://instagram.com/yourhandle" 
+                                        value={profile.instagramUrl || ''} 
+                                        onChange={e => setProfile({...profile, instagramUrl: e.target.value})} 
+                                    />
+                                    <p className="text-xs text-muted-foreground">Main link for the 'Connect' section button.</p>
+                                </div>
+                                <div className="space-y-2">
+                                    <Label>YouTube Channel URL</Label>
+                                    <Input 
+                                        placeholder="https://youtube.com/@yourchannel" 
+                                        value={profile.youtubeUrl || ''} 
+                                        onChange={e => setProfile({...profile, youtubeUrl: e.target.value})} 
+                                    />
+                                    <p className="text-xs text-muted-foreground">Main link for the 'Connect' section button.</p>
+                                </div>
+                             </div>
+
+                             <Label className="pt-4 block">Feed Posts (Embedded)</Label>
+                             <p className="text-xs text-muted-foreground mb-2">Add individual post URLs here to display them in your feed grid.</p>
                              <div className="space-y-2">
                                 {profile.socialLinks?.map((link, idx) => (
                                     <div key={idx} className="flex gap-2">
@@ -628,11 +744,38 @@ export default function DashboardPage() {
                           <form onSubmit={handleAddClass} className="space-y-4">
                             <Input name="title" placeholder="Class Title" required />
                             <Input name="description" placeholder="Description" required />
-                            <Input name="time" placeholder="Time (e.g. Mon 10:00 AM)" required />
+                            <div className="space-y-2">
+                                <Label>Date & Time</Label>
+                                <Input 
+                                    name="time" 
+                                    type="datetime-local" 
+                                    defaultValue={new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 16)}
+                                    required 
+                                />
+                            </div>
                             <div className="grid grid-cols-2 gap-2">
                                <Input name="duration" type="number" placeholder="Mins" required />
                                <Input name="spots" type="number" placeholder="Max Spots" required />
                             </div>
+
+                            <div className="flex items-center justify-between p-2 border rounded-md bg-muted/20">
+                                <div className="space-y-0.5">
+                                    <Label>Paid Class</Label>
+                                    <p className="text-xs text-muted-foreground">Is there a fee to join?</p>
+                                </div>
+                                <Switch 
+                                    name="isPaid" 
+                                    checked={isPaidAdd} 
+                                    onCheckedChange={setIsPaidAdd} 
+                                />
+                            </div>
+
+                            {isPaidAdd && (
+                                <div className="space-y-2 animate-in fade-in slide-in-from-top-1">
+                                    <Label>Price ($)</Label>
+                                    <Input name="price" type="number" step="0.01" placeholder="0.00" required />
+                                </div>
+                            )}
 
                             <div className="space-y-2">
                                <Label>Class Image</Label>
@@ -666,16 +809,71 @@ export default function DashboardPage() {
                               <p className="text-sm text-muted-foreground">{c.time} • {c.maxSpots} spots</p>
                               {c.imageUrl && <p className="text-xs text-muted-foreground mt-1">Image attached</p>}
                             </div>
-                            <Button variant="destructive" size="icon" onClick={async () => {
-                              await removeClass(c.id);
-                              setClasses(await getClasses(trainerSlug || undefined));
-                            }}>
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
+                            <div className="flex gap-2">
+                                <Button variant="outline" size="icon" onClick={() => setEditingClass(c)}>
+                                    <Pencil className="h-4 w-4" />
+                                </Button>
+                                <Button variant="destructive" size="icon" onClick={async () => {
+                                await removeClass(c.id);
+                                setClasses(await getClasses(trainerSlug || undefined));
+                                }}>
+                                <Trash2 className="h-4 w-4" />
+                                </Button>
+                            </div>
                           </Card>
                         ))}
                       </div>
                     </div>
+                    
+                    <Dialog open={!!editingClass} onOpenChange={(open) => !open && setEditingClass(null)}>
+                        <DialogContent>
+                            <DialogHeader>
+                                <DialogTitle>Edit Class</DialogTitle>
+                                <DialogDescription>Update class details.</DialogDescription>
+                            </DialogHeader>
+                            {editingClass && (
+                                <form onSubmit={handleUpdateClass} className="space-y-4">
+                                    <Input name="title" placeholder="Class Title" defaultValue={editingClass.title} required />
+                                    <Input name="description" placeholder="Description" defaultValue={editingClass.description} required />
+                                    <div className="space-y-2">
+                                        <Label>Date & Time</Label>
+                                        <Input 
+                                            name="time" 
+                                            type="datetime-local" 
+                                            defaultValue={(editingClass as any).dateIso ? new Date((editingClass as any).dateIso).toISOString().slice(0, 16) : ''} 
+                                            required 
+                                        />
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-2">
+                                        <Input name="duration" type="number" placeholder="Mins" defaultValue={editingClass.durationMinutes} required />
+                                        <Input name="spots" type="number" placeholder="Max Spots" defaultValue={editingClass.maxSpots} required />
+                                    </div>
+                                    
+                                    <div className="flex items-center justify-between p-2 border rounded-md bg-muted/20">
+                                        <div className="space-y-0.5">
+                                            <Label>Paid Class</Label>
+                                            <p className="text-xs text-muted-foreground">Is there a fee to join?</p>
+                                        </div>
+                                        <Switch 
+                                            name="isPaid" 
+                                            checked={isPaidEdit} 
+                                            onCheckedChange={setIsPaidEdit} 
+                                        />
+                                    </div>
+
+                                    {isPaidEdit && (
+                                        <div className="space-y-2 animate-in fade-in slide-in-from-top-1">
+                                            <Label>Price ($)</Label>
+                                            <Input name="price" type="number" step="0.01" placeholder="0.00" defaultValue={editingClass.price} required />
+                                        </div>
+                                    )}
+
+                                    <Input name="imageUrl" placeholder="Image URL" defaultValue={editingClass.imageUrl} />
+                                    <Button type="submit" className="w-full">Save Changes</Button>
+                                </form>
+                            )}
+                        </DialogContent>
+                    </Dialog>
                   </TabsContent>
 
                   {/* Certs Editor */}

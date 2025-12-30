@@ -1,6 +1,8 @@
 import { useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/lib/auth-context';
+import { BootLoader } from '@/components/ui/boot-loader';
+import { AnimatePresence } from 'framer-motion';
 
 export default function AdminPage() {
   const { user, loading } = useAuth();
@@ -19,9 +21,9 @@ export default function AdminPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-      </div>
+        <AnimatePresence>
+            <BootLoader message="Checking access..." />
+        </AnimatePresence>
     );
   }
 

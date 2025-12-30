@@ -10,6 +10,8 @@ import {
   CarouselPrevious,
 } from "@/components/ui/carousel";
 import { DEFAULT_BRAND_NAME } from '@/lib/constants';
+import { BootLoader } from '@/components/ui/boot-loader';
+import { AnimatePresence } from 'framer-motion';
 
 export default function HomePage() {
   const { getTrainers, getLandingPageContent, getBrandIdentity, getPlatformTestimonials } = useData();
@@ -54,17 +56,14 @@ export default function HomePage() {
   const heroImage = landing?.heroImageUrl || 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?q=80&w=2070&auto=format&fit=crop';
   const brandName = brand?.brandName || DEFAULT_BRAND_NAME;
 
-  if (loading) {
+  // Replaced spinner with BootLoader
+    if (loading) {
       return (
-          <main className="min-h-screen bg-background text-foreground flex items-center justify-center">
-              <div className="flex flex-col items-center gap-4">
-                  <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-                  <p className="text-muted-foreground animate-pulse">Loading Platform...</p>
-              </div>
-          </main>
+        <AnimatePresence>
+          <BootLoader />
+        </AnimatePresence>
       );
-  }
-
+    }
   return (
     <main className="min-h-screen bg-background text-foreground">
       {/* Hero Section */}
@@ -169,11 +168,11 @@ export default function HomePage() {
                     opts={{
                         align: "start",
                     }}
-                    className="w-full max-w-5xl"
+                    className="w-full max-w-5xl mx-auto"
                  >
-                    <CarouselContent>
+                    <CarouselContent className="-ml-2 md:-ml-4">
                         {testimonials.map((t) => (
-                            <CarouselItem key={t.id} className="md:basis-1/2 lg:basis-1/2 p-2">
+                            <CarouselItem key={t.id} className="pl-2 md:pl-4 md:basis-1/2 lg:basis-1/2 p-2">
                                 <div className="bg-gray-900 rounded-xl p-8 border border-white/10 h-full">
                                     <div className="flex gap-4 items-center mb-4">
                                        {t.imageUrl ? (
@@ -208,8 +207,11 @@ export default function HomePage() {
       </section>
 
       {/* Footer */}
-      <footer className="py-8 bg-black border-t border-white/10 text-center text-gray-400 text-sm">
+      <footer className="py-8 bg-black border-t border-white/10 text-center text-gray-400 text-sm flex flex-col items-center gap-2">
         <p>&copy; {new Date().getFullYear()} {brandName}. All rights reserved.</p>
+        <Link to="/admin/login" className="text-xs text-gray-700 hover:text-gray-500 transition-colors">
+            Trainer Portal
+        </Link>
       </footer>
     </main>
   );

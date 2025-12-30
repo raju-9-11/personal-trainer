@@ -18,10 +18,14 @@ export function Hero() {
     }
   }, [getProfile, slug]);
 
-  if (!profile) return <div className="h-screen bg-background flex items-center justify-center">Loading...</div>;
+  // If profile is not loaded yet, we can return null (since BootLoader covers the initial load)
+  // or a skeleton. Since TrainerPageContent waits for BrandIdentity but not necessarily profile,
+  // we might want a local loading state or just render null until data is ready.
+  // Given the instruction to be subtle, let's just return null or a skeleton.
+  if (!profile) return null;
 
   return (
-    <section className="relative h-[90vh] flex items-center justify-center overflow-hidden bg-background">
+    <section className="relative min-h-screen flex items-center justify-center overflow-hidden bg-background">
       {/* Background Graphic Element - Energetic Gradient Blob */}
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-primary/20 rounded-full blur-[120px] pointer-events-none" />
 

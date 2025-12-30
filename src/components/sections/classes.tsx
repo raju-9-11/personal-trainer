@@ -9,20 +9,39 @@ import { Button } from '@/components/ui/button';
 import { Calendar, Clock, Users } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { useEffect, useState } from 'react';
+import { CountdownTimer } from '@/components/ui/countdown-timer';
+import { BookingModal } from '@/components/ui/booking-modal';
+import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '@/components/ui/carousel';
 
 export function Classes() {
   const { getClasses } = useData();
   const slug = useTrainerSlug();
   const [items, setItems] = useState<GymClass[]>([]);
+  const [selectedClass, setSelectedClass] = useState<GymClass | null>(null);
 
   useEffect(() => {
     if (slug) {
-      getClasses(slug).then(setItems);
+      getClasses(slug).then((data) => {
+        const now = new Date();
+        const upcoming = data.filter(c => {
+             // If dateIso is present, use it for accurate filtering
+             if ((c as any).dateIso) {
+                 return new Date((c as any).dateIso) > now;
+             }
+             // Fallback for legacy data (optional: keep or hide)
+             // Let's assume if no dateIso, it's a recurring weekly class, so we show it? 
+             // Or better, hide it to clean up.
+             return false; 
+        });
+        // Sort by date
+        upcoming.sort((a, b) => new Date((a as any).dateIso).getTime() - new Date((b as any).dateIso).getTime());
+        setItems(upcoming);
+      });
     }
   }, [getClasses, slug]);
 
   return (
-    <section id="classes" className="py-24 bg-muted/20">
+    <section id="classes" className="py-24 bg-background">
       <div className="container px-4 mx-auto">
         <div className="text-center mb-16">
           <h2 className="text-4xl font-black uppercase mb-4">Class Schedule</h2>
@@ -32,51 +51,78 @@ export function Classes() {
         </div>
 
         {items.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <Carousel className="w-full max-w-5xl mx-auto">
+            <CarouselContent className="-ml-4">
             {items.map((item, idx) => (
-              <motion.div
-                key={item.id}
-                initial={{ opacity: 0, scale: 0.95 }}
-                whileInView={{ opacity: 1, scale: 1 }}
-                viewport={{ once: true }}
-                transition={{ delay: idx * 0.1 }}
-              >
-                <Card className="h-full flex flex-col border-border/50 hover:border-primary transition-all duration-300 hover:shadow-[0_0_30px_rgba(var(--primary),0.3)]">
-                  <CardHeader>
-                    <div className="flex justify-between items-start mb-2">
-                      <Badge variant="secondary" className="mb-2">{item.time.split(' ')[0]}</Badge>
-                      <Badge variant={item.enrolledSpots >= item.maxSpots ? "destructive" : "outline"}>
-                        {item.enrolledSpots >= item.maxSpots ? "FULL" : `${item.maxSpots - item.enrolledSpots} Spots Left`}
-                      </Badge>
-                    </div>
-                    <CardTitle className="text-xl">{item.title}</CardTitle>
-                    <CardDescription>{item.description}</CardDescription>
-                  </CardHeader>
-                  <CardContent className="flex-grow space-y-4">
-                    <div className="flex items-center text-sm text-muted-foreground">
-                      <Clock className="mr-2 h-4 w-4 text-primary" />
-                      {item.time} ({item.durationMinutes} mins)
-                    </div>
-                    <div className="flex items-center text-sm text-muted-foreground">
-                      <Users className="mr-2 h-4 w-4 text-primary" />
-                      Capacity: {item.maxSpots}
-                    </div>
-                  </CardContent>
-                  <CardFooter>
-                    <Button className="w-full" disabled={item.enrolledSpots >= item.maxSpots}>
-                      {item.enrolledSpots >= item.maxSpots ? "Join Waitlist" : "Book Class"}
-                    </Button>
-                  </CardFooter>
-                </Card>
-              </motion.div>
+              <CarouselItem key={item.id} className="pl-4 md:basis-1/2 lg:basis-1/3 p-4">
+                <motion.div
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    whileInView={{ opacity: 1, scale: 1 }}
+                    viewport={{ once: true }}
+                    transition={{ delay: idx * 0.1 }}
+                    className={`h-full ${item.enrolledSpots >= item.maxSpots ? 'opacity-80' : ''}`}
+                >
+                    <Card className={`h-full flex flex-col bg-background/50 border border-border/40 hover:border-primary/50 transition-all duration-300 hover:shadow-[0_0_30px_rgba(var(--primary),0.2)] dark:bg-white/[0.03] dark:backdrop-blur-md ${item.enrolledSpots >= item.maxSpots ? '' : 'shadow-sm'}`}>
+                    <CardHeader>
+                        <div className="flex justify-between items-start mb-2">
+                        <div className="flex flex-col gap-1">
+                            <Badge variant="secondary" className="w-fit bg-background/80 border border-border/50 text-foreground/80 font-semibold shadow-xs backdrop-blur-sm">{item.time.split(' ')[0]}</Badge>
+                            <CountdownTimer targetDate={(item as any).dateIso || new Date().toISOString()} />
+                        </div>
+                        <Badge variant={item.enrolledSpots >= item.maxSpots ? "destructive" : "outline"}>
+                            {item.enrolledSpots >= item.maxSpots ? "FULL" : `${item.maxSpots - item.enrolledSpots} Spots Left`}
+                        </Badge>
+                        </div>
+                        <CardTitle className="text-xl">{item.title}</CardTitle>
+                        <CardDescription>{item.description}</CardDescription>
+                    </CardHeader>
+                    <CardContent className="flex-grow space-y-4">
+                        <div className="flex items-center text-sm font-medium">
+                        <Clock className="mr-2 h-4 w-4 text-primary" />
+                        {item.time} ({item.durationMinutes} mins)
+                        </div>
+                        <div className="flex items-center text-sm font-medium">
+                        <Users className="mr-2 h-4 w-4 text-primary" />
+                        Capacity: {item.maxSpots}
+                        </div>
+                        <div className="flex items-center text-sm font-medium">
+                        {/* Placeholder for price */}
+                        Price: {(item as any).price ? `$${(item as any).price}` : 'Free'}
+                        </div>
+                    </CardContent>
+                    <CardFooter>
+                        <Button
+                            className="w-full"
+                            disabled={item.enrolledSpots >= item.maxSpots}
+                            onClick={() => setSelectedClass(item)}
+                        >
+                        {item.enrolledSpots >= item.maxSpots ? "Join Waitlist" : "Book Class"}
+                        </Button>
+                    </CardFooter>
+                    </Card>
+                </motion.div>
+              </CarouselItem>
             ))}
-          </div>
+            </CarouselContent>
+            <div className="hidden md:flex justify-end gap-2 mt-4">
+                <CarouselPrevious className="static translate-y-0" />
+                <CarouselNext className="static translate-y-0" />
+            </div>
+          </Carousel>
         ) : (
-          <div className="text-center py-12">
-            <p className="text-muted-foreground text-lg">No classes scheduled yet. Check back soon!</p>
+          <div className="text-center py-12 bg-muted/10 border border-border rounded-lg max-w-2xl mx-auto">
+            <p className="text-muted-foreground text-lg">No upcoming classes scheduled. Check back soon!</p>
           </div>
         )}
       </div>
+
+      {selectedClass && (
+        <BookingModal
+            gymClass={selectedClass}
+            isOpen={!!selectedClass}
+            onClose={() => setSelectedClass(null)}
+        />
+      )}
     </section>
   );
 }
