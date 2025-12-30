@@ -1,7 +1,6 @@
-import { Footer } from '@/components/layout/footer';
-
-export default function HomePage() {
-  const { getTrainers, getLandingPageContent, getBrandIdentity, getPlatformTestimonials } = useData();
+import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { useData } from '@/lib/data-provider';
 import { TrainerSummary, LandingPageContent, BrandIdentity, PlatformTestimonial } from '@/lib/types';
 import {
   Carousel,
@@ -13,6 +12,7 @@ import {
 import { DEFAULT_BRAND_NAME } from '@/lib/constants';
 import { BootLoader } from '@/components/ui/boot-loader';
 import { AnimatePresence } from 'framer-motion';
+import { Footer } from '@/components/layout/footer';
 
 export default function HomePage() {
   const { getTrainers, getLandingPageContent, getBrandIdentity, getPlatformTestimonials } = useData();
