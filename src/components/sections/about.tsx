@@ -43,18 +43,26 @@ export function About() {
     <section id="about" className="py-24 bg-background">
       <div className="container px-4 mx-auto">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
-          {/* Left: Bio */}
+          {/* Left: Bio & Image */}
           <motion.div
             initial={{ opacity: 0, x: -50 }}
             whileInView={{ opacity: 1, x: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.5 }}
           >
-            <div className="flex items-center space-x-2 mb-4">
-              <User className="text-primary h-6 w-6" />
-              <span className="text-primary font-bold uppercase tracking-widest">About Me</span>
+            <div className="flex items-center space-x-4 mb-6">
+                {profile.profileImageUrl ? (
+                    <img src={profile.profileImageUrl} alt={profile.name} className="w-20 h-20 rounded-full object-cover border-2 border-primary shadow-lg" />
+                ) : (
+                    <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center border-2 border-primary/20">
+                        <User className="text-primary h-10 w-10" />
+                    </div>
+                )}
+                <div>
+                    <span className="text-primary font-bold uppercase tracking-widest block text-sm">About Me</span>
+                    <h2 className="text-4xl font-bold">{profile.name}</h2>
+                </div>
             </div>
-            <h2 className="text-4xl font-bold mb-6">{profile.name}</h2>
             <p className="text-lg text-muted-foreground leading-relaxed mb-6">
               {profile.bio}
             </p>

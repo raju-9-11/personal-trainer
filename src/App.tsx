@@ -48,6 +48,7 @@ function App() {
           <ScrollToTop />
           <Routes>
             <Route path="/" element={<HomePage />} />
+            <Route path="/t/:slug" element={<TrainerPage />} />
             <Route path="/trainer" element={<TrainerPage />} />
             <Route path="/admin" element={<AdminPage />} />
             <Route path="/admin/login" element={<LoginPage />} />

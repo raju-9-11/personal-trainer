@@ -1,5 +1,11 @@
 {
   "projects": {
     "default": "personal-trainer-mock"
+  },
+  "targets": {},
+  "etags": {
+    "personal-trainer-mock": {
+      "extensionInstances": {}
+    }
   }
 }

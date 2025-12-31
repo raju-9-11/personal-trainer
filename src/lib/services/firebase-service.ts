@@ -204,7 +204,14 @@ export class FirebaseDataService implements DataProviderType {
         return 'platform';
     }
 
-    // Query 'trainers' collection where 'ownerUid' == user.uid
+    // Try finding by Doc ID (UID) first for efficiency
+    const docRef = doc(db, ROOT_COLLECTION, this.currentUser.uid);
+    const docSnap = await getDoc(docRef);
+    if (docSnap.exists()) {
+        return docSnap.id;
+    }
+
+    // Legacy/Fallback Check: Query 'trainers' collection where 'ownerUid' == user.uid
     const trainersRef = collection(db, ROOT_COLLECTION);
     const q = query(trainersRef, where('ownerUid', '==', this.currentUser.uid));
     const snapshot = await getDocs(q);
@@ -213,22 +220,23 @@ export class FirebaseDataService implements DataProviderType {
        return snapshot.docs[0].id;
     }
 
-    // CREATE NEW TRAINER DOC AUTOMATICALLY
+    // CREATE NEW TRAINER DOC AUTOMATICALLY using UID as Doc ID
     console.log("No trainer profile found for user. Creating one...");
-    const newSlug = `trainer-${Date.now()}`; // Simple generation strategy
+    const initialSlug = `trainer-${Date.now()}`;
 
-    // Create the document
-    await setDoc(doc(db, ROOT_COLLECTION, newSlug), {
+    // Create the document with UID as the key
+    await setDoc(doc(db, ROOT_COLLECTION, this.currentUser.uid), {
         ...DEFAULT_PROFILE,
+        slug: initialSlug,
         contactEmail: this.currentUser.email || "",
         ownerUid: this.currentUser.uid,
         createdAt: Timestamp.now()
     });
 
     // Create default identity subcollection
-    await setDoc(doc(db, ROOT_COLLECTION, newSlug, COLLECTIONS.IDENTITY, IDENTITY_DOC_ID), DEFAULT_IDENTITY);
+    await setDoc(doc(db, ROOT_COLLECTION, this.currentUser.uid, COLLECTIONS.IDENTITY, IDENTITY_DOC_ID), DEFAULT_IDENTITY);
 
-    return newSlug;
+    return this.currentUser.uid;
   }
 
   // --- Read ---
@@ -236,10 +244,11 @@ export class FirebaseDataService implements DataProviderType {
     const restFallback = async () => {
       const docs = await fetchFirestoreCollection(ROOT_COLLECTION);
       return docs.map(({ id, data }) => ({
-        slug: id,
+        slug: data.slug || id,
         name: data.name || 'Unnamed Trainer',
         heroTitle: data.heroTitle || 'Personal Trainer',
         profileImage: data.profileImageUrl,
+        listImage: data.listImageUrl,
       }));
     };
 
@@ -252,10 +261,11 @@ export class FirebaseDataService implements DataProviderType {
         for (const docSnap of snapshot.docs) {
            const data = docSnap.data();
            summaries.push({
-               slug: docSnap.id,
+               slug: data.slug || docSnap.id,
                name: data.name || 'Unnamed Trainer',
                heroTitle: data.heroTitle || 'Personal Trainer',
-               profileImage: data.profileImageUrl
+               profileImage: data.profileImageUrl,
+               listImage: data.listImageUrl
            });
         }
         return summaries;
@@ -272,20 +282,32 @@ export class FirebaseDataService implements DataProviderType {
     if (!slug) return DEFAULT_PROFILE;
 
     const restFallback = async () => {
+      // First try by ID
       const restDoc = await fetchFirestoreDocument(`${ROOT_COLLECTION}/${slug}`);
       if (restDoc?.data) {
-        return { ...DEFAULT_PROFILE, ...restDoc.data } as TrainerProfile;
+        return { ...DEFAULT_PROFILE, ...restDoc.data, slug: restDoc.data.slug || restDoc.id } as TrainerProfile;
       }
+      // Then try by slug field if needed (REST query is complex, simpler to return default for now or implement if needed)
       return DEFAULT_PROFILE;
     };
 
     if (this.db) {
       try {
+        // Try direct ID lookup (UID or legacy slug)
         const docRef = doc(this.db, ROOT_COLLECTION, slug);
         const docSnap = await getDoc(docRef);
 
         if (docSnap.exists()) {
-           return docSnap.data() as TrainerProfile;
+           const data = docSnap.data();
+           return { ...data, slug: data.slug || docSnap.id } as TrainerProfile;
+        }
+
+        // Try lookup by slug field
+        const q = query(collection(this.db, ROOT_COLLECTION), where('slug', '==', slug));
+        const snapshot = await getDocs(q);
+        if (!snapshot.empty) {
+            const data = snapshot.docs[0].data();
+            return { ...data, slug: data.slug || snapshot.docs[0].id } as TrainerProfile;
         }
       } catch (e) {
         console.warn("Error fetching profile via Firestore, trying REST", e);
@@ -318,7 +340,14 @@ export class FirebaseDataService implements DataProviderType {
         if (slug === 'platform') {
           docRef = doc(this.db, PLATFORM_COLLECTION, 'identity');
         } else {
-          docRef = doc(this.db, ROOT_COLLECTION, slug, COLLECTIONS.IDENTITY, IDENTITY_DOC_ID);
+          // Resolve actual doc ID if slug is provided
+          let actualId = slug;
+          const q = query(collection(this.db, ROOT_COLLECTION), where('slug', '==', slug));
+          const snapshot = await getDocs(q);
+          if (!snapshot.empty) {
+              actualId = snapshot.docs[0].id;
+          }
+          docRef = doc(this.db, ROOT_COLLECTION, actualId, COLLECTIONS.IDENTITY, IDENTITY_DOC_ID);
         }
         const identityDoc = await getDoc(docRef);
         if (identityDoc.exists()) {

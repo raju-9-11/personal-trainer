@@ -1,10 +1,22 @@
-import { useMemo } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useMemo, useEffect } from 'react';
+import { useSearchParams, useParams, useNavigate } from 'react-router-dom';
 import { TrainerPageContent } from '@/components/TrainerPageContent';
 
 export default function TrainerPage() {
+  const { slug: paramSlug } = useParams();
   const [searchParams] = useSearchParams();
-  const slug = useMemo(() => searchParams.get('slug')?.trim(), [searchParams]);
+  const navigate = useNavigate();
+  
+  const querySlug = searchParams.get('slug')?.trim();
+
+  // Redirect legacy query param to clean URL
+  useEffect(() => {
+    if (!paramSlug && querySlug) {
+      navigate(`/t/${querySlug}`, { replace: true });
+    }
+  }, [paramSlug, querySlug, navigate]);
+
+  const slug = paramSlug || querySlug;
 
   if (!slug) {
     return (
@@ -12,7 +24,7 @@ export default function TrainerPage() {
         <div className="space-y-4 max-w-xl">
           <h1 className="text-3xl font-semibold">Trainer Not Selected</h1>
           <p className="text-muted-foreground">
-            Please open this page using a trainer link (e.g. <code>/trainer?slug=my-trainer</code>) so we can load the correct profile.
+            Please open this page using a valid trainer link (e.g. <code>/t/trainer-name</code>).
           </p>
         </div>
       </main>

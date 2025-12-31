@@ -9,25 +9,24 @@ import { useBrandIdentity, useTrainerSlug } from '@/components/TrainerContext';
 import { DEFAULT_BRAND_NAME } from '@/lib/constants';
 import { useTheme } from '@/components/ThemeContext';
 
-function BrandIcon({ logoUrl, brandName, loading }: { logoUrl?: string; brandName: string; loading: boolean }) {
+function BrandIcon({ logoUrl, brandName, loading, logoScale = 'fit' }: { logoUrl?: string; brandName: string; loading: boolean; logoScale?: 'fit' | 'fill' }) {
   if (loading) return <div className="h-10 w-10 rounded-full bg-muted animate-pulse" />;
   
   if (logoUrl) {
+    const objectClass = logoScale === 'fill' ? 'object-cover' : 'object-contain';
     return (
       <div className="h-10 w-10 flex items-center justify-center overflow-hidden rounded-xl border border-border/50 bg-background shadow-sm hover:shadow-md transition-all">
-        <img src={logoUrl} alt={brandName} className="h-full w-full object-contain p-1" />
+        <img src={logoUrl} alt={brandName} className={`h-full w-full ${objectClass} p-0.5`} />
       </div>
     );
   }
 
   const initial = brandName.trim().charAt(0).toUpperCase() || 'P';
-  
-  // Generate a stable "random" progress value based on the name length (between 65% and 90%)
   const progress = 65 + (brandName.length * 3) % 25;
-  const circumference = 2 * Math.PI * 18; // r=18
+  const circumference = 2 * Math.PI * 18;
   const dashArray = circumference;
   const dashOffset = circumference - (progress / 100) * circumference;
-
+  
   return (
     <div className="relative h-10 w-10 flex items-center justify-center group cursor-pointer">
       <svg className="h-full w-full -rotate-90 transform" viewBox="0 0 44 44">
@@ -50,7 +49,7 @@ function BrandIcon({ logoUrl, brandName, loading }: { logoUrl?: string; brandNam
           stroke="currentColor"
           strokeWidth="3"
           strokeLinecap="round"
-          className="text-primary drop-shadow-sm"
+          className="text-primary"
           initial={{ strokeDasharray: dashArray, strokeDashoffset: dashArray }}
           animate={{ strokeDashoffset: dashOffset }}
           transition={{ duration: 1.5, ease: "easeOut", delay: 0.2 }}
@@ -59,13 +58,10 @@ function BrandIcon({ logoUrl, brandName, loading }: { logoUrl?: string; brandNam
       
       {/* Initial */}
       <div className="absolute inset-0 flex items-center justify-center">
-        <span className="text-lg font-black italic tracking-tighter text-foreground group-hover:scale-110 transition-transform duration-300">
+        <span className="text-xl font-black italic -rotate-6 text-foreground select-none transition-transform duration-300">
           {initial}
         </span>
       </div>
-      
-      {/* Pulse Effect on Hover */}
-      <div className="absolute inset-0 rounded-full bg-primary/5 opacity-0 group-hover:opacity-100 group-hover:animate-ping transition-all duration-500" />
     </div>
   );
 }
@@ -112,7 +108,7 @@ export function Navbar() {
       <div className="container mx-auto px-4 h-16 flex items-center justify-between">
         {/* Logo */}
         <Link to={profileHref} className="flex items-center space-x-3 font-bold text-xl uppercase tracking-tighter hover:opacity-90 transition-all group">
-          <BrandIcon logoUrl={identity?.logoUrl} brandName={brandName} loading={loading} />
+          <BrandIcon logoUrl={identity?.logoUrl} brandName={brandName} loading={loading} logoScale={identity?.logoScale} />
           {isLoadingIdentity ? (
             <span className="text-sm font-medium text-muted-foreground animate-pulse opacity-0">...</span>
           ) : (

@@ -1,4 +1,5 @@
 export interface TrainerProfile {
+  slug?: string;
   name: string;
   bio: string;
   heroTitle: string;
@@ -10,6 +11,7 @@ export interface TrainerProfile {
   youtubeUrl?: string;
   socialLinks?: SocialLink[];
   profileImageUrl?: string;
+  listImageUrl?: string;
   experienceYears?: number;
   experienceMonths?: number;
   clientsHandled?: number;
@@ -26,6 +28,7 @@ export interface TrainerSummary {
   name: string;
   heroTitle: string;
   profileImage?: string;
+  listImage?: string;
 }
 
 export interface Certification {
@@ -86,6 +89,7 @@ export interface BrandIdentity {
   // New fields
   baseColor?: string; // Preferred over primaryColor if present
   themePresetId?: string;
+  logoScale?: 'fit' | 'fill';
 }
 
 export interface LandingPageContent {
