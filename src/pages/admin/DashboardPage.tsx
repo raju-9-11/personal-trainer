@@ -339,8 +339,8 @@ export default function DashboardPage() {
     getProfile, updateProfile,
     getBrandIdentity, updateBrandIdentity,
     getClasses, addClass, removeClass, updateClass,
-    getCertifications, addCertification, removeCertification,
-    getTransformations, addTransformation, removeTransformation,
+    getCertifications, addCertification, updateCertification, removeCertification,
+    getTransformations, addTransformation, updateTransformation, removeTransformation,
     getLandingPageContent, updateLandingPageContent,
     getPlatformTestimonials, addPlatformTestimonial, removePlatformTestimonial
   } = useData();
@@ -349,9 +349,17 @@ export default function DashboardPage() {
   const [identity, setIdentity] = useState<BrandIdentity | null>(null);
   const [classes, setClasses] = useState<GymClass[]>([]);
   const [editingClass, setEditingClass] = useState<GymClass | null>(null);
+  const [editingCert, setEditingCert] = useState<Certification | null>(null);
+  const [editingTrans, setEditingTrans] = useState<Transformation | null>(null);
   const [isPaidAdd, setIsPaidAdd] = useState(false);
   const [isPaidEdit, setIsPaidEdit] = useState(false);
   
+  // Loading states
+  const [isAddingClass, setIsAddingClass] = useState(false);
+  const [isAddingCert, setIsAddingCert] = useState(false);
+  const [isAddingTrans, setIsAddingTrans] = useState(false);
+  const [isAddingTestimonial, setIsAddingTestimonial] = useState(false);
+
   useEffect(() => {
     if (editingClass) {
         setIsPaidEdit(!!editingClass.price && editingClass.price > 0);
@@ -411,15 +419,23 @@ export default function DashboardPage() {
 
   // Update Document Title based on identity and active tab
   useEffect(() => {
-      const baseTitle = identity?.brandName || 'Admin';
+      // Prioritize identity.brandName, fallback to profile.name only if it's set and not default,
+      // otherwise use generic fallback.
+      const brandName = identity?.brandName || 'MyBrand';
+
       if (isSuperAdmin) {
           let section = 'Dashboard';
           if (activeTab === 'landing') section = 'Landing Page';
           if (activeTab === 'testimonials') section = 'Testimonials';
           if (activeTab === 'identity') section = 'Identity';
-          document.title = `${baseTitle} - ${section}`;
+          document.title = `${brandName} - ${section}`;
       } else {
-          document.title = `${baseTitle} | ${profile?.name || 'Trainer Dashboard'}`;
+          // Explicitly handle "New Trainer" or undefined profile
+          const trainerName = profile?.name && profile.name !== "New Trainer"
+              ? profile.name
+              : 'Trainer Portal';
+
+          document.title = `${brandName} | ${trainerName}`;
       }
   }, [identity, profile, activeTab, isSuperAdmin]);
 
@@ -486,35 +502,44 @@ export default function DashboardPage() {
 
   const handleAddClass = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    const formData = new FormData(e.currentTarget);
-    const dateValue = formData.get('time') as string;
-    const date = new Date(dateValue);
-    
-    // Format for display: e.g. "Mon 10:00 AM"
-    const displayTime = date.toLocaleDateString('en-US', { 
-        weekday: 'short', 
-        hour: 'numeric', 
-        minute: '2-digit', 
-        hour12: true 
-    }).replace(',', '');
+    setIsAddingClass(true);
+    const form = e.currentTarget;
+    try {
+        const formData = new FormData(form);
+        const dateValue = formData.get('time') as string;
+        const date = new Date(dateValue);
 
-    const isPaid = formData.get('isPaid') === 'on';
-    const price = isPaid ? parseFloat(formData.get('price') as string || '0') : 0;
+        // Format for display: e.g. "Mon 10:00 AM"
+        const displayTime = date.toLocaleDateString('en-US', {
+            weekday: 'short',
+            hour: 'numeric',
+            minute: '2-digit',
+            hour12: true
+        }).replace(',', '');
 
-    await addClass({
-      title: formData.get('title') as string,
-      description: formData.get('description') as string,
-      time: displayTime,
-      dateIso: date.toISOString(),
-      price: price,
-      durationMinutes: parseInt(formData.get('duration') as string),
-      maxSpots: parseInt(formData.get('spots') as string),
-      enrolledSpots: 0,
-      imageUrl: formData.get('imageUrl') as string || undefined
-    });
-    setClasses(await getClasses(trainerSlug || undefined));
-    (e.target as HTMLFormElement).reset();
-    setIsPaidAdd(false);
+        const isPaid = formData.get('isPaid') === 'on';
+        const price = isPaid ? parseFloat(formData.get('price') as string || '0') : 0;
+
+        await addClass({
+          title: formData.get('title') as string,
+          description: formData.get('description') as string,
+          time: displayTime,
+          dateIso: date.toISOString(),
+          price: price,
+          durationMinutes: parseInt(formData.get('duration') as string),
+          maxSpots: parseInt(formData.get('spots') as string),
+          enrolledSpots: 0,
+          imageUrl: formData.get('imageUrl') as string || undefined
+        });
+        setClasses(await getClasses(trainerSlug || undefined));
+        form.reset();
+        setIsPaidAdd(false);
+    } catch (error) {
+        console.error("Failed to add class", error);
+        showAlert('Error', 'Failed to add class. Please try again.');
+    } finally {
+        setIsAddingClass(false);
+    }
   };
 
   const handleUpdateClass = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -551,43 +576,125 @@ export default function DashboardPage() {
     setEditingClass(null);
   };
 
+  const handleUpdateCert = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!editingCert) return;
+    setSaving(true);
+    try {
+        const formData = new FormData(e.currentTarget);
+        await updateCertification(editingCert.id, {
+            title: formData.get('title') as string,
+            issuer: formData.get('issuer') as string,
+            date: formData.get('date') as string,
+            url: formData.get('url') as string || undefined,
+            imageUrl: formData.get('imageUrl') as string || undefined,
+        });
+        setCerts(await getCertifications(trainerSlug || undefined));
+        setEditingCert(null);
+    } catch (error) {
+        console.error("Failed to update cert", error);
+        showAlert('Error', 'Failed to update certification. Please try again.');
+    } finally {
+        setSaving(false);
+    }
+  };
+
   const handleAddCert = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    const formData = new FormData(e.currentTarget);
-    await addCertification({
-      title: formData.get('title') as string,
-      issuer: formData.get('issuer') as string,
-      date: formData.get('date') as string,
-      url: formData.get('url') as string || undefined,
-      imageUrl: formData.get('imageUrl') as string || undefined,
-    });
-    setCerts(await getCertifications(trainerSlug || undefined));
-    (e.target as HTMLFormElement).reset();
+    setIsAddingCert(true);
+    const form = e.currentTarget;
+    try {
+        const formData = new FormData(form);
+        await addCertification({
+          title: formData.get('title') as string,
+          issuer: formData.get('issuer') as string,
+          date: formData.get('date') as string,
+          url: formData.get('url') as string || undefined,
+          imageUrl: formData.get('imageUrl') as string || undefined,
+        });
+        setCerts(await getCertifications(trainerSlug || undefined));
+        form.reset();
+    } catch (error) {
+        console.error("Failed to add cert", error);
+        showAlert('Error', 'Failed to add certification. Please try again.');
+    } finally {
+        setIsAddingCert(false);
+    }
+  };
+
+  const handleUpdateTrans = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!editingTrans) return;
+    setSaving(true);
+    try {
+        const formData = new FormData(e.currentTarget);
+        await updateTransformation(editingTrans.id, {
+            clientName: formData.get('clientName') as string,
+            description: formData.get('description') as string,
+            beforeImage: formData.get('beforeImage') as string,
+            afterImage: formData.get('afterImage') as string,
+            duration: formData.get('duration') as string || undefined,
+            weightLost: formData.get('weightLost') as string || undefined,
+            muscleGained: formData.get('muscleGained') as string || undefined,
+            keyChallenges: formData.get('keyChallenges') as string || undefined,
+            trainerNote: formData.get('trainerNote') as string || undefined,
+        });
+        setTrans(await getTransformations(trainerSlug || undefined));
+        setEditingTrans(null);
+    } catch (error) {
+        console.error("Failed to update transformation", error);
+        showAlert('Error', 'Failed to update transformation. Please try again.');
+    } finally {
+        setSaving(false);
+    }
   };
 
   const handleAddTrans = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    const formData = new FormData(e.currentTarget);
-    await addTransformation({
-      clientName: formData.get('clientName') as string,
-      description: formData.get('description') as string,
-      beforeImage: formData.get('beforeImage') as string,
-      afterImage: formData.get('afterImage') as string,
-    });
-    setTrans(await getTransformations(trainerSlug || undefined));
-    (e.target as HTMLFormElement).reset();
+    setIsAddingTrans(true);
+    const form = e.currentTarget;
+    try {
+        const formData = new FormData(form);
+        await addTransformation({
+          clientName: formData.get('clientName') as string,
+          description: formData.get('description') as string,
+          beforeImage: formData.get('beforeImage') as string,
+          afterImage: formData.get('afterImage') as string,
+          duration: formData.get('duration') as string || undefined,
+          weightLost: formData.get('weightLost') as string || undefined,
+          muscleGained: formData.get('muscleGained') as string || undefined,
+          keyChallenges: formData.get('keyChallenges') as string || undefined,
+          trainerNote: formData.get('trainerNote') as string || undefined,
+        });
+        setTrans(await getTransformations(trainerSlug || undefined));
+        form.reset();
+    } catch (error) {
+        console.error("Failed to add transformation", error);
+        showAlert('Error', 'Failed to add transformation. Please try again.');
+    } finally {
+        setIsAddingTrans(false);
+    }
   };
 
   const handleAddTestimonial = async (e: React.FormEvent<HTMLFormElement>) => {
       e.preventDefault();
-      const formData = new FormData(e.currentTarget);
-      await addPlatformTestimonial({
-          name: formData.get('name') as string,
-          testimonial: formData.get('testimonial') as string,
-          imageUrl: formData.get('imageUrl') as string
-      });
-      setTestimonials(await getPlatformTestimonials());
-      (e.target as HTMLFormElement).reset();
+      setIsAddingTestimonial(true);
+      const form = e.currentTarget;
+      try {
+          const formData = new FormData(form);
+          await addPlatformTestimonial({
+              name: formData.get('name') as string,
+              testimonial: formData.get('testimonial') as string,
+              imageUrl: formData.get('imageUrl') as string
+          });
+          setTestimonials(await getPlatformTestimonials());
+          form.reset();
+      } catch (error) {
+        console.error("Failed to add testimonial", error);
+        showAlert('Error', 'Failed to add testimonial. Please try again.');
+      } finally {
+        setIsAddingTestimonial(false);
+      }
   };
 
     if (loading) return (
@@ -705,7 +812,9 @@ export default function DashboardPage() {
                                        />
                                        <Input name="imageUrl" type="hidden" required />
                                     </div>
-                                    <Button type="submit" className="w-full"><Plus className="mr-2 h-4 w-4" /> Add Testimonial</Button>
+                                    <Button type="submit" className="w-full" disabled={isAddingTestimonial}>
+                                        {isAddingTestimonial ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Adding...</> : <><Plus className="mr-2 h-4 w-4" /> Add Testimonial</>}
+                                    </Button>
                                 </form>
                             </CardContent>
                         </Card>
@@ -1162,7 +1271,9 @@ export default function DashboardPage() {
                                        <Input name="imageUrl" type="hidden" />
                                     </div>
 
-                                    <Button type="submit" className="w-full"><Plus className="mr-2 h-4 w-4" /> Add Class</Button>
+                                    <Button type="submit" className="w-full" disabled={isAddingClass}>
+                                        {isAddingClass ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Adding...</> : <><Plus className="mr-2 h-4 w-4" /> Add Class</>}
+                                    </Button>
                                   </form>
                                 </CardContent>
                               </Card>
@@ -1358,7 +1469,9 @@ export default function DashboardPage() {
                                        <Input name="imageUrl" type="hidden" />
                                      </div>
 
-                                     <Button type="submit" className="w-full"><Plus className="mr-2 h-4 w-4" /> Add Cert</Button>
+                                     <Button type="submit" className="w-full" disabled={isAddingCert}>
+                                        {isAddingCert ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Adding...</> : <><Plus className="mr-2 h-4 w-4" /> Add Cert</>}
+                                     </Button>
                                    </form>
                                  </CardContent>
                                </Card>
@@ -1374,16 +1487,58 @@ export default function DashboardPage() {
                                            {c.imageUrl && <a href={c.imageUrl} target="_blank" className="text-primary hover:underline">View Image</a>}
                                        </div>}
                                      </div>
-                                     <Button variant="destructive" size="icon" onClick={async () => {
-                                       await removeCertification(c.id);
-                                       setCerts(await getCertifications(trainerSlug || undefined));
-                                     }}>
-                                       <Trash2 className="h-4 w-4" />
-                                     </Button>
+                                     <div className="flex gap-2">
+                                         <Button variant="ghost" size="icon" onClick={() => setEditingCert(c)}>
+                                            <Pencil className="h-4 w-4" />
+                                         </Button>
+                                         <Button variant="destructive" size="icon" onClick={async () => {
+                                           await removeCertification(c.id);
+                                           setCerts(await getCertifications(trainerSlug || undefined));
+                                         }}>
+                                           <Trash2 className="h-4 w-4" />
+                                         </Button>
+                                     </div>
                                    </Card>
                                  ))}
                                </div>
                              </div>
+
+                            <Dialog open={!!editingCert} onOpenChange={(open) => !open && setEditingCert(null)}>
+                                <DialogContent>
+                                    <DialogHeader>
+                                        <DialogTitle>Edit Certification</DialogTitle>
+                                    </DialogHeader>
+                                    {editingCert && (
+                                        <form onSubmit={handleUpdateCert} className="space-y-4">
+                                            <Input name="title" placeholder="Certificate Title" defaultValue={editingCert.title} required />
+                                            <Input name="issuer" placeholder="Issuer (e.g. NASM)" defaultValue={editingCert.issuer} required />
+                                            <Input name="date" type="date" defaultValue={editingCert.date} required />
+
+                                            <div className="space-y-2">
+                                                <Label>Verify URL (Optional)</Label>
+                                                <Input name="url" placeholder="https://..." defaultValue={editingCert.url} />
+                                            </div>
+
+                                            <div className="space-y-2">
+                                                <Label>Certificate Image (Optional)</Label>
+                                                <ImageUpload
+                                                    value={editingCert.imageUrl}
+                                                    onChange={(url) => setEditingCert({...editingCert, imageUrl: url})}
+                                                    onUpload={(file) => uploadImage(file, `certs/img_${Date.now()}`)}
+                                                    className="w-full h-[150px]"
+                                                    previewClass="w-full h-full object-contain bg-white rounded-lg p-2"
+                                                    placeholder={<div className="flex flex-col items-center"><Upload className="h-8 w-8 text-muted-foreground/50 mb-2" /><span className="text-xs text-muted-foreground">Upload Cert</span></div>}
+                                                />
+                                                <Input name="imageUrl" type="hidden" value={editingCert.imageUrl || ''} />
+                                            </div>
+
+                                            <Button type="submit" className="w-full" disabled={saving}>
+                                                {saving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Saving...</> : "Save Changes"}
+                                            </Button>
+                                        </form>
+                                    )}
+                                </DialogContent>
+                            </Dialog>
                           </TabsContent>
 
                           {/* Transformations Editor */}
@@ -1397,6 +1552,30 @@ export default function DashboardPage() {
                                    <form onSubmit={handleAddTrans} className="space-y-4">
                                      <Input name="clientName" placeholder="Client Name" required />
                                      <Input name="description" placeholder="Description (e.g. Lost 30lbs)" required />
+
+                                     <div className="grid grid-cols-2 gap-4">
+                                         <div className="space-y-2">
+                                           <Label>Duration (e.g. 12 Weeks)</Label>
+                                           <Input name="duration" placeholder="Duration" />
+                                         </div>
+                                         <div className="space-y-2">
+                                           <Label>Weight Lost</Label>
+                                           <Input name="weightLost" placeholder="e.g. 20lbs" />
+                                         </div>
+                                         <div className="space-y-2">
+                                           <Label>Muscle Gained</Label>
+                                           <Input name="muscleGained" placeholder="e.g. 5lbs" />
+                                         </div>
+                                         <div className="space-y-2">
+                                           <Label>Key Challenges</Label>
+                                           <Input name="keyChallenges" placeholder="e.g. Injury recovery" />
+                                         </div>
+                                     </div>
+
+                                     <div className="space-y-2">
+                                         <Label>Trainer Note</Label>
+                                         <Textarea name="trainerNote" placeholder="Notes on the journey..." className="h-20" />
+                                     </div>
 
                                      <div className="grid grid-cols-2 gap-4">
                                          <div className="space-y-2">
@@ -1430,7 +1609,9 @@ export default function DashboardPage() {
                                          </div>
                                      </div>
 
-                                     <Button type="submit" className="w-full"><Plus className="mr-2 h-4 w-4" /> Add Transformation</Button>
+                                     <Button type="submit" className="w-full" disabled={isAddingTrans}>
+                                        {isAddingTrans ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Adding...</> : <><Plus className="mr-2 h-4 w-4" /> Add Transformation</>}
+                                     </Button>
                                    </form>
                                  </CardContent>
                                </Card>
@@ -1442,16 +1623,91 @@ export default function DashboardPage() {
                                        <h3 className="font-bold">{t.clientName}</h3>
                                        <p className="text-sm text-muted-foreground">{t.description}</p>
                                      </div>
-                                     <Button variant="destructive" size="icon" onClick={async () => {
-                                       await removeTransformation(t.id);
-                                       setTrans(await getTransformations(trainerSlug || undefined));
-                                     }}>
-                                       <Trash2 className="h-4 w-4" />
-                                     </Button>
+                                     <div className="flex gap-2">
+                                         <Button variant="ghost" size="icon" onClick={() => setEditingTrans(t)}>
+                                            <Pencil className="h-4 w-4" />
+                                         </Button>
+                                         <Button variant="destructive" size="icon" onClick={async () => {
+                                           await removeTransformation(t.id);
+                                           setTrans(await getTransformations(trainerSlug || undefined));
+                                         }}>
+                                           <Trash2 className="h-4 w-4" />
+                                         </Button>
+                                     </div>
                                    </Card>
                                  ))}
                                </div>
                              </div>
+
+                             <Dialog open={!!editingTrans} onOpenChange={(open) => !open && setEditingTrans(null)}>
+                                <DialogContent className="max-h-[90vh] overflow-y-auto">
+                                    <DialogHeader>
+                                        <DialogTitle>Edit Transformation</DialogTitle>
+                                    </DialogHeader>
+                                    {editingTrans && (
+                                        <form onSubmit={handleUpdateTrans} className="space-y-4">
+                                            <Input name="clientName" placeholder="Client Name" defaultValue={editingTrans.clientName} required />
+                                            <Input name="description" placeholder="Description (e.g. Lost 30lbs)" defaultValue={editingTrans.description} required />
+
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <div className="space-y-2">
+                                                    <Label>Duration</Label>
+                                                    <Input name="duration" placeholder="e.g. 12 Weeks" defaultValue={editingTrans.duration} />
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <Label>Weight Lost</Label>
+                                                    <Input name="weightLost" placeholder="e.g. 20lbs" defaultValue={editingTrans.weightLost} />
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <Label>Muscle Gained</Label>
+                                                    <Input name="muscleGained" placeholder="e.g. 5lbs" defaultValue={editingTrans.muscleGained} />
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <Label>Key Challenges</Label>
+                                                    <Input name="keyChallenges" placeholder="e.g. Injury recovery" defaultValue={editingTrans.keyChallenges} />
+                                                </div>
+                                            </div>
+
+                                            <div className="space-y-2">
+                                                <Label>Trainer Note</Label>
+                                                <Textarea name="trainerNote" placeholder="Notes on the journey..." className="h-20" defaultValue={editingTrans.trainerNote} />
+                                            </div>
+
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <div className="space-y-2">
+                                                    <Label>Before Image</Label>
+                                                    <ImageUpload
+                                                        value={editingTrans.beforeImage}
+                                                        onChange={(url) => setEditingTrans({...editingTrans, beforeImage: url})}
+                                                        onUpload={(file) => uploadImage(file, `transformations/before_${Date.now()}`)}
+                                                        className="w-full h-[120px]"
+                                                        previewClass="w-full h-full object-cover rounded-lg"
+                                                        placeholder={<div className="flex flex-col items-center"><Upload className="h-6 w-6 text-muted-foreground/50 mb-1" /><span className="text-[10px] text-muted-foreground">Before</span></div>}
+                                                    />
+                                                    <Input name="beforeImage" type="hidden" value={editingTrans.beforeImage} required />
+                                                </div>
+
+                                                <div className="space-y-2">
+                                                    <Label>After Image</Label>
+                                                    <ImageUpload
+                                                        value={editingTrans.afterImage}
+                                                        onChange={(url) => setEditingTrans({...editingTrans, afterImage: url})}
+                                                        onUpload={(file) => uploadImage(file, `transformations/after_${Date.now()}`)}
+                                                        className="w-full h-[120px]"
+                                                        previewClass="w-full h-full object-cover rounded-lg"
+                                                        placeholder={<div className="flex flex-col items-center"><Upload className="h-6 w-6 text-muted-foreground/50 mb-1" /><span className="text-[10px] text-muted-foreground">After</span></div>}
+                                                    />
+                                                    <Input name="afterImage" type="hidden" value={editingTrans.afterImage} required />
+                                                </div>
+                                            </div>
+
+                                            <Button type="submit" className="w-full" disabled={saving}>
+                                                {saving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Saving...</> : "Save Changes"}
+                                            </Button>
+                                        </form>
+                                    )}
+                                </DialogContent>
+                             </Dialog>
                           </TabsContent>
                         </Tabs>
                     </div>
