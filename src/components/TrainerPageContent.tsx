@@ -1,14 +1,19 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, lazy, Suspense } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import { Navbar } from '@/components/layout/navbar';
 import { Hero } from '@/components/sections/hero';
-import { About } from '@/components/sections/about';
-import { Transformations } from '@/components/sections/transformations';
-import { Classes } from '@/components/sections/classes';
-import { SocialFeed } from '@/components/sections/social-feed';
-import { Contact } from '@/components/sections/contact';
-import { Footer } from '@/components/layout/footer';
 import { useData } from '@/lib/data-provider';
+
+// Lazy load "below-the-fold" sections to reduce the initial JavaScript bundle size.
+// This improves the First Contentful Paint (FCP) and Largest Contentful Paint (LCP)
+// by prioritizing the Navbar and Hero sections.
+const About = lazy(() => import('@/components/sections/about').then(module => ({ default: module.About })));
+const Transformations = lazy(() => import('@/components/sections/transformations').then(module => ({ default: module.Transformations })));
+const Classes = lazy(() => import('@/components/sections/classes').then(module => ({ default: module.Classes })));
+const SocialFeed = lazy(() => import('@/components/sections/social-feed').then(module => ({ default: module.SocialFeed })));
+const Contact = lazy(() => import('@/components/sections/contact').then(module => ({ default: module.Contact })));
+const Footer = lazy(() => import('@/components/layout/footer').then(module => ({ default: module.Footer })));
+
 import { BrandIdentity } from '@/lib/types';
 import { DEFAULT_BRAND_NAME } from '@/lib/constants';
 import { TrainerContext, BrandIdentityContext } from '@/components/TrainerContext';
@@ -104,12 +109,14 @@ export function TrainerPageContent({ slug }: { slug: string }) {
           <div className={`min-h-screen bg-background font-sans text-foreground`}>
                 <Navbar />
                 <Hero />
-                <About />
-                <Transformations />
-                <Classes />
-                <SocialFeed />
-                <Contact />
-                <Footer />
+                <Suspense fallback={null}>
+                  <About />
+                  <Transformations />
+                  <Classes />
+                  <SocialFeed />
+                  <Contact />
+                  <Footer />
+                </Suspense>
           </div>
         )}
       </BrandIdentityContext.Provider>
