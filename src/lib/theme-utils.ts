@@ -33,7 +33,7 @@ export function generatePalette(baseColor: string, secondaryOverride?: string): 
     }
   }
 
-  let lightSecondary = secondaryBase || lightPrimary.mix('#ffffff', 0.1);
+  const lightSecondary = secondaryBase || lightPrimary.mix('#ffffff', 0.1);
   
   const lightPalette: ThemePalette = {
     primary: lightPrimary.toHex(),
@@ -57,7 +57,7 @@ export function generatePalette(baseColor: string, secondaryOverride?: string): 
   }
 
   // For dark mode secondary: Make it a subtle 10% tint of the primary on black
-  let darkSecondary = secondaryBase || darkPrimary.mix('#000000', 0.1);
+  const darkSecondary = secondaryBase || darkPrimary.mix('#000000', 0.1);
   
   const darkPalette: ThemePalette = {
     primary: darkPrimary.toHex(),

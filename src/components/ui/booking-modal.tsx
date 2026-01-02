@@ -10,11 +10,13 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { GymClass } from '@/lib/types'
+import { GymClass, Booking } from '@/lib/types'
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTrainerSlug } from '@/components/TrainerContext'
 import { Loader2 } from 'lucide-react'
+import { useData } from '@/lib/data-provider'
+import emailjs from '@emailjs/browser';
 
 interface BookingModalProps {
   gymClass: GymClass;
@@ -25,6 +27,7 @@ interface BookingModalProps {
 export function BookingModal({ gymClass, isOpen, onClose }: BookingModalProps) {
   const navigate = useNavigate();
   const slug = useTrainerSlug();
+  const { addBooking } = useData();
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [formData, setFormData] = useState({
@@ -41,24 +44,55 @@ export function BookingModal({ gymClass, isOpen, onClose }: BookingModalProps) {
     e.preventDefault();
     setLoading(true);
 
-    // Simulate "Processing"
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    try {
+        const price = gymClass.price || 0;
+        const bookingData: Omit<Booking, 'id'> = {
+            classId: gymClass.id,
+            classTitle: gymClass.title,
+            classDate: gymClass.dateIso,
+            customerName: formData.name,
+            customerEmail: formData.email,
+            customerPhone: formData.phone,
+            status: price > 0 ? 'pending' : 'confirmed',
+            createdAt: new Date().toISOString()
+        };
 
     const price = gymClass.price || 0;
+        const bookingId = await addBooking(slug, bookingData);
 
-    if (price > 0) {
+        if (price > 0) {
+            setLoading(false);
+            // Redirect to payment
+            navigate(`/payment?amount=${price}&class=${encodeURIComponent(gymClass.title)}&trainer=${slug}&bookingId=${bookingId}`);
+            return;
+        }
+
+        // Free Class - Success Logic
+        // Send email via EmailJS
+        const serviceId = import.meta.env.VITE_EMAILJS_SERVICE_ID;
+        const templateId = import.meta.env.VITE_EMAILJS_TEMPLATE_ID;
+        const publicKey = import.meta.env.VITE_EMAILJS_PUBLIC_KEY;
+
+        if (serviceId && templateId && publicKey) {
+            await emailjs.send(serviceId, templateId, {
+                to_email: formData.email,
+                to_name: formData.name,
+                class_name: gymClass.title,
+                class_time: gymClass.time,
+                trainer_name: slug, // Or fetch actual trainer name if needed, using slug for now
+                message: `You have successfully booked ${gymClass.title}.`,
+            }, publicKey);
+        } else {
+            console.warn("EmailJS environment variables missing. Email not sent.");
+        }
+
         setLoading(false);
-        // Redirect to payment
-        navigate(`/payment?amount=${price}&class=${encodeURIComponent(gymClass.title)}&trainer=${slug}`);
-        return;
+        setSuccess(true);
+    } catch (error) {
+        console.error("Booking failed:", error);
+        setLoading(false);
+        // Ideally show an error message to user
     }
-
-    // Free Class - Success Logic
-    // In a real app, call backend/EmailJS here
-    console.log("Sending confirmation email to", formData.email, "for class", gymClass.title);
-
-    setLoading(false);
-    setSuccess(true);
   };
 
   return (

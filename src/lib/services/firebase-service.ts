@@ -1,4 +1,4 @@
-import { DataProviderType, TrainerProfile, Certification, Transformation, GymClass, Testimonial, BrandIdentity, TrainerSummary, LandingPageContent, PlatformTestimonial } from '../types';
+import { DataProviderType, TrainerProfile, Certification, Transformation, GymClass, Testimonial, BrandIdentity, TrainerSummary, LandingPageContent, PlatformTestimonial, Booking } from '../types';
 import { getFirebase } from '../firebase';
 import { collection, getDocs, doc, setDoc, addDoc, deleteDoc, updateDoc, Firestore, getDoc, query, where, Timestamp } from 'firebase/firestore';
 import { User } from 'firebase/auth';
@@ -530,6 +530,13 @@ export class FirebaseDataService implements DataProviderType {
     await addDoc(collection(db, ROOT_COLLECTION, slug, COLLECTIONS.CERTS), cert);
   }
 
+  updateCertification = async (id: string, updates: Partial<Certification>): Promise<void> => {
+    const slug = await this.getMySlug();
+    if (slug === 'platform') return;
+    const db = this.ensureDb();
+    await updateDoc(doc(db, ROOT_COLLECTION, slug, COLLECTIONS.CERTS, id), updates);
+  }
+
   removeCertification = async (id: string): Promise<void> => {
     const slug = await this.getMySlug();
     if (slug === 'platform') return;
@@ -542,6 +549,13 @@ export class FirebaseDataService implements DataProviderType {
     if (slug === 'platform') return;
     const db = this.ensureDb();
     await addDoc(collection(db, ROOT_COLLECTION, slug, COLLECTIONS.TRANS), trans);
+  }
+
+  updateTransformation = async (id: string, updates: Partial<Transformation>): Promise<void> => {
+    const slug = await this.getMySlug();
+    if (slug === 'platform') return;
+    const db = this.ensureDb();
+    await updateDoc(doc(db, ROOT_COLLECTION, slug, COLLECTIONS.TRANS, id), updates);
   }
 
   removeTransformation = async (id: string): Promise<void> => {
@@ -570,5 +584,12 @@ export class FirebaseDataService implements DataProviderType {
     if (slug === 'platform') return;
     const db = this.ensureDb();
     await updateDoc(doc(db, ROOT_COLLECTION, slug, COLLECTIONS.CLASSES, id), updates);
+  }
+
+  // Public/Client Actions
+  addBooking = async (trainerSlug: string, booking: Omit<Booking, 'id'>): Promise<string> => {
+      const db = this.ensureDb();
+      const docRef = await addDoc(collection(db, ROOT_COLLECTION, trainerSlug, 'bookings'), booking);
+      return docRef.id;
   }
 }

@@ -114,8 +114,10 @@ export interface DataProviderType {
   updateProfile: (profile: TrainerProfile) => Promise<void>;
   updateBrandIdentity: (identity: BrandIdentity) => Promise<void>;
   addCertification: (cert: Omit<Certification, 'id'>) => Promise<void>;
+  updateCertification: (id: string, cert: Partial<Certification>) => Promise<void>;
   removeCertification: (id: string) => Promise<void>;
   addTransformation: (trans: Omit<Transformation, 'id'>) => Promise<void>;
+  updateTransformation: (id: string, trans: Partial<Transformation>) => Promise<void>;
   removeTransformation: (id: string) => Promise<void>;
   addClass: (gymClass: Omit<GymClass, 'id'>) => Promise<void>;
   removeClass: (id: string) => Promise<void>;
@@ -123,4 +125,21 @@ export interface DataProviderType {
   updateLandingPageContent: (content: LandingPageContent) => Promise<void>;
   addPlatformTestimonial: (t: Omit<PlatformTestimonial, 'id'>) => Promise<void>;
   removePlatformTestimonial: (id: string) => Promise<void>;
+
+  // Public/Client Actions
+  addBooking: (trainerSlug: string, booking: Omit<Booking, 'id'>) => Promise<string>;
+}
+
+export interface Booking {
+    id: string;
+    classId: string;
+    classTitle: string;
+    classDate?: string;
+    customerName: string;
+    customerEmail: string;
+    customerPhone: string;
+    status: 'pending' | 'confirmed' | 'cancelled';
+    paymentId?: string;
+    userId?: string;
+    createdAt: string; // ISO String
 }

@@ -24,17 +24,17 @@ export function Classes() {
       getClasses(slug).then((data) => {
         const now = new Date();
         const upcoming = data.filter(c => {
-             // If dateIso is present, use it for accurate filtering
-             if (c.dateIso) {
-                 return new Date(c.dateIso) > now;
-             }
-             // Fallback for legacy data (optional: keep or hide)
-             // Let's assume if no dateIso, it's a recurring weekly class, so we show it? 
-             // Or better, hide it to clean up.
-             return false; 
+          if (c.dateIso) {
+            return new Date(c.dateIso) > now;
+          }
+          return false;
         });
         // Sort by date
-        upcoming.sort((a, b) => new Date(a.dateIso!).getTime() - new Date(b.dateIso!).getTime());
+        upcoming.sort((a, b) => {
+          const dateA = a.dateIso ? new Date(a.dateIso).getTime() : 0;
+          const dateB = b.dateIso ? new Date(b.dateIso).getTime() : 0;
+          return dateA - dateB;
+        });
         setItems(upcoming);
       });
     }
