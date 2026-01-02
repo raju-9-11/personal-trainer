@@ -125,4 +125,21 @@ export interface DataProviderType {
   updateLandingPageContent: (content: LandingPageContent) => Promise<void>;
   addPlatformTestimonial: (t: Omit<PlatformTestimonial, 'id'>) => Promise<void>;
   removePlatformTestimonial: (id: string) => Promise<void>;
+
+  // Public/Client Actions
+  addBooking: (trainerSlug: string, booking: Omit<Booking, 'id'>) => Promise<string>;
+}
+
+export interface Booking {
+    id: string;
+    classId: string;
+    classTitle: string;
+    classDate?: string;
+    customerName: string;
+    customerEmail: string;
+    customerPhone: string;
+    status: 'pending' | 'confirmed' | 'cancelled';
+    paymentId?: string;
+    userId?: string;
+    createdAt: string; // ISO String
 }
