@@ -10,7 +10,7 @@ import { Contact } from '@/components/sections/contact';
 import { Footer } from '@/components/layout/footer';
 import { useData } from '@/lib/data-provider';
 import { BrandIdentity } from '@/lib/types';
-import { DEFAULT_BRAND_NAME } from '@/lib/constants';
+import { DEFAULT_BRAND_NAME, MIN_BOOT_TIME_MS } from '@/lib/constants';
 import { TrainerContext, BrandIdentityContext } from '@/components/TrainerContext';
 import { BootLoader } from '@/components/ui/boot-loader';
 import { generatePalette, hexToOklch } from '@/lib/theme-utils';
@@ -25,23 +25,29 @@ export function TrainerPageContent({ slug }: { slug: string }) {
   // Effect 1: Fetch Brand Data
   useEffect(() => {
     let isActive = true;
-    setBrandLoading(true);
-    // Fetch identity for the specific trainer slug
-    getBrandIdentity(slug)
-      .then((identity) => {
-        if (!isActive) return;
-        setBrand(identity);
 
-        // Add a small artificial delay for the boot sequence to be visible and smooth
-        setTimeout(() => {
-            if (isActive) setBrandLoading(false);
-        }, 1500);
-      })
-      .catch(() => {
-        if (!isActive) return;
-        setBrand(null);
-        setBrandLoading(false);
-      });
+    const fetchBrand = async () => {
+        setBrandLoading(true);
+        const startTime = Date.now();
+        try {
+            const identity = await getBrandIdentity(slug);
+            if (!isActive) return;
+            setBrand(identity);
+        } catch (error) {
+            if (!isActive) return;
+            setBrand(null);
+        } finally {
+             const elapsed = Date.now() - startTime;
+             const remaining = MIN_BOOT_TIME_MS - elapsed;
+             if (remaining > 0) {
+                 await new Promise(resolve => setTimeout(resolve, remaining));
+             }
+             if (isActive) setBrandLoading(false);
+        }
+    };
+
+    fetchBrand();
+
     return () => {
       isActive = false;
     };

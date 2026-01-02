@@ -9,7 +9,7 @@ import {
   CarouselNext,
   CarouselPrevious,
 } from "@/components/ui/carousel";
-import { DEFAULT_BRAND_NAME } from '@/lib/constants';
+import { DEFAULT_BRAND_NAME, MIN_BOOT_TIME_MS } from '@/lib/constants';
 import { BootLoader } from '@/components/ui/boot-loader';
 import { AnimatePresence } from 'framer-motion';
 import { Footer } from '@/components/layout/footer';
@@ -25,7 +25,9 @@ export default function HomePage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    let isActive = true;
     const fetchData = async () => {
+        const startTime = Date.now();
         try {
             const [tData, lData, bData, testData] = await Promise.all([
                 getTrainers(),
@@ -33,6 +35,7 @@ export default function HomePage() {
                 getBrandIdentity('platform'),
                 getPlatformTestimonials()
             ]);
+            if (!isActive) return;
             setTrainers(tData);
             setLanding(lData);
             setBrand(bData);
@@ -40,10 +43,19 @@ export default function HomePage() {
         } catch (e) {
             console.error("Error loading home page data", e);
         } finally {
-            setLoading(false);
+            const elapsed = Date.now() - startTime;
+            const remaining = MIN_BOOT_TIME_MS - elapsed;
+            if (remaining > 0) {
+                await new Promise(resolve => setTimeout(resolve, remaining));
+            }
+            if (isActive) setLoading(false);
         }
     };
     fetchData();
+
+    return () => {
+        isActive = false;
+    };
   }, [getTrainers, getLandingPageContent, getBrandIdentity, getPlatformTestimonials]);
 
   useEffect(() => {

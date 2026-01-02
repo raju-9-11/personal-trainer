@@ -8,3 +8,4 @@ export const DEFAULT_BRAND_IDENTITY: BrandIdentity = {
 };
 
 export const DEFAULT_BRAND_NAME = DEFAULT_BRAND_IDENTITY.brandName;
+export const MIN_BOOT_TIME_MS = 1000;
