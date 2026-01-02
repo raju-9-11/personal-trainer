@@ -28,18 +28,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
 
   useEffect(() => {
-    // Check for hardcoded super admin session first
-    const isSuper = sessionStorage.getItem('is_super_admin') === 'true';
-    if (isSuper) {
-        setIsAuthenticated(true);
-        setIsSuperAdmin(true);
-        setTrainerSlug('platform');
-        // Synthesize a fake user for the context
-        setUser({ uid: 'super-admin-uid', email: 'admin@admin.com' } as User);
-        setLoading(false);
-        return;
-    }
-
     const { auth } = getFirebase();
     if (!auth) {
       setLoading(false);
@@ -49,29 +37,35 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser);
       setIsAuthenticated(!!currentUser);
-      setIsSuperAdmin(false);
 
       if (currentUser) {
+        if (currentUser.uid === 'CA9HKMxamQdvULLdlqzXr7TzPMA2') {
+          setIsSuperAdmin(true);
+          setTrainerSlug('platform');
+        } else {
+          setIsSuperAdmin(false);
           // Resolve slug via DataProvider logic (duplicated here to avoid circular dep or complex injection)
           // We need to query the 'trainers' collection for ownerUid == currentUser.uid
           try {
-             const { db } = getFirebase();
-             if (db) {
-                 const trainersRef = collection(db, 'trainers');
-                 const q = query(trainersRef, where('ownerUid', '==', currentUser.uid));
-                 const snapshot = await getDocs(q);
-                 if (!snapshot.empty) {
-                     setTrainerSlug(snapshot.docs[0].id);
-                 } else {
-                     // No profile yet. It will be created on first save/access in dashboard.
-                     setTrainerSlug(null);
-                 }
-             }
+            const { db } = getFirebase();
+            if (db) {
+              const trainersRef = collection(db, 'trainers');
+              const q = query(trainersRef, where('ownerUid', '==', currentUser.uid));
+              const snapshot = await getDocs(q);
+              if (!snapshot.empty) {
+                setTrainerSlug(snapshot.docs[0].id);
+              } else {
+                // No profile yet. It will be created on first save/access in dashboard.
+                setTrainerSlug(null);
+              }
+            }
           } catch (e) {
-              console.error("Failed to fetch trainer slug", e);
+            console.error("Failed to fetch trainer slug", e);
           }
+        }
       } else {
-          setTrainerSlug(null);
+        setIsSuperAdmin(false);
+        setTrainerSlug(null);
       }
       setLoading(false);
     });
@@ -80,16 +74,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const login = async (email: string, password?: string) => {
-    // Super Admin Bypass
-    if (email === 'admin@admin.com' && password === 'admin123') {
-        setIsAuthenticated(true);
-        setIsSuperAdmin(true);
-        setTrainerSlug('platform');
-        setUser({ uid: 'super-admin-uid', email: 'admin@admin.com' } as User);
-        sessionStorage.setItem('is_super_admin', 'true');
-        return true;
-    }
-
     // Firebase Auth flow
     const { auth } = getFirebase();
     if (!auth) {
@@ -133,7 +117,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(null);
     setTrainerSlug(null);
     setIsSuperAdmin(false);
-    sessionStorage.removeItem('is_super_admin');
   };
 
   return (
