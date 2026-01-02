@@ -3,9 +3,9 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { getFirebase } from './firebase';
 import { signInWithEmailAndPassword, signOut, onAuthStateChanged, User, isSignInWithEmailLink, signInWithEmailLink } from 'firebase/auth';
-import { collection, query, where, getDocs } from 'firebase/firestore';
 import { BootLoader } from '@/components/ui/boot-loader';
 import { AnimatePresence } from 'framer-motion';
+import { resolveSlugForUid } from './services/firebase-service';
 
 interface AuthContextType {
   user: User | null;
@@ -52,23 +52,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setIsSuperAdmin(false);
 
       if (currentUser) {
-          // Resolve slug via DataProvider logic (duplicated here to avoid circular dep or complex injection)
-          // We need to query the 'trainers' collection for ownerUid == currentUser.uid
+          // Resolve slug using the shared utility from firebase-service
           try {
-             const { db } = getFirebase();
-             if (db) {
-                 const trainersRef = collection(db, 'trainers');
-                 const q = query(trainersRef, where('ownerUid', '==', currentUser.uid));
-                 const snapshot = await getDocs(q);
-                 if (!snapshot.empty) {
-                     setTrainerSlug(snapshot.docs[0].id);
-                 } else {
-                     // No profile yet. It will be created on first save/access in dashboard.
-                     setTrainerSlug(null);
-                 }
-             }
+             const slug = await resolveSlugForUid(currentUser.uid);
+             setTrainerSlug(slug);
           } catch (e) {
               console.error("Failed to fetch trainer slug", e);
+              setTrainerSlug(null);
           }
       } else {
           setTrainerSlug(null);

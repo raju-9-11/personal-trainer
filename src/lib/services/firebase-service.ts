@@ -132,6 +132,32 @@ const fetchFirestoreCollection = async (path: string): Promise<RestDocument[]> =
   return documents;
 };
 
+export const resolveSlugForUid = async (uid: string): Promise<string | null> => {
+  const { db } = getFirebase();
+  if (!db) return null;
+
+  try {
+    // Try finding by Doc ID (UID) first for efficiency
+    const docRef = doc(db, ROOT_COLLECTION, uid);
+    const docSnap = await getDoc(docRef);
+    if (docSnap.exists()) {
+      return docSnap.id;
+    }
+
+    // Legacy/Fallback Check: Query 'trainers' collection where 'ownerUid' == user.uid
+    const trainersRef = collection(db, ROOT_COLLECTION);
+    const q = query(trainersRef, where('ownerUid', '==', uid));
+    const snapshot = await getDocs(q);
+
+    if (!snapshot.empty) {
+      return snapshot.docs[0].id;
+    }
+  } catch (e) {
+    console.error('Error resolving slug for UID:', e);
+  }
+  return null;
+};
+
 export const fetchTrainerSlugs = async (): Promise<string[]> => {
   const docs = await fetchFirestoreCollection(ROOT_COLLECTION);
   if (!docs.length) {
@@ -204,20 +230,10 @@ export class FirebaseDataService implements DataProviderType {
         return 'platform';
     }
 
-    // Try finding by Doc ID (UID) first for efficiency
-    const docRef = doc(db, ROOT_COLLECTION, this.currentUser.uid);
-    const docSnap = await getDoc(docRef);
-    if (docSnap.exists()) {
-        return docSnap.id;
-    }
-
-    // Legacy/Fallback Check: Query 'trainers' collection where 'ownerUid' == user.uid
-    const trainersRef = collection(db, ROOT_COLLECTION);
-    const q = query(trainersRef, where('ownerUid', '==', this.currentUser.uid));
-    const snapshot = await getDocs(q);
-
-    if (!snapshot.empty) {
-       return snapshot.docs[0].id;
+    // Attempt to resolve slug
+    const resolvedSlug = await resolveSlugForUid(this.currentUser.uid);
+    if (resolvedSlug) {
+      return resolvedSlug;
     }
 
     // CREATE NEW TRAINER DOC AUTOMATICALLY using UID as Doc ID
