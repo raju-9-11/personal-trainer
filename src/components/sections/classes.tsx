@@ -67,7 +67,7 @@ export function Classes() {
                         <div className="flex justify-between items-start mb-2">
                         <div className="flex flex-col gap-1">
                             <Badge variant="secondary" className="w-fit bg-background/80 border border-border/50 text-foreground/80 font-semibold shadow-xs backdrop-blur-sm">{item.time.split(' ')[0]}</Badge>
-                            <CountdownTimer targetDate={(item as any).dateIso || new Date().toISOString()} />
+                            <CountdownTimer targetDate={item.dateIso || new Date().toISOString()} />
                         </div>
                         <Badge variant={item.enrolledSpots >= item.maxSpots ? "destructive" : "outline"}>
                             {item.enrolledSpots >= item.maxSpots ? "FULL" : `${item.maxSpots - item.enrolledSpots} Spots Left`}
@@ -87,7 +87,7 @@ export function Classes() {
                         </div>
                         <div className="flex items-center text-sm font-medium">
                         {/* Placeholder for price */}
-                        Price: {(item as any).price ? `$${(item as any).price}` : 'Free'}
+                        Price: {item.price ? `$${item.price}` : 'Free'}
                         </div>
                     </CardContent>
                     <CardFooter>

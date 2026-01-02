@@ -57,6 +57,7 @@ export function BookingModal({ gymClass, isOpen, onClose }: BookingModalProps) {
             createdAt: new Date().toISOString()
         };
 
+    const price = gymClass.price || 0;
         const bookingId = await addBooking(slug, bookingData);
 
         if (price > 0) {
@@ -112,6 +113,9 @@ export function BookingModal({ gymClass, isOpen, onClose }: BookingModalProps) {
                 <DialogTitle>Book {gymClass.title}</DialogTitle>
                 <DialogDescription>
                     Fill in your details to secure your spot.
+                    <span className="block mt-2 font-bold text-primary">
+                        Price: {gymClass.price && gymClass.price > 0 ? `$${gymClass.price}` : 'Free'}
+                    </span>
                 </DialogDescription>
                 </DialogHeader>
                 <div className="grid gap-4 py-4">
