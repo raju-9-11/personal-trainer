@@ -211,15 +211,6 @@ export class FirebaseDataService implements DataProviderType {
         return docSnap.id;
     }
 
-    // Legacy/Fallback Check: Query 'trainers' collection where 'ownerUid' == user.uid
-    const trainersRef = collection(db, ROOT_COLLECTION);
-    const q = query(trainersRef, where('ownerUid', '==', this.currentUser.uid));
-    const snapshot = await getDocs(q);
-
-    if (!snapshot.empty) {
-       return snapshot.docs[0].id;
-    }
-
     // CREATE NEW TRAINER DOC AUTOMATICALLY using UID as Doc ID
     console.log("No trainer profile found for user. Creating one...");
     const initialSlug = `trainer-${Date.now()}`;

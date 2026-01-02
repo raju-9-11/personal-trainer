@@ -3,7 +3,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { getFirebase } from './firebase';
 import { signInWithEmailAndPassword, signOut, onAuthStateChanged, User, isSignInWithEmailLink, signInWithEmailLink } from 'firebase/auth';
-import { collection, query, where, getDocs } from 'firebase/firestore';
+import { doc, getDoc } from 'firebase/firestore';
 import { BootLoader } from '@/components/ui/boot-loader';
 import { AnimatePresence } from 'framer-motion';
 
@@ -57,11 +57,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           try {
              const { db } = getFirebase();
              if (db) {
-                 const trainersRef = collection(db, 'trainers');
-                 const q = query(trainersRef, where('ownerUid', '==', currentUser.uid));
-                 const snapshot = await getDocs(q);
-                 if (!snapshot.empty) {
-                     setTrainerSlug(snapshot.docs[0].id);
+                 const docRef = doc(db, 'trainers', currentUser.uid);
+                 const docSnap = await getDoc(docRef);
+                 if (docSnap.exists()) {
+                     setTrainerSlug(docSnap.id);
                  } else {
                      // No profile yet. It will be created on first save/access in dashboard.
                      setTrainerSlug(null);
