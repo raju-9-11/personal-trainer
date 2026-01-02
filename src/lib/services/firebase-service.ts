@@ -132,6 +132,54 @@ const fetchFirestoreCollection = async (path: string): Promise<RestDocument[]> =
   return documents;
 };
 
+const queryFirestoreCollection = async (collectionId: string, field: string, value: string): Promise<RestDocument | null> => {
+  if (!FIREBASE_PROJECT_ID || !FIREBASE_API_KEY) return null;
+
+  try {
+    const url = new URL(`https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT_ID}/databases/(default)/documents:runQuery`);
+    url.searchParams.set('key', FIREBASE_API_KEY);
+
+    const body = {
+      structuredQuery: {
+        from: [{ collectionId }],
+        where: {
+          fieldFilter: {
+            field: { fieldPath: field },
+            op: 'EQUAL',
+            value: { stringValue: value },
+          },
+        },
+        limit: 1,
+      },
+    };
+
+    const response = await fetch(url.toString(), {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(body),
+    });
+
+    if (!response.ok) {
+      console.warn(`Firestore REST query failed for ${collectionId} where ${field} == ${value}`, await response.text());
+      return null;
+    }
+
+    // Response is an array of objects, each possibly containing a 'document' field
+    const json = (await response.json()) as Array<{ document?: FirestoreDocumentResponse }>;
+
+    if (Array.isArray(json) && json.length > 0 && json[0].document) {
+      return toRestDocument(json[0].document);
+    }
+
+    return null;
+  } catch (e) {
+    console.warn('Error querying Firestore collection via REST', e);
+    return null;
+  }
+};
+
 export const fetchTrainerSlugs = async (): Promise<string[]> => {
   const docs = await fetchFirestoreCollection(ROOT_COLLECTION);
   if (!docs.length) {
@@ -287,7 +335,12 @@ export class FirebaseDataService implements DataProviderType {
       if (restDoc?.data) {
         return { ...DEFAULT_PROFILE, ...restDoc.data, slug: restDoc.data.slug || restDoc.id } as TrainerProfile;
       }
-      // Then try by slug field if needed (REST query is complex, simpler to return default for now or implement if needed)
+      // Then try by slug field
+      const queryDoc = await queryFirestoreCollection(ROOT_COLLECTION, 'slug', slug);
+      if (queryDoc?.data) {
+        return { ...DEFAULT_PROFILE, ...queryDoc.data, slug: queryDoc.data.slug || queryDoc.id } as TrainerProfile;
+      }
+
       return DEFAULT_PROFILE;
     };
 
