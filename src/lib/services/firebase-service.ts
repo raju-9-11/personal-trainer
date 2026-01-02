@@ -530,6 +530,13 @@ export class FirebaseDataService implements DataProviderType {
     await addDoc(collection(db, ROOT_COLLECTION, slug, COLLECTIONS.CERTS), cert);
   }
 
+  updateCertification = async (id: string, updates: Partial<Certification>): Promise<void> => {
+    const slug = await this.getMySlug();
+    if (slug === 'platform') return;
+    const db = this.ensureDb();
+    await updateDoc(doc(db, ROOT_COLLECTION, slug, COLLECTIONS.CERTS, id), updates);
+  }
+
   removeCertification = async (id: string): Promise<void> => {
     const slug = await this.getMySlug();
     if (slug === 'platform') return;
@@ -542,6 +549,13 @@ export class FirebaseDataService implements DataProviderType {
     if (slug === 'platform') return;
     const db = this.ensureDb();
     await addDoc(collection(db, ROOT_COLLECTION, slug, COLLECTIONS.TRANS), trans);
+  }
+
+  updateTransformation = async (id: string, updates: Partial<Transformation>): Promise<void> => {
+    const slug = await this.getMySlug();
+    if (slug === 'platform') return;
+    const db = this.ensureDb();
+    await updateDoc(doc(db, ROOT_COLLECTION, slug, COLLECTIONS.TRANS, id), updates);
   }
 
   removeTransformation = async (id: string): Promise<void> => {
