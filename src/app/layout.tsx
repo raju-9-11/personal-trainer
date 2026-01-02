@@ -19,7 +19,7 @@ const geistMono = Geist_Mono({
 
 export async function generateMetadata(): Promise<Metadata> {
   let brandName = DEFAULT_BRAND_NAME;
-  let description = "Elite Personal Training & Fitness Coaching";
+  const description = "Elite Personal Training & Fitness Coaching";
 
   try {
     // Pass null user for public read access
