@@ -81,6 +81,16 @@ export interface PlatformTestimonial {
     imageUrl: string;
 }
 
+export interface ContactMessage {
+  id: string;
+  name: string;
+  email: string;
+  goal?: string;
+  message: string;
+  date: string; // ISO string
+  read: boolean;
+}
+
 export interface BrandIdentity {
   brandName: string;
   logoUrl: string;
@@ -123,4 +133,10 @@ export interface DataProviderType {
   updateLandingPageContent: (content: LandingPageContent) => Promise<void>;
   addPlatformTestimonial: (t: Omit<PlatformTestimonial, 'id'>) => Promise<void>;
   removePlatformTestimonial: (id: string) => Promise<void>;
+
+  // Messages
+  addMessage: (msg: Omit<ContactMessage, 'id' | 'read' | 'date'>, targetSlug?: string) => Promise<void>;
+  getMessages: (slug?: string) => Promise<ContactMessage[]>;
+  markMessageRead: (id: string) => Promise<void>;
+  deleteMessage: (id: string) => Promise<void>;
 }

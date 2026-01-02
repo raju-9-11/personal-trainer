@@ -150,6 +150,7 @@ const COLLECTIONS = {
   TRANS: 'transformations',
   CLASSES: 'classes',
   TESTIMONIALS: 'testimonials',
+  MESSAGES: 'messages',
 };
 
 const IDENTITY_DOC_ID = 'main';
@@ -570,5 +571,103 @@ export class FirebaseDataService implements DataProviderType {
     if (slug === 'platform') return;
     const db = this.ensureDb();
     await updateDoc(doc(db, ROOT_COLLECTION, slug, COLLECTIONS.CLASSES, id), updates);
+  }
+
+  // Messages
+  addMessage = async (msg: Omit<import('../types').ContactMessage, 'id' | 'read' | 'date'>, targetSlug?: string): Promise<void> => {
+      // If we are a super admin or have context, we might rely on it, but contact form is public.
+      // We must require targetSlug.
+      if (!targetSlug) {
+          // If no slug provided, try to use current user's slug if authenticated (e.g. testing)
+          // But typically this comes from the public page which knows the slug.
+          console.warn("addMessage called without targetSlug");
+          return;
+      }
+
+      const db = this.ensureDb();
+
+      // Resolve slug to ID
+      let actualId = targetSlug;
+      // If the slug is 'platform', we might store elsewhere or ignore.
+      if (actualId === 'platform') return;
+
+      // If slug is a vanity slug, resolve to UID
+      // Optimization: Try to guess if it's already a UID? No, safe to query.
+      const q = query(collection(db, ROOT_COLLECTION), where('slug', '==', targetSlug));
+      const snapshot = await getDocs(q);
+      if (!snapshot.empty) {
+          actualId = snapshot.docs[0].id;
+      } else {
+          // Fallback: maybe the slug IS the ID?
+          // We can check if a doc exists with this ID?
+          // For now, if not found by slug, we might fail or assume it is the ID.
+          // Let's assume it might be the ID if query failed (legacy).
+      }
+
+      await addDoc(collection(db, ROOT_COLLECTION, actualId, COLLECTIONS.MESSAGES), {
+          ...msg,
+          date: new Date().toISOString(),
+          read: false
+      });
+  }
+
+  getMessages = async (slug?: string): Promise<import('../types').ContactMessage[]> => {
+      // This is for Admin Dashboard, so we expect authentication.
+      // The `slug` passed here is usually the authenticated trainer's slug.
+      if (!slug) return [];
+
+      const db = this.ensureDb();
+      let actualId = slug;
+
+      // If we are super admin, maybe we don't view messages this way?
+      if (slug === 'platform') return [];
+
+      // Resolve slug to ID if needed.
+      // Note: `getMySlug` returns the ID (UID) usually if authenticated.
+      // But `getMessages` takes an argument.
+      // If the argument matches `trainerSlug` from auth context, which is the UID or Slug?
+      // AuthContext sets `trainerSlug` to `snapshot.docs[0].id` (UID) if found.
+      // So `slug` passed here is likely the UID.
+      // But let's be safe.
+
+      // Try treating it as ID first.
+      // Actually, standard pattern in this file seems to rely on the passed slug.
+      // But for subcollections, we need the parent doc ID.
+      // If `slug` is "my-brand", we need to find the doc with `slug="my-brand"`.
+
+      const q = query(collection(db, ROOT_COLLECTION), where('slug', '==', slug));
+      const snapshot = await getDocs(q);
+      if (!snapshot.empty) {
+          actualId = snapshot.docs[0].id;
+      }
+
+      // If not found by slug query, assume `slug` IS the ID (UID)
+
+      try {
+        const msgsRef = collection(db, ROOT_COLLECTION, actualId, COLLECTIONS.MESSAGES);
+        // We need to order by date, but need an index.
+        // For now, let's fetch and sort in memory if index missing to avoid crashes.
+        const msgSnapshot = await getDocs(msgsRef);
+
+        const messages = msgSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as import('../types').ContactMessage));
+        return messages.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      } catch (e) {
+          console.warn("Error fetching messages", e);
+          return [];
+      }
+  }
+
+  markMessageRead = async (id: string): Promise<void> => {
+      const slug = await this.getMySlug(); // This gets the UID/Doc ID
+      if (slug === 'platform') return;
+      const db = this.ensureDb();
+      await updateDoc(doc(db, ROOT_COLLECTION, slug, COLLECTIONS.MESSAGES, id), { read: true });
+  }
+
+  deleteMessage = async (id: string): Promise<void> => {
+      const slug = await this.getMySlug();
+      if (slug === 'platform') return;
+      const db = this.ensureDb();
+      await deleteDoc(doc(db, ROOT_COLLECTION, slug, COLLECTIONS.MESSAGES, id));
   }
 }
