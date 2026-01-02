@@ -8,26 +8,43 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Label } from '@/components/ui/label';
 import { motion } from 'framer-motion';
 import { useTrainerSlug } from '@/components/TrainerContext';
+import { useData } from '@/lib/data-provider';
+import { useAlert } from '@/components/ui/custom-alert';
 
 export function Contact() {
-  const { register, handleSubmit, formState: { errors } } = useForm();
+  const { register, handleSubmit, formState: { errors }, reset } = useForm();
   const slug = useTrainerSlug();
+  const { addMessage } = useData();
+  const { showAlert } = useAlert();
 
-  const onSubmit = (data: any) => {
-    // In a real application, this would send data to a backend or EmailJS
-    console.log(`Message for ${slug}:`, data);
-    // Simulate API call
+  const onSubmit = async (data: any) => {
     const btn = document.getElementById('contact-submit-btn') as HTMLButtonElement;
+    let originalText = "";
+
     if(btn) {
-        const originalText = btn.innerText;
+        originalText = btn.innerText;
         btn.disabled = true;
         btn.innerText = "Sending...";
-        setTimeout(() => {
-            alert("Message sent! I'll get back to you soon.");
+    }
+
+    try {
+        await addMessage({
+            name: data.name,
+            email: data.email,
+            goal: data.goal,
+            message: data.message
+        }, slug || undefined);
+
+        showAlert("Success", "Message sent! I'll get back to you within 24 hours.");
+        reset();
+    } catch (e) {
+        console.error(e);
+        showAlert("Error", "Failed to send message. Please try again later.");
+    } finally {
+        if (btn) {
             btn.disabled = false;
             btn.innerText = originalText;
-            (document.getElementById('contact-form') as HTMLFormElement)?.reset();
-        }, 1500);
+        }
     }
   };
 

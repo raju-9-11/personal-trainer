@@ -1,0 +1,14 @@
+
+> my-app@0.1.0 dev
+> vite
+
+
+  VITE v7.3.0  ready in 261 ms
+
+  ➜  Local:   http://localhost:5173/
+  ➜  Network: use --host to expose
+12:36:10 AM [vite] (client) hmr update /src/lib/auth-context.tsx, /src/app/globals.css
+12:36:10 AM [vite] (client) hmr update /src/lib/auth-context.tsx, /src/app/globals.css
+12:37:04 AM [vite] (client) hmr update /src/lib/auth-context.tsx, /src/app/globals.css
+12:38:26 AM [vite] (client) hmr update /src/lib/data-provider.tsx, /src/app/globals.css
+12:39:08 AM [vite] (client) hmr update /src/lib/data-provider.tsx, /src/app/globals.css
