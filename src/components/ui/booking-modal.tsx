@@ -44,10 +44,7 @@ export function BookingModal({ gymClass, isOpen, onClose }: BookingModalProps) {
     // Simulate "Processing"
     await new Promise(resolve => setTimeout(resolve, 1000));
 
-    // Check if price > 0 (assuming GymClass has a price field, or default to free if not)
-    // For now, let's assume if it has a price field it is paid. The current type doesn't have price.
-    // I will add price to the type definition in the next step, but for now let's pretend.
-    const price = (gymClass as any).price || 0;
+    const price = gymClass.price || 0;
 
     if (price > 0) {
         setLoading(false);
@@ -82,6 +79,9 @@ export function BookingModal({ gymClass, isOpen, onClose }: BookingModalProps) {
                 <DialogTitle>Book {gymClass.title}</DialogTitle>
                 <DialogDescription>
                     Fill in your details to secure your spot.
+                    <span className="block mt-2 font-bold text-primary">
+                        Price: {gymClass.price && gymClass.price > 0 ? `$${gymClass.price}` : 'Free'}
+                    </span>
                 </DialogDescription>
                 </DialogHeader>
                 <div className="grid gap-4 py-4">
