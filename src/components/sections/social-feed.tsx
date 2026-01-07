@@ -8,9 +8,6 @@ import { useData } from '@/lib/data-provider';
 import { useEffect, useState } from 'react';
 import { TrainerProfile, SocialLink } from '@/lib/types';
 import { useTrainerSlug } from '@/components/TrainerContext';
-import ReactPlayer from 'react-player';
-
-// Switch to main import to avoid build resolution issues
 
 export function SocialFeed() {
   const { getProfile } = useData();
