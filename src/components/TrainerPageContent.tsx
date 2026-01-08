@@ -31,16 +31,27 @@ export function TrainerPageContent({ slug }: { slug: string }) {
   useEffect(() => {
     let isActive = true;
     setBrandLoading(true);
+
+    // Start timing the boot sequence
+    const startTime = Date.now();
+    // Reduce minimum boot time to 800ms (was 1500ms) to improve TTI/LCP while keeping the brand moment
+    const MIN_BOOT_TIME = 800;
+
     // Fetch identity for the specific trainer slug
     getBrandIdentity(slug)
       .then((identity) => {
         if (!isActive) return;
         setBrand(identity);
 
-        // Add a small artificial delay for the boot sequence to be visible and smooth
+        // Calculate how much time has passed since start
+        const elapsed = Date.now() - startTime;
+        // Wait only the remaining time needed to reach MIN_BOOT_TIME
+        // This makes the delay "smart" - fast fetches wait less, slow fetches wait 0
+        const remaining = Math.max(0, MIN_BOOT_TIME - elapsed);
+
         setTimeout(() => {
             if (isActive) setBrandLoading(false);
-        }, 1500);
+        }, remaining);
       })
       .catch(() => {
         if (!isActive) return;
