@@ -57,7 +57,6 @@ export function BookingModal({ gymClass, isOpen, onClose }: BookingModalProps) {
             createdAt: new Date().toISOString()
         };
 
-    const price = gymClass.price || 0;
         const bookingId = await addBooking(slug, bookingData);
 
         if (price > 0) {
