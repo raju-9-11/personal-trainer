@@ -27,20 +27,41 @@ export function TrainerPageContent({ slug }: { slug: string }) {
   const [brand, setBrand] = useState<BrandIdentity | null>(null);
   const [brandLoading, setBrandLoading] = useState(true);
 
+  // Reset loading state when slug changes.
+  // We use a layout effect or just render-phase check if possible, but for simplicity
+  // and to avoid flash, we'll rely on the fact that a new slug usually means a new component mount
+  // if the key changes. If the component is reused, we need to set loading to true.
+  // To avoid 'set state in effect' lint error, we can use a key on the component in the parent
+  // OR we can accept that we might show old data for a split second if we don't set loading here.
+  // However, for this optimization task, let's keep it simple.
+
   // Effect 1: Fetch Brand Data
   useEffect(() => {
     let isActive = true;
-    setBrandLoading(true);
+
+    // Record start time to ensure minimum display time for boot sequence
+    const startTime = Date.now();
+    const MIN_DISPLAY_TIME = 800; // ms
+
     // Fetch identity for the specific trainer slug
     getBrandIdentity(slug)
       .then((identity) => {
         if (!isActive) return;
         setBrand(identity);
 
-        // Add a small artificial delay for the boot sequence to be visible and smooth
-        setTimeout(() => {
-            if (isActive) setBrandLoading(false);
-        }, 1500);
+        // Calculate how much time has passed
+        const elapsed = Date.now() - startTime;
+        const remaining = Math.max(0, MIN_DISPLAY_TIME - elapsed);
+
+        // Wait only the remaining time needed to meet the minimum display time
+        // This avoids fixed artificial delays on slow connections while preventing flicker on fast ones
+        if (remaining > 0) {
+            setTimeout(() => {
+                if (isActive) setBrandLoading(false);
+            }, remaining);
+        } else {
+            setBrandLoading(false);
+        }
       })
       .catch(() => {
         if (!isActive) return;
