@@ -16,7 +16,6 @@ import { useNavigate } from 'react-router-dom'
 import { useTrainerSlug } from '@/components/TrainerContext'
 import { Loader2 } from 'lucide-react'
 import { useData } from '@/lib/data-provider'
-import emailjs from '@emailjs/browser';
 
 interface BookingModalProps {
   gymClass: GymClass;
@@ -57,7 +56,6 @@ export function BookingModal({ gymClass, isOpen, onClose }: BookingModalProps) {
             createdAt: new Date().toISOString()
         };
 
-    const price = gymClass.price || 0;
         const bookingId = await addBooking(slug, bookingData);
 
         if (price > 0) {
@@ -68,23 +66,7 @@ export function BookingModal({ gymClass, isOpen, onClose }: BookingModalProps) {
         }
 
         // Free Class - Success Logic
-        // Send email via EmailJS
-        const serviceId = import.meta.env.VITE_EMAILJS_SERVICE_ID;
-        const templateId = import.meta.env.VITE_EMAILJS_TEMPLATE_ID;
-        const publicKey = import.meta.env.VITE_EMAILJS_PUBLIC_KEY;
-
-        if (serviceId && templateId && publicKey) {
-            await emailjs.send(serviceId, templateId, {
-                to_email: formData.email,
-                to_name: formData.name,
-                class_name: gymClass.title,
-                class_time: gymClass.time,
-                trainer_name: slug, // Or fetch actual trainer name if needed, using slug for now
-                message: `You have successfully booked ${gymClass.title}.`,
-            }, publicKey);
-        } else {
-            console.warn("EmailJS environment variables missing. Email not sent.");
-        }
+        // EmailJS integration temporarily removed to avoid new dependency.
 
         setLoading(false);
         setSuccess(true);
