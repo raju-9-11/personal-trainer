@@ -57,9 +57,9 @@ export function BookingModal({ gymClass, isOpen, onClose }: BookingModalProps) {
             createdAt: new Date().toISOString()
         };
 
-    const price = gymClass.price || 0;
         const bookingId = await addBooking(slug, bookingData);
 
+        // price is defined in the outer scope
         if (price > 0) {
             setLoading(false);
             // Redirect to payment
