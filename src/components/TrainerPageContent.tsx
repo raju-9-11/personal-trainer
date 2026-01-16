@@ -30,17 +30,26 @@ export function TrainerPageContent({ slug }: { slug: string }) {
   // Effect 1: Fetch Brand Data
   useEffect(() => {
     let isActive = true;
-    setBrandLoading(true);
+    // Note: setBrandLoading(true) is not needed here because we use key={slug} on the parent component,
+    // which forces a remount and resets state to initial true. This prevents an extra render.
+    const startTime = Date.now();
+
     // Fetch identity for the specific trainer slug
     getBrandIdentity(slug)
       .then((identity) => {
         if (!isActive) return;
         setBrand(identity);
 
-        // Add a small artificial delay for the boot sequence to be visible and smooth
+        // OPTIMIZATION: Use minimum display time instead of fixed additive delay.
+        // This ensures the boot sequence is visible (preventing flicker) but doesn't
+        // penalize users with an extra 1.5s wait after data is ready.
+        const elapsed = Date.now() - startTime;
+        const MIN_DISPLAY_TIME = 800;
+        const remainingTime = Math.max(0, MIN_DISPLAY_TIME - elapsed);
+
         setTimeout(() => {
             if (isActive) setBrandLoading(false);
-        }, 1500);
+        }, remainingTime);
       })
       .catch(() => {
         if (!isActive) return;
