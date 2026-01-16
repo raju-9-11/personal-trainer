@@ -1,0 +1,18 @@
+
+> my-app@0.1.0 dev
+> vite
+
+Port 5173 is in use, trying another one...
+
+  VITE v7.3.0  ready in 261 ms
+
+  ➜  Local:   http://localhost:5174/
+  ➜  Network: use --host to expose
+11:58:59 PM [vite] (client) ✨ new dependencies optimized: react-dom/client, react-router-dom, framer-motion, firebase/auth, firebase/firestore, zustand, lucide-react, firebase/app, firebase/storage, @radix-ui/react-dialog, @radix-ui/react-slot, class-variance-authority, @radix-ui/react-label, embla-carousel-react, @radix-ui/react-select, clsx, tailwind-merge, @radix-ui/react-switch, @radix-ui/react-tabs, colord, colord/plugins/a11y, colord/plugins/mix
+11:58:59 PM [vite] (client) ✨ optimized dependencies changed. reloading
+11:59:06 PM [vite] (client) ✨ new dependencies optimized: @emailjs/browser, date-fns
+11:59:06 PM [vite] (client) ✨ optimized dependencies changed. reloading
+11:59:38 PM [vite] (client) ✨ new dependencies optimized: react-hook-form
+11:59:38 PM [vite] (client) ✨ optimized dependencies changed. reloading
+12:00:15 AM [vite] (client) hmr update /src/app/globals.css
+12:00:15 AM [vite] (client) hmr update /src/app/globals.css
