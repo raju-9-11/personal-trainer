@@ -37,10 +37,8 @@ export function TrainerPageContent({ slug }: { slug: string }) {
         if (!isActive) return;
         setBrand(identity);
 
-        // Add a small artificial delay for the boot sequence to be visible and smooth
-        setTimeout(() => {
-            if (isActive) setBrandLoading(false);
-        }, 1500);
+        // Data is ready, show content immediately
+        if (isActive) setBrandLoading(false);
       })
       .catch(() => {
         if (!isActive) return;
