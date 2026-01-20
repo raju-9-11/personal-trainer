@@ -8,7 +8,6 @@ import { useData } from '@/lib/data-provider';
 import { useEffect, useState } from 'react';
 import { TrainerProfile, SocialLink } from '@/lib/types';
 import { useTrainerSlug } from '@/components/TrainerContext';
-import ReactPlayer from 'react-player';
 
 // Switch to main import to avoid build resolution issues
 
@@ -162,6 +161,7 @@ export function SocialFeed() {
                           frameBorder="0"
                           allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                           allowFullScreen
+                          loading="lazy"
                        ></iframe>
                     </Card>
                   );
