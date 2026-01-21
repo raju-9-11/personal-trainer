@@ -1,4 +1,3 @@
-import { useMemo, useEffect } from 'react';
 import { useSearchParams, useParams, useNavigate } from 'react-router-dom';
 import { TrainerPageContent } from '@/components/TrainerPageContent';
 
