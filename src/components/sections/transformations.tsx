@@ -54,11 +54,11 @@ export function Transformations() {
                         <div className="relative aspect-[3/4] group-hover:opacity-90 transition-opacity">
                           {/* Placeholder for real images */}
                           <div className="absolute inset-0 bg-muted flex items-center justify-center text-muted-foreground font-bold">BEFORE</div>
-                          <img src={item.beforeImage} alt="Before" className="w-full h-full object-cover relative z-10" />
+                          <img src={item.beforeImage} alt="Before" className="w-full h-full object-cover relative z-10" loading="lazy" />
                         </div>
                         <div className="relative aspect-[3/4] group-hover:opacity-90 transition-opacity">
                           <div className="absolute inset-0 bg-primary/20 flex items-center justify-center text-primary font-bold">AFTER</div>
-                          <img src={item.afterImage} alt="After" className="w-full h-full object-cover relative z-10" />
+                          <img src={item.afterImage} alt="After" className="w-full h-full object-cover relative z-10" loading="lazy" />
                         </div>
                       </div>
                       <div className="p-6">

@@ -52,7 +52,7 @@ export function About() {
           >
             <div className="flex items-center space-x-4 mb-6">
                 {profile.profileImageUrl ? (
-                    <img src={profile.profileImageUrl} alt={profile.name} className="w-20 h-20 rounded-full object-cover border-2 border-primary shadow-lg" />
+                    <img src={profile.profileImageUrl} alt={profile.name} className="w-20 h-20 rounded-full object-cover border-2 border-primary shadow-lg" loading="lazy" />
                 ) : (
                     <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center border-2 border-primary/20">
                         <User className="text-primary h-10 w-10" />
