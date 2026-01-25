@@ -1,4 +1,4 @@
-import { useMemo, useEffect } from 'react';
+import { useEffect } from 'react';
 import { useSearchParams, useParams, useNavigate } from 'react-router-dom';
 import { TrainerPageContent } from '@/components/TrainerPageContent';
 
@@ -33,7 +33,7 @@ export default function TrainerPage() {
 
   return (
     <main className="min-h-screen">
-      <TrainerPageContent slug={slug} />
+      <TrainerPageContent key={slug} slug={slug} />
     </main>
   );
 }
