@@ -1,17 +1,16 @@
-import { Routes, Route, useLocation, Link } from 'react-router-dom'
-import { useEffect, useState } from 'react'
-import { useTheme } from './components/ThemeContext'
+import { Routes, Route, useLocation } from 'react-router-dom'
+import { useEffect, Suspense, lazy } from 'react'
 import { BootLoader } from './components/ui/boot-loader'
 import { AnimatePresence } from 'framer-motion'
-import { Lock, Sun, Moon } from 'lucide-react'
-import { Button } from './components/ui/button'
-import HomePage from './pages/HomePage'
-import TrainerPage from './pages/TrainerPage'
-import AdminPage from './pages/AdminPage'
-import LoginPage from './pages/admin/LoginPage'
-import DashboardPage from './pages/admin/DashboardPage'
-import MockPaymentPage from './pages/MockPaymentPage'
-import NotFoundPage from './pages/NotFoundPage'
+
+// Lazy load pages for code splitting
+const HomePage = lazy(() => import('./pages/HomePage'));
+const TrainerPage = lazy(() => import('./pages/TrainerPage'));
+const AdminPage = lazy(() => import('./pages/AdminPage'));
+const LoginPage = lazy(() => import('./pages/admin/LoginPage'));
+const DashboardPage = lazy(() => import('./pages/admin/DashboardPage'));
+const MockPaymentPage = lazy(() => import('./pages/MockPaymentPage'));
+const NotFoundPage = lazy(() => import('./pages/NotFoundPage'));
 
 function ScrollToTop() {
   const { pathname, search } = useLocation()
@@ -24,29 +23,14 @@ function ScrollToTop() {
 }
 
 function App() {
-  const [booting, setBooting] = useState(true)
-  const { theme, toggleTheme } = useTheme()
   const location = useLocation()
-
-  useEffect(() => {
-    // Simulate enterprise-level boot sequence
-    const timer = setTimeout(() => {
-      setBooting(false)
-    }, 2000)
-    return () => clearTimeout(timer)
-  }, [])
-
-  const isAdminPage = location.pathname.startsWith('/admin')
 
   return (
     <>
-      <AnimatePresence>
-        {booting && <BootLoader />}
-      </AnimatePresence>
-      {!booting && (
-        <>
-          <ScrollToTop />
-          <Routes>
+      <ScrollToTop />
+      <AnimatePresence mode="wait">
+        <Suspense fallback={<BootLoader message="Loading..." />}>
+          <Routes location={location} key={location.pathname}>
             <Route path="/" element={<HomePage />} />
             <Route path="/t/:slug" element={<TrainerPage />} />
             <Route path="/trainer" element={<TrainerPage />} />
@@ -56,8 +40,8 @@ function App() {
             <Route path="/payment" element={<MockPaymentPage />} />
             <Route path="*" element={<NotFoundPage />} />
           </Routes>
-        </>
-      )}
+        </Suspense>
+      </AnimatePresence>
     </>
   )
 }
