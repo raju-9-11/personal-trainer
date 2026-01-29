@@ -1,14 +1,12 @@
 'use client';
 
-import { motion } from 'framer-motion';
 import { Card } from '@/components/ui/card';
-import { Instagram, Youtube, Facebook, Twitter, Globe, Play, ExternalLink } from 'lucide-react';
+import { Instagram, Youtube, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useData } from '@/lib/data-provider';
 import { useEffect, useState } from 'react';
 import { TrainerProfile, SocialLink } from '@/lib/types';
 import { useTrainerSlug } from '@/components/TrainerContext';
-import ReactPlayer from 'react-player';
 
 // Switch to main import to avoid build resolution issues
 
@@ -22,20 +20,6 @@ export function SocialFeed() {
       getProfile(slug).then(setProfile);
     }
   }, [getProfile, slug]);
-
-  const getIcon = (platform: SocialLink['platform']) => {
-      switch(platform) {
-          case 'instagram': return <Instagram className="h-4 w-4" />;
-          case 'youtube': return <Youtube className="h-4 w-4" />;
-          case 'facebook': return <Facebook className="h-4 w-4" />;
-          case 'twitter': return <Twitter className="h-4 w-4" />;
-          default: return <Globe className="h-4 w-4" />;
-      }
-  };
-
-  const getLabel = (platform: SocialLink['platform']) => {
-      return platform.charAt(0).toUpperCase() + platform.slice(1);
-  };
 
   const getLinksByPlatform = (platform: SocialLink['platform']) => {
       if (!profile) return [];
@@ -58,32 +42,7 @@ export function SocialFeed() {
   const instagramProfileLink = profile?.instagramUrl || (instagramLinks.length > 0 ? instagramLinks[0].url : '');
   const youtubeProfileLink = profile?.youtubeUrl || (youtubeLinks.length > 0 ? youtubeLinks[0].url : '');
 
-  useEffect(() => {
-    if (instagramLinks.length === 0) return;
-    if (typeof window === 'undefined') return;
-
-    const processEmbeds = () => {
-      if (typeof window !== 'undefined' && (window as any).instgrm?.Embeds?.process) {
-        (window as any).instgrm.Embeds.process();
-      }
-    };
-
-    const existing = document.querySelector<HTMLScriptElement>('script[src="https://www.instagram.com/embed.js"]');
-    if (existing) {
-      processEmbeds();
-      return;
-    }
-
-    const script = document.createElement('script');
-    script.src = 'https://www.instagram.com/embed.js';
-    script.async = true;
-    script.onload = processEmbeds;
-    document.body.appendChild(script);
-
-    return () => {
-      script.onload = null;
-    };
-  }, [instagramLinks]);
+  // Optimization: Removed unused Instagram embed script loader as we use custom cards.
 
   return (
     <section className="py-24 bg-primary/5 dark:bg-white/5 overflow-hidden border-y border-border/5">
@@ -155,10 +114,12 @@ export function SocialFeed() {
                   const embedUrl = link.url.replace("watch?v=", "embed/").replace("youtu.be/", "youtube.com/embed/");
                   return (
                     <Card key={idx} className="w-full aspect-video bg-black rounded-xl overflow-hidden relative border-none shadow-lg">
+                       {/* Optimization: Lazy load YouTube iframes to improve initial page load */}
                        <iframe
                           src={embedUrl}
                           className="w-full h-full"
                           title={`YouTube video player ${idx}`}
+                          loading="lazy"
                           frameBorder="0"
                           allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                           allowFullScreen
