@@ -24,17 +24,9 @@ function ScrollToTop() {
 }
 
 function App() {
-  const [booting, setBooting] = useState(true)
+  const [booting, setBooting] = useState(false)
   const { theme, toggleTheme } = useTheme()
   const location = useLocation()
-
-  useEffect(() => {
-    // Simulate enterprise-level boot sequence
-    const timer = setTimeout(() => {
-      setBooting(false)
-    }, 2000)
-    return () => clearTimeout(timer)
-  }, [])
 
   const isAdminPage = location.pathname.startsWith('/admin')
 
