@@ -18,7 +18,7 @@ import { BrandIdentity } from '@/lib/types';
 import { DEFAULT_BRAND_NAME } from '@/lib/constants';
 import { TrainerContext, BrandIdentityContext } from '@/components/TrainerContext';
 import { BootLoader } from '@/components/ui/boot-loader';
-import { generatePalette, hexToOklch } from '@/lib/theme-utils';
+import { generatePalette } from '@/lib/theme-utils';
 import { useTheme } from '@/components/ThemeContext';
 
 export function TrainerPageContent({ slug }: { slug: string }) {
@@ -30,17 +30,13 @@ export function TrainerPageContent({ slug }: { slug: string }) {
   // Effect 1: Fetch Brand Data
   useEffect(() => {
     let isActive = true;
-    setBrandLoading(true);
+
     // Fetch identity for the specific trainer slug
     getBrandIdentity(slug)
       .then((identity) => {
         if (!isActive) return;
         setBrand(identity);
-
-        // Add a small artificial delay for the boot sequence to be visible and smooth
-        setTimeout(() => {
-            if (isActive) setBrandLoading(false);
-        }, 1500);
+        setBrandLoading(false);
       })
       .catch(() => {
         if (!isActive) return;
@@ -96,8 +92,6 @@ export function TrainerPageContent({ slug }: { slug: string }) {
       document.title = `${DEFAULT_BRAND_NAME} | ${slug}`;
     }
   }, [brand, brandLoading, slug]);
-
-  const brandName = brand?.brandName || (brandLoading ? '' : DEFAULT_BRAND_NAME);
 
   return (
     <TrainerContext.Provider value={slug}>
