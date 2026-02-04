@@ -1,0 +1,15 @@
+
+> my-app@0.1.0 dev /app
+> vite
+
+
+  VITE v7.3.0  ready in 255 ms
+
+  ➜  Local:   http://localhost:5173/
+  ➜  Network: use --host to expose
+ ELIFECYCLE  Command failed.
+11:57:11 PM [vite] (client) hmr update /src/pages/TrainerPage.tsx, /src/app/globals.css
+11:57:24 PM [vite] (client) hmr update /src/components/TrainerPageContent.tsx, /src/app/globals.css
+11:59:35 PM [vite] (client) hmr update /src/app/globals.css
+11:59:48 PM [vite] (client) ✨ new dependencies optimized: date-fns, @emailjs/browser
+11:59:48 PM [vite] (client) ✨ optimized dependencies changed. reloading
