@@ -33,7 +33,7 @@ export default function TrainerPage() {
 
   return (
     <main className="min-h-screen">
-      <TrainerPageContent slug={slug} />
+      <TrainerPageContent key={slug} slug={slug} />
     </main>
   );
 }
