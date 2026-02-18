@@ -12,6 +12,9 @@ import LoginPage from './pages/admin/LoginPage'
 import DashboardPage from './pages/admin/DashboardPage'
 import MockPaymentPage from './pages/MockPaymentPage'
 import NotFoundPage from './pages/NotFoundPage'
+import React, { Suspense } from 'react'
+
+const TherapistPage = React.lazy(() => import('./pages/TherapistPage'))
 
 function ScrollToTop() {
   const { pathname, search } = useLocation()
@@ -54,6 +57,11 @@ function App() {
             <Route path="/admin/login" element={<LoginPage />} />
             <Route path="/admin/dashboard" element={<DashboardPage />} />
             <Route path="/payment" element={<MockPaymentPage />} />
+            <Route path="/therapist" element={
+              <Suspense fallback={<BootLoader />}>
+                <TherapistPage />
+              </Suspense>
+            } />
             <Route path="*" element={<NotFoundPage />} />
           </Routes>
         </>
