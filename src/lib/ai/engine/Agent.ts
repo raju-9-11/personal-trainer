@@ -72,11 +72,15 @@ export class TherapistAgent {
       return `
 ${ctx.systemPrompt}
 
-USER FACTS:
+[MEMORY CONTEXT]
+USER INSIGHTS:
 ${ctx.facts.map(f => `- ${f}`).join('\n') || 'None yet.'}
 
-CONVERSATION SUMMARY:
+LONG-TERM SUMMARY:
 ${ctx.longTermSummary || 'New conversation.'}
+
+[INSTRUCTION]
+Use the conversation history below to perform your "History_Check" in the internal monologue. Ensure you do not repeat recent questions.
       `.trim();
   }
 
