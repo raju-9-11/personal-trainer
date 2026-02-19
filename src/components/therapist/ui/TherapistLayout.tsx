@@ -1,8 +1,8 @@
-
 import { ReactNode } from 'react';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { ChevronLeft } from 'lucide-react';
+import { ChevronLeft, User } from 'lucide-react';
+import { useAuth } from '../../../lib/auth-context';
 
 interface TherapistLayoutProps {
   children: ReactNode;
@@ -12,6 +12,8 @@ interface TherapistLayoutProps {
 }
 
 export function TherapistLayout({ children, showBack = true, onBack, title }: TherapistLayoutProps) {
+  const { user } = useAuth();
+
   return (
     <div className="min-h-screen w-full bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans selection:bg-indigo-100 selection:text-indigo-900 overflow-hidden relative">
       {/* Animated Background Elements */}
@@ -63,8 +65,22 @@ export function TherapistLayout({ children, showBack = true, onBack, title }: Th
           )}
         </div>
 
-        {/* Placeholder for settings/profile menu */}
-        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-400 to-purple-400 opacity-80" />
+        {/* Profile Link */}
+        {user ? (
+            <Link to="/profile" className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-400 to-purple-400 flex items-center justify-center text-white shadow-lg hover:shadow-xl transition-all hover:scale-105">
+                {user.photoURL ? (
+                    <img src={user.photoURL} alt="Profile" className="w-full h-full rounded-full object-cover" />
+                ) : (
+                    <span className="text-sm font-bold">{user.displayName?.charAt(0) || user.email?.charAt(0) || <User className="w-5 h-5" />}</span>
+                )}
+            </Link>
+        ) : (
+            <Link to="/therapy/auth">
+                <div className="w-8 h-8 rounded-full bg-slate-200 dark:bg-slate-800 flex items-center justify-center opacity-80 hover:opacity-100 transition-opacity">
+                    <User className="w-4 h-4 text-slate-500" />
+                </div>
+            </Link>
+        )}
       </header>
 
       {/* Main Content Area */}

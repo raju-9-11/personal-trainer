@@ -12,6 +12,10 @@ interface AuthContextType {
   loading: boolean;
   isAuthenticated: boolean;
   login: (emailOrPassword: string, password?: string) => Promise<boolean>;
+  registerWithEmail: (email: string, password: string) => Promise<boolean>;
+  sendVerification: () => Promise<boolean>;
+  checkVerificationStatus: () => Promise<boolean>;
+  resetPassword: (email: string) => Promise<boolean>;
   finishLogin: (email: string, href: string) => Promise<void>;
   logout: () => Promise<void>;
   trainerSlug: string | null;
@@ -84,7 +88,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setIsAuthenticated(true);
         setIsSuperAdmin(true);
         setTrainerSlug('platform');
-        setUser({ uid: 'super-admin-uid', email: 'admin@admin.com' } as User);
+        setUser({ uid: 'super-admin-uid', email: 'admin@admin.com', emailVerified: true } as User);
         sessionStorage.setItem('is_super_admin', 'true');
         return true;
     }
@@ -109,6 +113,62 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.error("Login failed", error);
       return false;
     }
+  };
+
+  const registerWithEmail = async (email: string, password: string): Promise<boolean> => {
+      const { auth } = getFirebase();
+      if (!auth) return false;
+      try {
+          const { createUserWithEmailAndPassword, sendEmailVerification } = await import('firebase/auth');
+          const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+          await sendEmailVerification(userCredential.user);
+          return true;
+      } catch (error) {
+          console.error("Registration failed", error);
+          return false;
+      }
+  };
+
+  const sendVerification = async (): Promise<boolean> => {
+      const { auth } = getFirebase();
+      if (!auth || !auth.currentUser) return false;
+      try {
+          const { sendEmailVerification } = await import('firebase/auth');
+          await sendEmailVerification(auth.currentUser);
+          return true;
+      } catch (error) {
+           console.error("Verification email failed", error);
+           return false;
+      }
+  };
+
+  const checkVerificationStatus = async (): Promise<boolean> => {
+      const { auth } = getFirebase();
+      if (!auth || !auth.currentUser) return false;
+      try {
+          await auth.currentUser.reload();
+          // Update local state if needed, though onAuthStateChanged usually handles it
+          // Force a re-render of user state might be tricky without triggering a full auth state change
+          // But setUser will trigger it.
+          setUser({ ...auth.currentUser }); 
+          return auth.currentUser.emailVerified;
+      } catch (error) {
+          console.error("Reload failed", error);
+          return false;
+      }
+  };
+
+  const resetPassword = async (email: string): Promise<boolean> => {
+       const { auth } = getFirebase();
+       if (!auth) return false;
+       try {
+           const { sendPasswordResetEmail } = await import('firebase/auth');
+           await sendPasswordResetEmail(auth, email);
+           return true;
+       } catch (error) {
+           console.error("Reset password failed", error);
+           return false;
+       }
   };
 
   const finishLogin = async (email: string, href: string) => {
@@ -136,7 +196,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ isAuthenticated, user, login, finishLogin, logout, loading, trainerSlug, isSuperAdmin }}>
+    <AuthContext.Provider value={{ 
+        isAuthenticated, 
+        user, 
+        login, 
+        registerWithEmail,
+        sendVerification,
+        checkVerificationStatus,
+        resetPassword,
+        finishLogin, 
+        logout, 
+        loading, 
+        trainerSlug, 
+        isSuperAdmin 
+    }}>
       <AnimatePresence>
         {loading && <BootLoader />}
       </AnimatePresence>

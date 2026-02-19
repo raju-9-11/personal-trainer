@@ -159,6 +159,24 @@ export default function HomePage() {
           </div>
         </section>
 
+        {/* Mental Wellness Section */}
+        <section className="py-24 bg-gradient-to-r from-slate-900 to-indigo-950 text-white relative overflow-hidden">
+            <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1544367563-12123d8966bf?q=80&w=2070&auto=format&fit=crop')] bg-cover bg-center opacity-10 mix-blend-overlay"></div>
+            <div className="container mx-auto px-4 relative z-10 text-center">
+                <h2 className="text-4xl md:text-5xl font-bold mb-6">Train Your Mind</h2>
+                <p className="text-xl text-indigo-100 max-w-2xl mx-auto mb-10">
+                    Mental resilience is the foundation of physical performance. 
+                    Connect with our AI-powered therapy vault—secure, private, and always available.
+                </p>
+                <Link to="/therapy" className="inline-flex items-center gap-2 bg-white text-indigo-900 hover:bg-indigo-50 px-8 py-4 rounded-full text-lg font-bold transition-all shadow-lg hover:shadow-xl hover:-translate-y-1">
+                    Explore MindVault
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                    </svg>
+                </Link>
+            </div>
+        </section>
+
         {/* Success Stories Preview (Testimonials) */}
         <section className="py-24 bg-black text-white">
           <div className="container mx-auto px-4">

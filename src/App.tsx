@@ -15,6 +15,10 @@ import NotFoundPage from './pages/NotFoundPage'
 import React, { Suspense } from 'react'
 
 const TherapistPage = React.lazy(() => import('./pages/TherapistPage'))
+const TherapyLandingPage = React.lazy(() => import('./pages/TherapyLandingPage'))
+const TherapyAuth = React.lazy(() => import('./pages/TherapyAuth'))
+const AnonymousChat = React.lazy(() => import('./components/therapist/AnonymousChat'))
+const ProfilePage = React.lazy(() => import('./pages/profile/ProfilePage'))
 
 function ScrollToTop() {
   const { pathname, search } = useLocation()
@@ -57,11 +61,38 @@ function App() {
             <Route path="/admin/login" element={<LoginPage />} />
             <Route path="/admin/dashboard" element={<DashboardPage />} />
             <Route path="/payment" element={<MockPaymentPage />} />
-            <Route path="/therapist" element={
+            
+            {/* Therapy Routes */}
+            <Route path="/therapy" element={
+              <Suspense fallback={<BootLoader />}>
+                <TherapyLandingPage />
+              </Suspense>
+            } />
+            <Route path="/therapy/auth" element={
+              <Suspense fallback={<BootLoader />}>
+                <TherapyAuth />
+              </Suspense>
+            } />
+             <Route path="/therapy/chat" element={
+              <Suspense fallback={<BootLoader />}>
+                <AnonymousChat />
+              </Suspense>
+            } />
+            <Route path="/therapy/session" element={
               <Suspense fallback={<BootLoader />}>
                 <TherapistPage />
               </Suspense>
             } />
+            
+            {/* Legacy Redirect or Alias */}
+            <Route path="/therapist" element={<TherapistPage />} />
+            
+            <Route path="/profile" element={
+              <Suspense fallback={<BootLoader />}>
+                <ProfilePage />
+              </Suspense>
+            } />
+            
             <Route path="*" element={<NotFoundPage />} />
           </Routes>
         </>
