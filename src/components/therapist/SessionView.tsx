@@ -3,54 +3,107 @@ import { useState, useRef, useEffect } from 'react';
 import { TherapistLayout } from './ui/TherapistLayout';
 import { ArtisticAvatar, AvatarState } from './ui/ArtisticAvatar';
 import { Button } from '../ui/button';
-import { Textarea } from '../ui/textarea';
 import { useAI } from '../../lib/ai/ai-context';
-import { Message, GeneratedTherapist, BaseContext } from '../../lib/ai/types';
-import { Send, LogOut, Loader2, Save, AlertTriangle, RefreshCw } from 'lucide-react';
+import { Message, GeneratedTherapist, BaseContext, ActiveSession, SessionSummary } from '../../lib/ai/types';
+import { getReflectionPrompt, getWarmWelcomePrompt } from '../../lib/ai/personas';
+import { Send, LogOut, Loader2, Save, AlertTriangle, RefreshCw, Sparkles, Trash2, Coffee } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MessageBubble } from './ui/MessageBubble';
 import { Card } from '../ui/card';
 
 interface SessionViewProps {
   initialContext: BaseContext;
+  initialActiveSession: ActiveSession | null;
   therapist: GeneratedTherapist;
-  onSave: (updatedContext: BaseContext) => Promise<void>;
+  onAutoSave: (updatedSession: ActiveSession) => Promise<void>;
+  onEndSession: (insightToIntegrate?: SessionSummary) => Promise<void>;
 }
 
-export function SessionView({ initialContext, therapist, onSave }: SessionViewProps) {
-  const { streamMessage, setProvider, activeProvider, availableProviders } = useAI();
+export function SessionView({ 
+  initialContext, 
+  initialActiveSession, 
+  therapist, 
+  onAutoSave, 
+  onEndSession 
+}: SessionViewProps) {
+  const { streamMessage, sendMessage, orchestratorState } = useAI();
   const [messages, setMessages] = useState<Message[]>([]);
-  const contextRef = useRef<BaseContext>(initialContext);
-  
+  const [chatHistory, setChatHistory] = useState<Message[]>([]); 
   const [inputText, setInputText] = useState('');
   const [avatarState, setAvatarState] = useState<AvatarState>('idle');
   const [avatarAction, setAvatarAction] = useState<string | undefined>(undefined);
   const [isStreaming, setIsStreaming] = useState(false);
+  const [isInitializing, setIsInitializing] = useState(false);
   const [showEndModal, setShowEndModal] = useState(false);
+  const [isGeneratingReflection, setIsGeneratingReflection] = useState(false);
+  const [reflection, setReflection] = useState<SessionSummary | null>(null);
   const [error, setError] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
-
-  // Extract therapist details
   const { name, role, systemPrompt, greeting, gender, archetypeId } = therapist;
 
-  // Initial greeting
+  // Initialize or Resume
   useEffect(() => {
-    if (messages.length === 0) {
-      setMessages([{ role: 'assistant', content: greeting }]);
-    }
+    const init = async () => {
+        if (initialActiveSession) {
+            setMessages(initialActiveSession.messages);
+            setChatHistory(initialActiveSession.messages);
+        } else if (messages.length === 0) {
+            // Check if returning user
+            if (initialContext?.integratedInsights && initialContext.integratedInsights.length > 0) {
+                setIsInitializing(true);
+                setAvatarState('thinking');
+                try {
+                    const welcomePrompt = getWarmWelcomePrompt(therapist, initialContext);
+                    const result = await sendMessage(welcomePrompt, {
+                        systemPrompt: therapist.systemPrompt,
+                        insights: initialContext.integratedInsights || [],
+                        summary: initialContext.lastSessionSummary || '',
+                        history: []
+                    });
+                    const welcomeMsg: Message = { role: 'assistant', content: result.response };
+                    setMessages([welcomeMsg]);
+                    setChatHistory([welcomeMsg]);
+                } catch (e) {
+                    const initialMsg: Message = { role: 'assistant', content: greeting };
+                    setMessages([initialMsg]);
+                    setChatHistory([initialMsg]);
+                } finally {
+                    setIsInitializing(false);
+                    setAvatarState('idle');
+                }
+            } else {
+                const initialMsg: Message = { role: 'assistant', content: greeting };
+                setMessages([initialMsg]);
+                setChatHistory([initialMsg]);
+            }
+        }
+    };
+    init();
   }, []);
 
-  // Auto-scroll
+  // Auto-Save whenever chatHistory changes
+  useEffect(() => {
+    if (chatHistory.length > 1) { // Don't auto-save just the greeting
+      const session: ActiveSession = {
+        id: initialActiveSession?.id || `session_${Date.now()}`,
+        messages: chatHistory,
+        emotionalTrend: [], // Could implement later
+        startedAt: initialActiveSession?.startedAt || Date.now(),
+        lastUpdatedAt: Date.now()
+      };
+      onAutoSave(session);
+    }
+  }, [chatHistory]);
+
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [messages, isStreaming, error]);
 
-  // Parse actions
   useEffect(() => {
     const lastMsg = messages[messages.length - 1];
-    if (lastMsg && lastMsg.role === 'assistant') {
+    if (lastMsg?.role === 'assistant') {
       const content = lastMsg.content;
       const matches = content.match(/\*([a-zA-Z\s]+)\*/g);
       
@@ -71,9 +124,10 @@ export function SessionView({ initialContext, therapist, onSave }: SessionViewPr
 
   const handleSendMessage = async (textOverride?: string) => {
     const textToSend = textOverride || inputText;
-    if (!textToSend.trim() || isStreaming) return;
+    if (!textToSend.trim() || isStreaming || isInitializing) return;
 
-    // Only add user message if it's a fresh send, not a retry
+    const baseHistory = chatHistory;
+
     if (!textOverride) {
         const userMsg: Message = { role: 'user', content: textToSend };
         setMessages(prev => [...prev, userMsg]);
@@ -85,20 +139,17 @@ export function SessionView({ initialContext, therapist, onSave }: SessionViewPr
     setIsStreaming(true);
 
     try {
-      // Get current history including the just-added user message
-      // Note: If retrying, the user message is already in 'messages' state
-      const currentMessages = textOverride ? messages : [...messages, { role: 'user', content: textToSend }];
-      
-      const sysMsg: Message = { role: 'system', content: systemPrompt };
-      const history = currentMessages.map(m => ({ role: m.role, content: m.content }));
-      const fullMessages = [sysMsg, ...history];
-
-      // Placeholder for assistant response
       setMessages(prev => [...prev, { role: 'assistant', content: '' }]);
-
       let currentResponse = '';
 
-      await streamMessage(fullMessages as Message[], (chunk) => {
+      const ctx = {
+          systemPrompt,
+          insights: Array.isArray(initialContext?.integratedInsights) ? initialContext.integratedInsights : [],
+          summary: initialContext?.lastSessionSummary || '',
+          history: baseHistory
+      };
+
+      const result = await streamMessage(textToSend, ctx, (chunk) => {
         currentResponse += chunk;
         setMessages(prev => {
           const newMsgs = [...prev];
@@ -113,48 +164,64 @@ export function SessionView({ initialContext, therapist, onSave }: SessionViewPr
         setAvatarState('speaking');
       });
 
-    } catch (error) {
-      console.error("Chat error:", error);
-      // Remove the empty assistant placeholder if it exists and is empty
+      if (!result.response.trim()) {
+        throw new Error("Empty response");
+      }
+
+      setChatHistory(result.updatedHistory);
+    } catch (err: any) {
+      console.error("Chat error:", err);
       setMessages(prev => {
-          const last = prev[prev.length - 1];
-          if (last.role === 'assistant' && !last.content) {
-              return prev.slice(0, -1);
-          }
-          return prev;
+        const last = prev[prev.length - 1];
+        if (last?.role === 'assistant' && !last.content) return prev.slice(0, -1);
+        return prev;
       });
-      setError("Connection failed. Try switching providers.");
+      setError("AI Engine encountered an error.");
+      setChatHistory(prev => {
+        const last = prev[prev.length - 1];
+        if (last?.role === 'user' && last.content === textToSend) return prev;
+        return [...baseHistory, { role: 'user', content: textToSend }];
+      });
     } finally {
       setIsStreaming(false);
       setAvatarState('idle');
     }
   };
 
-  const handleRetry = (provider: any) => {
-      setProvider(provider);
-      // Find the last user message to retry
-      const lastUserMsg = messages.filter(m => m.role === 'user').pop();
-      if (lastUserMsg) {
-          handleSendMessage(lastUserMsg.content);
-      }
+  const startReflection = async () => {
+    setShowEndModal(false);
+    setIsGeneratingReflection(true);
+    setAvatarState('thinking');
+
+    try {
+      const prompt = getReflectionPrompt(name, role, chatHistory);
+      const result = await sendMessage(prompt, {
+        systemPrompt: "You are a clinical summarizer. Output only JSON.",
+        insights: [],
+        summary: "",
+        history: []
+      });
+
+      const parsedReflection = JSON.parse(result.response);
+      setReflection({
+        ...parsedReflection,
+        date: new Date().toLocaleDateString()
+      });
+    } catch (e) {
+      console.error("Reflection failed", e);
+      // Fallback reflection
+      setReflection({
+        date: new Date().toLocaleDateString(),
+        summary: "We had a deep conversation today about your journey.",
+        theme: "General Exploration",
+        keyInsights: ["You are showing great courage in sharing your thoughts."]
+      });
+    } finally {
+      setIsGeneratingReflection(false);
+      setAvatarState('idle');
+    }
   };
 
-  const handleEndSession = async () => {
-      // Create a summary (mock for now, or use LLM)
-      const newSessionCount = (contextRef.current.sessionCount || 0) + 1;
-      
-      const updatedContext: BaseContext = {
-          ...contextRef.current,
-          sessionCount: newSessionCount,
-          lastSessionSummary: `Session on ${new Date().toLocaleDateString()}`
-      };
-      
-      await onSave(updatedContext);
-      setShowEndModal(false);
-      // Maybe redirect or show "Session Saved" state
-      alert("Session saved securely.");
-  };
-  
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
@@ -162,10 +229,58 @@ export function SessionView({ initialContext, therapist, onSave }: SessionViewPr
     }
   };
 
+  if (reflection) {
+    return (
+      <TherapistLayout title="Session Reflection" showBack={false}>
+        <div className="flex flex-col items-center justify-center h-full max-w-2xl mx-auto p-4 space-y-8">
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-center space-y-2">
+            <Sparkles className="w-12 h-12 text-indigo-500 mx-auto mb-4" />
+            <h2 className="text-3xl font-bold">Reflection</h2>
+            <p className="text-slate-500 italic">"{reflection.summary}"</p>
+          </motion.div>
+
+          <Card className="w-full p-8 space-y-6 bg-white dark:bg-slate-900 border-indigo-100 dark:border-indigo-900 shadow-xl">
+             <div className="space-y-4">
+                <div className="flex items-center gap-2">
+                   <div className="px-3 py-1 bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 rounded-full text-xs font-bold uppercase tracking-widest">
+                      Theme: {reflection.theme}
+                   </div>
+                </div>
+                
+                <div className="space-y-3">
+                   <h3 className="font-semibold text-lg text-slate-800 dark:text-slate-200">Key Insights:</h3>
+                   <ul className="space-y-2">
+                      {reflection.keyInsights.map((insight, i) => (
+                        <li key={i} className="flex gap-3 text-slate-600 dark:text-slate-400">
+                          <div className="mt-1.5 w-1.5 h-1.5 rounded-full bg-indigo-400 flex-none" />
+                          {insight}
+                        </li>
+                      ))}
+                   </ul>
+                </div>
+             </div>
+
+             <div className="pt-6 border-t border-slate-100 dark:border-slate-800 text-xs text-slate-400 text-center">
+                Choosing "Integrate" will save these insights to your Soul profile and permanently delete the raw chat transcript.
+             </div>
+          </Card>
+
+          <div className="flex gap-4 w-full">
+             <Button variant="outline" className="flex-1 h-12" onClick={() => onEndSession()}>
+                <Trash2 className="w-4 h-4 mr-2" /> Discard All
+             </Button>
+             <Button className="flex-1 h-12 bg-indigo-600 hover:bg-indigo-700" onClick={() => onEndSession(reflection)}>
+                <Save className="w-4 h-4 mr-2" /> Integrate & Finish
+             </Button>
+          </div>
+        </div>
+      </TherapistLayout>
+    );
+  }
+
   return (
     <TherapistLayout title={`Session with ${name}`} showBack={false}>
       <div className="flex flex-col h-full max-w-4xl mx-auto relative">
-        {/* Header */}
         <div className="flex-none flex items-center justify-between p-4 border-b border-slate-200 dark:border-slate-800 bg-white/50 dark:bg-black/20 backdrop-blur-sm rounded-t-2xl z-10">
            <div className="flex items-center gap-4">
               <div className="scale-75 origin-left">
@@ -179,7 +294,9 @@ export function SessionView({ initialContext, therapist, onSave }: SessionViewPr
               </div>
               <div>
                 <h3 className="font-medium text-lg">{name}</h3>
-                <p className="text-xs text-slate-500 uppercase tracking-wider">{role}</p>
+                <p className="text-xs text-slate-500 uppercase tracking-wider">
+                    {role} {orchestratorState?.activeModelId ? `• ${orchestratorState.activeModelId.split('/')[1]}` : ''}
+                </p>
               </div>
            </div>
 
@@ -189,50 +306,48 @@ export function SessionView({ initialContext, therapist, onSave }: SessionViewPr
            </Button>
         </div>
 
-        {/* Chat Log */}
         <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-6 scroll-smooth bg-gradient-to-b from-slate-50/50 to-white/30 dark:from-black/10 dark:to-black/30 backdrop-blur-sm pb-32">
+          {initialActiveSession && messages.length === initialActiveSession.messages.length && (
+            <div className="flex justify-center mb-8">
+               <div className="bg-amber-50 dark:bg-amber-900/20 text-amber-800 dark:text-amber-200 text-xs px-4 py-2 rounded-full border border-amber-100 dark:border-amber-800/50">
+                  Resuming your previous conversation...
+               </div>
+            </div>
+          )}
+
           <AnimatePresence initial={false}>
             {messages.map((msg, idx) => (
                <MessageBubble key={idx} message={msg} isLast={idx === messages.length - 1} />
             ))}
           </AnimatePresence>
           
-          {isStreaming && (
+          {(isStreaming || isGeneratingReflection || isInitializing) && (
                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex justify-start mb-6">
                  <div className="bg-white dark:bg-slate-800 px-4 py-3 rounded-2xl rounded-tl-sm border border-slate-100 dark:border-slate-700 shadow-sm flex items-center gap-1.5">
                    <div className="w-2 h-2 bg-indigo-400 rounded-full animate-bounce" />
                    <div className="w-2 h-2 bg-indigo-400 rounded-full animate-bounce delay-100" />
                    <div className="w-2 h-2 bg-indigo-400 rounded-full animate-bounce delay-200" />
+                   <span className="text-[10px] text-slate-400 ml-2 uppercase tracking-widest font-bold">
+                      {isGeneratingReflection ? "Reflecting..." : (isInitializing ? `Dr. ${name} is preparing...` : "Listening...")}
+                   </span>
                  </div>
                </motion.div>
           )}
 
           {error && (
               <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="flex justify-center my-4">
-                  <Card className="bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800 p-4 max-w-md w-full">
-                      <div className="flex items-start gap-3 mb-3">
-                          <AlertTriangle className="w-5 h-5 text-red-600 dark:text-red-400 flex-none" />
-                          <div>
-                              <h4 className="text-sm font-bold text-red-800 dark:text-red-200">Connection Failed</h4>
-                              <p className="text-xs text-red-600 dark:text-red-300 mt-1">{error}</p>
-                          </div>
-                      </div>
-                      <div className="flex flex-wrap gap-2 justify-end">
-                          {availableProviders.filter(p => p !== activeProvider).map(p => (
-                              <Button key={p} size="sm" variant="outline" onClick={() => handleRetry(p)} className="bg-white dark:bg-black/40">
-                                  Switch to {p.charAt(0).toUpperCase() + p.slice(1)} & Retry
-                              </Button>
-                          ))}
-                          <Button size="sm" onClick={() => handleRetry(activeProvider)}>
-                              <RefreshCw className="w-3 h-3 mr-2" /> Retry
-                          </Button>
-                      </div>
+                  <Card className="bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800 p-4 max-w-md w-full text-center">
+                      <AlertTriangle className="w-8 h-8 text-red-600 dark:text-red-400 mx-auto mb-2" />
+                      <h4 className="text-sm font-bold text-red-800 dark:text-red-200">System Interruption</h4>
+                      <p className="text-xs text-red-600 dark:text-red-300 mt-1">{error}</p>
+                      <Button size="sm" variant="outline" onClick={() => handleSendMessage()} className="mt-4">
+                        <RefreshCw className="w-3 h-3 mr-2" /> Try Recovery
+                      </Button>
                   </Card>
               </motion.div>
           )}
         </div>
 
-        {/* Input */}
         <div className="absolute bottom-6 left-0 right-0 px-4 pointer-events-none flex justify-center z-20">
           <div className="pointer-events-auto w-full max-w-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl shadow-indigo-500/10 dark:shadow-black/50 p-2 flex items-end gap-2 transition-all focus-within:ring-2 ring-indigo-500/20">
             <textarea
@@ -250,23 +365,22 @@ export function SessionView({ initialContext, therapist, onSave }: SessionViewPr
                   : 'bg-slate-100 dark:bg-slate-800 text-slate-400 scale-95'
               }`}
               onClick={() => handleSendMessage()}
-              disabled={!inputText.trim() || isStreaming}
+              disabled={!inputText.trim() || isStreaming || isGeneratingReflection}
             >
               {isStreaming ? <Loader2 className="animate-spin" /> : <Send className="w-5 h-5" />}
             </Button>
           </div>
         </div>
 
-        {/* End Modal (Simplified for now) */}
         {showEndModal && (
             <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
                 <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 max-w-sm w-full shadow-2xl">
-                    <h3 className="text-xl font-bold mb-2">End Session?</h3>
-                    <p className="text-slate-500 mb-6">Your progress will be encrypted and saved to your Vault.</p>
+                    <h3 className="text-xl font-bold mb-2">Finish Session?</h3>
+                    <p className="text-slate-500 mb-6">Dr. {name} will provide a brief reflection before you leave.</p>
                     <div className="flex gap-3">
                         <Button variant="outline" className="flex-1" onClick={() => setShowEndModal(false)}>Cancel</Button>
-                        <Button className="flex-1" onClick={handleEndSession}>
-                            <Save className="w-4 h-4 mr-2" /> Save & End
+                        <Button className="flex-1 bg-indigo-600 hover:bg-indigo-700" onClick={startReflection}>
+                            <Sparkles className="w-4 h-4 mr-2" /> Reflect & End
                         </Button>
                     </div>
                 </div>

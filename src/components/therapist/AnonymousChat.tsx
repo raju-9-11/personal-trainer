@@ -10,8 +10,10 @@ import { AIProvider, useAI } from '../../lib/ai/ai-context';
 import { Message } from '../../lib/ai/types';
 import { AnimatePresence, motion } from 'framer-motion';
 
+const ANON_SYSTEM_PROMPT = "You are a supportive, empathetic listener. This is an anonymous, ephemeral chat. Your goal is to provide immediate emotional support, validation, and grounding. Do not try to diagnose. Keep responses concise (under 3 sentences) and warm. If the user seems in crisis, suggest professional help.";
+
 function AnonymousChatContent() {
-  const { sendMessage, activeProvider, setProvider, availableProviders } = useAI();
+  const { sendMessage } = useAI();
   const [messages, setMessages] = useState<Message[]>([
     { role: 'assistant', content: "Hi there. I'm here to listen. This chat is anonymous and nothing is saved. How are you feeling right now?" }
   ]);
@@ -26,24 +28,29 @@ function AnonymousChatContent() {
     }
   }, [messages, isTyping, error]);
 
-  const handleSend = async () => {
-    if (!input.trim()) return;
+  const handleSend = async (textOverride?: string) => {
+    const textToSend = textOverride || input;
+    if (!textToSend.trim()) return;
 
-    const userMsg: Message = { role: 'user', content: input };
-    setMessages(prev => [...prev, userMsg]);
-    setInput('');
+    if (!textOverride) {
+      const userMsg: Message = { role: 'user', content: textToSend };
+      setMessages(prev => [...prev, userMsg]);
+      setInput('');
+    }
+
     setIsTyping(true);
     setError(null);
 
     try {
-        const contextMessages: Message[] = [
-            { role: 'system', content: "You are a supportive, empathetic listener. This is an anonymous, ephemeral chat. Your goal is to provide immediate emotional support, validation, and grounding. Do not try to diagnose. Keep responses concise (under 3 sentences) and warm. If the user seems in crisis, suggest professional help." },
-            ...messages,
-            userMsg
-        ];
+        const context = {
+          systemPrompt: ANON_SYSTEM_PROMPT,
+          insights: [],
+          summary: '',
+          history: messages
+        };
 
-        const response = await sendMessage(contextMessages);
-        setMessages(prev => [...prev, { role: 'assistant', content: response }]);
+        const result = await sendMessage(textToSend, context);
+        setMessages(prev => [...prev, { role: 'assistant', content: result.response }]);
     } catch (error) {
         console.error("Chat error", error);
         setError("Connection failed.");
@@ -52,29 +59,10 @@ function AnonymousChatContent() {
     }
   };
 
-  const handleRetry = (provider: any) => {
-      setProvider(provider);
-      // Retry logic: Remove failed attempt visualization if any, or just let user re-type?
-      // Better: Re-send the last user message if the last message in history is user
+  const handleRetry = () => {
       const lastMsg = messages[messages.length - 1];
       if (lastMsg.role === 'user') {
-          // Temporarily set input back to last message content to simulate re-send
-          // Actually, we can just call an internal re-send logic, but handleSend consumes input state.
-          // Let's just prompt user to try again for simplicity or implement complex retry
-          // Simple retry:
-          setIsTyping(true);
-          setError(null);
-          
-          const contextMessages: Message[] = [
-            { role: 'system', content: "You are a supportive, empathetic listener..." },
-            ...messages
-          ];
-          
-          sendMessage(contextMessages).then(response => {
-              setMessages(prev => [...prev, { role: 'assistant', content: response }]);
-          }).catch(e => {
-              setError("Retry failed.");
-          }).finally(() => setIsTyping(false));
+          handleSend(lastMsg.content);
       }
   };
 
@@ -155,12 +143,7 @@ function AnonymousChatContent() {
                           </div>
                       </div>
                       <div className="flex flex-wrap gap-2 justify-end">
-                          {availableProviders.filter(p => p !== activeProvider).map(p => (
-                              <Button key={p} size="sm" variant="outline" onClick={() => handleRetry(p)} className="bg-white dark:bg-black/40">
-                                  Switch to {p.charAt(0).toUpperCase() + p.slice(1)} & Retry
-                              </Button>
-                          ))}
-                          <Button size="sm" onClick={() => handleRetry(activeProvider)}>
+                          <Button size="sm" onClick={handleRetry}>
                               <RefreshCw className="w-3 h-3 mr-2" /> Retry
                           </Button>
                       </div>
@@ -181,7 +164,7 @@ function AnonymousChatContent() {
                 className="flex-1"
                 autoFocus
             />
-            <Button onClick={handleSend} disabled={!input.trim() || isTyping}>
+            <Button onClick={() => handleSend()} disabled={!input.trim() || isTyping}>
                 <Send className="w-4 h-4" />
             </Button>
         </div>

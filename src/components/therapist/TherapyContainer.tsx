@@ -1,27 +1,27 @@
-
 import { useState } from 'react';
-import { TherapyMode, BaseContext, GeneratedTherapist, TherapistProfile } from '../../lib/ai/types';
+import { TherapyMode, BaseContext, GeneratedTherapist, EncryptedProfile, ActiveSession, SessionSummary } from '../../lib/ai/types';
 import { IntakeChat } from './IntakeChat';
 import { TherapistSelection } from './TherapistSelection';
 import { SessionView } from './SessionView';
+import { SessionComplete } from './SessionComplete';
 import { BootLoader } from '../ui/boot-loader';
 import { TherapistLayout } from './ui/TherapistLayout';
 import { VaultSetup } from './VaultSetup';
 import { VaultUnlock } from './VaultUnlock';
 import { encryptData, decryptData } from '../../lib/encryption';
-import { doc, setDoc, deleteDoc, Timestamp } from 'firebase/firestore';
+import { doc, setDoc, deleteDoc } from 'firebase/firestore';
 import { getFirebase } from '../../lib/firebase';
 import { useAuth } from '../../lib/auth-context';
 
 import { AIProvider } from '../../lib/ai/ai-context';
 
-type ExtendedTherapyMode = TherapyMode | 'vault-setup' | 'locked';
+type ExtendedTherapyMode = TherapyMode | 'vault-setup' | 'locked' | 'complete';
 
 interface TherapyContainerProps {
   initialMode?: ExtendedTherapyMode;
   initialContext?: BaseContext;
   initialTherapist?: GeneratedTherapist;
-  encryptedProfile?: TherapistProfile; // If loading existing
+  encryptedProfile?: EncryptedProfile; 
 }
 
 export function TherapyContainer({ 
@@ -32,22 +32,23 @@ export function TherapyContainer({
 }: TherapyContainerProps) {
   const { user } = useAuth();
   const [mode, setMode] = useState<ExtendedTherapyMode>(initialMode);
-  const [context, setContext] = useState<BaseContext>(initialContext || {});
+  const [context, setContext] = useState<BaseContext>(initialContext || { integratedInsights: [] });
+  const [activeSession, setActiveSession] = useState<ActiveSession | null>(null);
   const [selectedTherapist, setSelectedTherapist] = useState<GeneratedTherapist | undefined>(initialTherapist);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [vaultPassword, setVaultPassword] = useState<string | null>(null);
 
   const handleIntakeComplete = async (transcript: any[]) => {
     setIsAnalyzing(true);
-    // Simulate analysis delay
     setTimeout(() => {
         const extractedContext: BaseContext = {
             intakeTranscript: transcript,
             childhood: "Extracted from intake...", 
             trauma: "Extracted from intake...",
-            goals: "Extracted from intake...",
-            struggles: ["anxiety", "stress"], // Mock
-            sessionCount: 0
+            goals: ["Extracted from intake..."],
+            struggles: ["anxiety", "stress"],
+            sessionCount: 0,
+            integratedInsights: []
         };
         
         setContext(extractedContext);
@@ -66,32 +67,21 @@ export function TherapyContainer({
       
       setVaultPassword(password);
       
-      // Encrypt and Save
       try {
-          const secretData = JSON.stringify({
+          const soulData = JSON.stringify({
               context,
               therapist: selectedTherapist
           });
 
-          const encryptedData = await encryptData(secretData, password);
-          
-          // We need salt/iv from encryptData, but the current helper returns a JSON string containing them?
-          // Let's check the helper. Yes, it returns JSON string of {ciphertext, iv, salt}
-          // But our Firestore schema expects them separate or as one blob?
-          // The helper `encryptData` returns a JSON string.
-          // Let's parse it to store structured if we want, or just store the string.
-          // The types say `encryptedData: string`. So we can just store the string.
-          
-          // Wait, the new `EncryptedProfile` interface has `iv`, `salt` separate.
-          // Let's parse the helper output.
-          const parsed = JSON.parse(encryptedData);
+          const encryptedSoul = JSON.parse(await encryptData(soulData, password));
 
-          const newProfile = {
-              encryptedData: parsed.ciphertext,
-              iv: parsed.iv,
-              salt: parsed.salt,
+          const newProfile: EncryptedProfile = {
+              encryptedData: encryptedSoul.ciphertext,
+              iv: encryptedSoul.iv,
+              salt: encryptedSoul.salt,
               metadata: {
                   hasVault: true,
+                  hasActiveSession: false,
                   lastActive: new Date().toISOString(),
                   therapistName: selectedTherapist.name,
                   sessionCount: 0
@@ -115,19 +105,41 @@ export function TherapyContainer({
       if (!encryptedProfile) return false;
 
       try {
-          // Reconstruct the JSON object expected by decryptData
-          const jsonForDecrypt = JSON.stringify({
+          const soulJson = JSON.stringify({
               ciphertext: encryptedProfile.encryptedData,
               iv: encryptedProfile.iv,
               salt: encryptedProfile.salt
           });
 
-          const decryptedJson = await decryptData(jsonForDecrypt, password);
-          const data = JSON.parse(decryptedJson);
+          const decryptedSoul = JSON.parse(await decryptData(soulJson, password));
+
+          const normalizedContext: BaseContext = {
+              integratedInsights: [],
+              ...(decryptedSoul.context || {})
+          };
+          if (!Array.isArray(normalizedContext.integratedInsights)) {
+              normalizedContext.integratedInsights = [];
+          }
           
-          setContext(data.context);
-          setSelectedTherapist(data.therapist);
+          setContext(normalizedContext);
+          setSelectedTherapist(decryptedSoul.therapist);
           setVaultPassword(password);
+
+          // Check for active "Moment"
+          if (encryptedProfile.encryptedMoment && encryptedProfile.momentIv && encryptedProfile.momentSalt) {
+              const momentJson = JSON.stringify({
+                  ciphertext: encryptedProfile.encryptedMoment,
+                  iv: encryptedProfile.momentIv,
+                  salt: encryptedProfile.momentSalt
+              });
+              try {
+                  const decryptedMoment = JSON.parse(await decryptData(momentJson, password));
+                  setActiveSession(decryptedMoment);
+              } catch (e) {
+                  console.error("Failed to decrypt active session, starting fresh", e);
+              }
+          }
+
           setMode('session');
           return true;
       } catch (e) {
@@ -143,9 +155,10 @@ export function TherapyContainer({
           if (db) {
               await deleteDoc(doc(db, 'therapist_profiles', user.uid));
           }
-          setContext({});
+          setContext({ integratedInsights: [] });
           setSelectedTherapist(undefined);
           setVaultPassword(null);
+          setActiveSession(null);
           setMode('intake');
       } catch (e) {
           console.error("Vault reset failed", e);
@@ -153,78 +166,118 @@ export function TherapyContainer({
       }
   };
   
-  const handleSaveSession = async (updatedContext: BaseContext) => {
-      // Called by SessionView when session ends or autosaves
-      if (!user || !vaultPassword || !selectedTherapist) return;
+  const handleAutoSaveMoment = async (updatedSession: ActiveSession) => {
+      if (!user || !vaultPassword) return;
       
       try {
-          const secretData = JSON.stringify({
-              context: updatedContext,
-              therapist: selectedTherapist
-          });
-          
-          const encryptedData = await encryptData(secretData, vaultPassword);
-          const parsed = JSON.parse(encryptedData);
+          const momentData = JSON.stringify(updatedSession);
+          const encryptedMoment = JSON.parse(await encryptData(momentData, vaultPassword));
           
           const { db } = getFirebase();
           if (db) {
-              // Merge update
                await setDoc(doc(db, 'therapist_profiles', user.uid), {
-                   encryptedData: parsed.ciphertext,
-                   iv: parsed.iv,
-                   salt: parsed.salt,
+                   encryptedMoment: encryptedMoment.ciphertext,
+                   momentIv: encryptedMoment.iv,
+                   momentSalt: encryptedMoment.salt,
                    metadata: {
-                       lastActive: new Date().toISOString(),
-                       sessionCount: (updatedContext.sessionCount || 0)
+                       hasActiveSession: true,
+                       lastActive: new Date().toISOString()
                    }
                }, { merge: true });
           }
       } catch (e) {
-          console.error("Auto-save failed", e);
+          console.error("Moment auto-save failed", e);
       }
   };
 
-  if (isAnalyzing) {
-    return (
-        <AIProvider>
-            <TherapistLayout>
-                <div className="flex flex-col items-center justify-center h-full space-y-4">
-                    <BootLoader />
-                    <p className="text-slate-500 animate-pulse">Analyzing your session to find the perfect match...</p>
-                </div>
-            </TherapistLayout>
-        </AIProvider>
-    );
-  }
+  const handleEndSession = async (insightToIntegrate?: SessionSummary) => {
+      if (!user || !vaultPassword || !selectedTherapist) return;
 
-  switch (mode) {
-    case 'intake':
-      return <AIProvider><IntakeChat onComplete={handleIntakeComplete} /></AIProvider>;
-    case 'selection':
-      return (
-        <AIProvider>
-            <TherapistSelection 
-                context={context} 
-                onSelect={handleTherapistSelected}
-            />
-        </AIProvider>
-      );
-    case 'vault-setup':
-        return <AIProvider><VaultSetup onSetupComplete={handleVaultSetup} /></AIProvider>;
-    case 'locked':
-        return <AIProvider><VaultUnlock onUnlock={handleUnlock} onReset={handleVaultReset} /></AIProvider>;
-    case 'session':
-        if (!selectedTherapist) return <div>Error: No therapist selected</div>;
-        return (
-            <AIProvider>
-                <SessionView 
-                    initialContext={context}
-                    therapist={selectedTherapist}
-                    onSave={handleSaveSession}
-                />
-            </AIProvider>
-        );
-    default:
-      return <div>Unknown mode</div>;
-  }
+      try {
+          const updatedContext = { ...context };
+          if (insightToIntegrate) {
+              updatedContext.integratedInsights = [...(updatedContext.integratedInsights || []), insightToIntegrate];
+              updatedContext.sessionCount = (updatedContext.sessionCount || 0) + 1;
+              updatedContext.lastSessionSummary = insightToIntegrate.summary;
+          }
+
+          const soulData = JSON.stringify({
+              context: updatedContext,
+              therapist: selectedTherapist
+          });
+          
+          const encryptedSoul = JSON.parse(await encryptData(soulData, vaultPassword));
+          
+          const { db } = getFirebase();
+          if (db) {
+               await setDoc(doc(db, 'therapist_profiles', user.uid), {
+                   encryptedData: encryptedSoul.ciphertext,
+                   iv: encryptedSoul.iv,
+                   salt: encryptedSoul.salt,
+                   encryptedMoment: null, 
+                   momentIv: null,
+                   momentSalt: null,
+                   metadata: {
+                       hasActiveSession: false,
+                       lastActive: new Date().toISOString(),
+                       sessionCount: updatedContext.sessionCount
+                   }
+               }, { merge: true });
+          }
+
+          setContext(updatedContext);
+          setActiveSession(null);
+          setMode('complete'); 
+      } catch (e) {
+          console.error("Integration/End failed", e);
+      }
+  };
+
+  return (
+    <AIProvider>
+        {(() => {
+            if (isAnalyzing) {
+                return (
+                    <TherapistLayout>
+                        <div className="flex flex-col items-center justify-center h-full space-y-4">
+                            <BootLoader />
+                            <p className="text-slate-500 animate-pulse">Analyzing your session to find the perfect match...</p>
+                        </div>
+                    </TherapistLayout>
+                );
+            }
+
+            switch (mode) {
+                case 'intake':
+                    return <IntakeChat onComplete={handleIntakeComplete} />;
+                case 'selection':
+                    return (
+                        <TherapistSelection 
+                            context={context} 
+                            onSelect={handleTherapistSelected}
+                        />
+                    );
+                case 'vault-setup':
+                    return <VaultSetup onSetupComplete={handleVaultSetup} />;
+                case 'locked':
+                    return <VaultUnlock onUnlock={handleUnlock} onReset={handleVaultReset} />;
+                case 'session':
+                    if (!selectedTherapist) return <div>Error: No therapist selected</div>;
+                    return (
+                        <SessionView 
+                            initialContext={context}
+                            initialActiveSession={activeSession}
+                            therapist={selectedTherapist}
+                            onAutoSave={handleAutoSaveMoment}
+                            onEndSession={handleEndSession}
+                        />
+                    );
+                case 'complete':
+                    return <SessionComplete therapistName={selectedTherapist?.name || 'Your Therapist'} />;
+                default:
+                    return <div>Unknown mode</div>;
+            }
+        })()}
+    </AIProvider>
+  );
 }

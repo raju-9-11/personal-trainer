@@ -34,7 +34,7 @@ export interface Persona {
   prompt: string; // The system prompt for this persona
 }
 
-// 1. Long-Term Memory (Optimized for System Prompt Injection)
+// 1. Long-Term Memory (The "Soul" - Optimized for System Prompt Injection)
 export interface BaseContext {
   // Core Identity
   identity?: string | {
@@ -49,6 +49,9 @@ export interface BaseContext {
   // The "Deep" Context (Summarized)
   backgroundSummary?: string; // Condensed childhood/trauma summary
   
+  // Integrated Insights (Past Sessions)
+  integratedInsights: SessionSummary[];
+  
   // Therapy State
   communicationStyle?: 'direct' | 'gentle' | 'analytical';
   sessionCount?: number;
@@ -61,40 +64,51 @@ export interface BaseContext {
   intakeTranscript?: any[];
 }
 
-// 2. Short-Term Memory (Active Conversation)
-export interface SessionContext {
-  messages: Message[]; // The actual chat log (sliding window)
-  currentMood?: string;
+// 2. Short-Term Memory (The "Moment" - Active Conversation)
+export interface ActiveSession {
+  id: string;
+  messages: Message[]; // The actual chat log
+  emotionalTrend: string[]; // e.g. ["anxious", "calm", "reflective"]
   startedAt: number;
+  lastUpdatedAt: number;
 }
 
 export interface SessionSummary {
   date: string;
   summary: string;
   keyInsights: string[];
+  theme: string;
 }
 
-// 3. Storage Schema (Firestore Document)
+export interface ConversationContext {
+  systemPrompt: string;
+  insights: SessionSummary[];
+  summary: string;
+  history: Message[];
+}
+
+// 3. Storage Schema (Firestore Document - The "Vault")
 export interface EncryptedProfile {
   uid?: string;
   
-  // New Schema
-  encryptedData?: string; 
-  iv?: string;
-  salt?: string;
-  
-  // Old Schema (for compatibility)
-  encryptedContext?: string;
-  therapistId?: string;
-  lastSessionDate?: string;
+  // The "Soul" (BaseContext + Therapist Choice)
+  encryptedData: string; 
+  iv: string;
+  salt: string;
+
+  // The "Moment" (ActiveSession) - Null when no session is active
+  encryptedMoment?: string | null;
+  momentIv?: string;
+  momentSalt?: string;
   
   // Metadata (Unencrypted for UI/Querying)
-  metadata?: {
+  metadata: {
     hasVault: boolean;
+    hasActiveSession: boolean;
     lastActive: string;
     therapistName?: string;
     sessionCount: number;
-    email?: string; // Optional for debugging/admin
+    email?: string;
   };
 }
 

@@ -228,6 +228,22 @@ export class OpenRouterProvider implements LLMProvider {
           }
         }
       }
+      if (buffer.trim()) {
+        const trimmed = buffer.trim();
+        if (trimmed.startsWith('data: ') && trimmed !== 'data: [DONE]') {
+          try {
+            const jsonStr = trimmed.substring(6);
+            const json = JSON.parse(jsonStr);
+            const content = json.choices?.[0]?.delta?.content || '';
+            if (content) {
+              fullResponse += content;
+              onChunk(content);
+            }
+          } catch (e) {
+            console.warn('Error parsing trailing stream chunk', e);
+          }
+        }
+      }
     } finally {
       reader.releaseLock();
     }

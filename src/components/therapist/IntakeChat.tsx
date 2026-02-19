@@ -36,8 +36,9 @@ interface IntakeChatProps {
 }
 
 function IntakeChatContent({ onComplete }: IntakeChatProps) {
-    const { streamMessage, setProvider, activeProvider, availableProviders } = useAI();
+    const { streamMessage, orchestratorState } = useAI();
     const [messages, setMessages] = useState<Message[]>([]);
+    const [chatHistory, setChatHistory] = useState<Message[]>([]);
     const [inputText, setInputText] = useState('');
     const [isStreaming, setIsStreaming] = useState(false);
     const [avatarState, setAvatarState] = useState<AvatarState>('idle');
@@ -52,6 +53,7 @@ function IntakeChatContent({ onComplete }: IntakeChatProps) {
                 content: "Hello. I'm your Intake Assistant. My goal is to understand your needs so I can match you with the perfect therapist. To start, could you tell me a little about what brings you here today?" 
             };
             setMessages([initial]);
+            setChatHistory([initial]);
         }
     }, []);
 
@@ -66,6 +68,8 @@ function IntakeChatContent({ onComplete }: IntakeChatProps) {
         const textToSend = textOverride || inputText;
         if (!textToSend.trim() || isStreaming) return;
 
+        const baseHistory = chatHistory;
+
         if (!textOverride) {
             const userMsg: Message = { role: 'user', content: textToSend };
             setMessages(prev => [...prev, userMsg]);
@@ -77,15 +81,18 @@ function IntakeChatContent({ onComplete }: IntakeChatProps) {
         setAvatarState('thinking');
 
         try {
-            const currentMessages = textOverride ? messages : [...messages, { role: 'user', content: textToSend }];
-            const systemMsg: Message = { role: 'system', content: INTAKE_SYSTEM_PROMPT };
-            const fullContext = [systemMsg, ...currentMessages];
-
             setMessages(prev => [...prev, { role: 'assistant', content: '' }]);
             
             let responseContent = '';
 
-            await streamMessage(fullContext as Message[], (chunk) => {
+            const ctx = {
+                systemPrompt: INTAKE_SYSTEM_PROMPT,
+                insights: [],
+                summary: '',
+                history: baseHistory
+            };
+
+            const result = await streamMessage(textToSend, ctx, (chunk) => {
                 responseContent += chunk;
                 setMessages(prev => {
                     const updated = [...prev];
@@ -95,6 +102,12 @@ function IntakeChatContent({ onComplete }: IntakeChatProps) {
                 setAvatarState('speaking');
             });
 
+            if (!result.response.trim()) {
+                throw new Error("Empty response");
+            }
+
+            setChatHistory(result.updatedHistory);
+
         } catch (error) {
             console.error("Intake error", error);
             setMessages(prev => {
@@ -102,15 +115,19 @@ function IntakeChatContent({ onComplete }: IntakeChatProps) {
                 if (last.role === 'assistant' && !last.content) return prev.slice(0, -1);
                 return prev;
             });
-            setError("Connection failed.");
+            setError("The system is experiencing high demand. Please try sending your message again.");
+            setChatHistory(prev => {
+                const last = prev[prev.length - 1];
+                if (last?.role === 'user' && last.content === textToSend) return prev;
+                return [...baseHistory, { role: 'user', content: textToSend }];
+            });
         } finally {
             setIsStreaming(false);
             setAvatarState('listening');
         }
     };
 
-    const handleRetry = (provider: any) => {
-        setProvider(provider);
+    const handleRetry = () => {
         const lastUserMsg = messages.filter(m => m.role === 'user').pop();
         if (lastUserMsg) {
             handleSendMessage(lastUserMsg.content);
@@ -135,7 +152,9 @@ function IntakeChatContent({ onComplete }: IntakeChatProps) {
                         </div>
                         <div>
                             <h2 className="font-medium text-lg">Intake Assistant</h2>
-                            <p className="text-xs text-slate-500 uppercase tracking-wider">Preliminary Assessment</p>
+                            <p className="text-xs text-slate-500 uppercase tracking-wider">
+                                Preliminary Assessment {orchestratorState?.activeModelId ? `• ${orchestratorState.activeModelId.split('/')[1]}` : ''}
+                            </p>
                         </div>
                     </div>
                     {messages.length > 5 && (
@@ -170,24 +189,13 @@ function IntakeChatContent({ onComplete }: IntakeChatProps) {
 
                     {error && (
                         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="flex justify-center my-4">
-                            <Card className="bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800 p-4 max-w-md w-full">
-                                <div className="flex items-start gap-3 mb-3">
-                                    <AlertTriangle className="w-5 h-5 text-red-600 dark:text-red-400 flex-none" />
-                                    <div>
-                                        <h4 className="text-sm font-bold text-red-800 dark:text-red-200">Connection Failed</h4>
-                                        <p className="text-xs text-red-600 dark:text-red-300 mt-1">{error}</p>
-                                    </div>
-                                </div>
-                                <div className="flex flex-wrap gap-2 justify-end">
-                                    {availableProviders.filter(p => p !== activeProvider).map(p => (
-                                        <Button key={p} size="sm" variant="outline" onClick={() => handleRetry(p)} className="bg-white dark:bg-black/40">
-                                            Switch to {p.charAt(0).toUpperCase() + p.slice(1)} & Retry
-                                        </Button>
-                                    ))}
-                                    <Button size="sm" onClick={() => handleRetry(activeProvider)}>
-                                        <RefreshCw className="w-3 h-3 mr-2" /> Retry
-                                    </Button>
-                                </div>
+                            <Card className="bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800 p-4 max-w-md w-full text-center">
+                                <AlertTriangle className="w-8 h-8 text-red-600 dark:text-red-400 mx-auto mb-2" />
+                                <h4 className="text-sm font-bold text-red-800 dark:text-red-200">Session Interruption</h4>
+                                <p className="text-xs text-red-600 dark:text-red-300 mt-1">{error}</p>
+                                <Button size="sm" onClick={handleRetry} className="mt-4">
+                                    <RefreshCw className="w-3 h-3 mr-2" /> Retry Sending
+                                </Button>
                             </Card>
                         </motion.div>
                     )}
@@ -230,9 +238,5 @@ function IntakeChatContent({ onComplete }: IntakeChatProps) {
 }
 
 export function IntakeChat(props: IntakeChatProps) {
-    return (
-        <AIProvider>
-            <IntakeChatContent {...props} />
-        </AIProvider>
-    );
+    return <IntakeChatContent {...props} />;
 }
