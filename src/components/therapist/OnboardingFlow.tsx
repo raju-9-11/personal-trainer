@@ -35,7 +35,8 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
     trauma: '',
     identity: '',
     history: '',
-    goals: ''
+    goals: '',
+    integratedInsights: []
   });
 
   const [selectedPersona, setSelectedPersona] = useState<Persona | null>(null);
@@ -112,16 +113,21 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
         });
 
         // Encrypt
-        const encryptedContext = await encryptData(secretData, vaultPassword);
+        const encrypted = await encryptData(secretData, vaultPassword);
 
         // Save to Firestore
         const profile: TherapistProfile = {
-            encryptedContext,
-            therapistId: selectedPersona.id, // Storing ID unencrypted for reference is okay? Maybe better inside.
-            // Actually, we store ID outside too for UI purposes before unlock if needed, but for privacy, maybe hide it.
-            // But let's keep it inside the encrypted blob primarily. The type definition has it outside too.
-            // Let's rely on the encrypted blob for the source of truth.
-            lastSessionDate: new Timestamp(Date.now() / 1000, 0).toDate().toISOString()
+            encryptedData: encrypted.ciphertext,
+            iv: encrypted.iv,
+            salt: encrypted.salt,
+            metadata: {
+                hasVault: true,
+                hasActiveSession: false,
+                lastActive: new Date().toISOString(),
+                therapistName: selectedPersona.name,
+                sessionCount: 0,
+                email: user.email || undefined
+            }
         };
 
         const { db } = getFirebase();

@@ -73,7 +73,7 @@ export function TherapyContainer({
               therapist: selectedTherapist
           });
 
-          const encryptedSoul = JSON.parse(await encryptData(soulData, password));
+          const encryptedSoul = await encryptData(soulData, password);
 
           const newProfile: EncryptedProfile = {
               encryptedData: encryptedSoul.ciphertext,
@@ -105,13 +105,11 @@ export function TherapyContainer({
       if (!encryptedProfile) return false;
 
       try {
-          const soulJson = JSON.stringify({
+          const decryptedSoul = JSON.parse(await decryptData({
               ciphertext: encryptedProfile.encryptedData,
               iv: encryptedProfile.iv,
               salt: encryptedProfile.salt
-          });
-
-          const decryptedSoul = JSON.parse(await decryptData(soulJson, password));
+          }, password));
 
           const normalizedContext: BaseContext = {
               integratedInsights: [],
@@ -127,13 +125,12 @@ export function TherapyContainer({
 
           // Check for active "Moment"
           if (encryptedProfile.encryptedMoment && encryptedProfile.momentIv && encryptedProfile.momentSalt) {
-              const momentJson = JSON.stringify({
-                  ciphertext: encryptedProfile.encryptedMoment,
-                  iv: encryptedProfile.momentIv,
-                  salt: encryptedProfile.momentSalt
-              });
               try {
-                  const decryptedMoment = JSON.parse(await decryptData(momentJson, password));
+                  const decryptedMoment = JSON.parse(await decryptData({
+                      ciphertext: encryptedProfile.encryptedMoment,
+                      iv: encryptedProfile.momentIv,
+                      salt: encryptedProfile.momentSalt
+                  }, password));
                   setActiveSession(decryptedMoment);
               } catch (e) {
                   console.error("Failed to decrypt active session, starting fresh", e);
@@ -171,7 +168,7 @@ export function TherapyContainer({
       
       try {
           const momentData = JSON.stringify(updatedSession);
-          const encryptedMoment = JSON.parse(await encryptData(momentData, vaultPassword));
+          const encryptedMoment = await encryptData(momentData, vaultPassword);
           
           const { db } = getFirebase();
           if (db) {
@@ -206,7 +203,7 @@ export function TherapyContainer({
               therapist: selectedTherapist
           });
           
-          const encryptedSoul = JSON.parse(await encryptData(soulData, vaultPassword));
+          const encryptedSoul = await encryptData(soulData, vaultPassword);
           
           const { db } = getFirebase();
           if (db) {

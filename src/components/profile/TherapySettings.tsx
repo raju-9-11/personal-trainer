@@ -48,12 +48,14 @@ export function TherapySettings() {
       
       try {
           const { decryptData } = await import('../../lib/encryption');
-          const jsonForDecrypt = JSON.stringify({
-              ciphertext: profile?.encryptedData,
-              iv: profile?.iv,
-              salt: profile?.salt
-          });
-          const decrypted = await decryptData(jsonForDecrypt, password);
+          if (!profile) return false;
+          
+          const decrypted = await decryptData({
+              ciphertext: profile.encryptedData,
+              iv: profile.iv,
+              salt: profile.salt
+          }, password);
+          
           const data = JSON.parse(decrypted);
           setTherapist(data.therapist);
           setUnlocked(true);

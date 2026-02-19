@@ -59,7 +59,7 @@ async function deriveKey(password: string, salt: Uint8Array): Promise<CryptoKey>
   );
 }
 
-export async function encryptData(text: string, password: string): Promise<string> {
+export async function encryptData(text: string, password: string): Promise<EncryptedData> {
   const enc = new TextEncoder();
   const salt = window.crypto.getRandomValues(new Uint8Array(16));
   const iv = window.crypto.getRandomValues(new Uint8Array(12));
@@ -76,18 +76,19 @@ export async function encryptData(text: string, password: string): Promise<strin
     encodedData
   );
 
-  const data: EncryptedData = {
+  return {
     ciphertext: arrayBufferToBase64(encryptedContent),
     iv: arrayBufferToBase64(iv.buffer as ArrayBuffer),
     salt: arrayBufferToBase64(salt.buffer as ArrayBuffer)
   };
-
-  return JSON.stringify(data);
 }
 
-export async function decryptData(encryptedJson: string, password: string): Promise<string> {
+export async function decryptData(encryptedData: string | EncryptedData, password: string): Promise<string> {
   try {
-    const data: EncryptedData = JSON.parse(encryptedJson);
+    const data: EncryptedData = typeof encryptedData === 'string' 
+      ? JSON.parse(encryptedData) 
+      : encryptedData;
+    
     const salt = new Uint8Array(base64ToArrayBuffer(data.salt));
     const iv = new Uint8Array(base64ToArrayBuffer(data.iv));
     const ciphertext = base64ToArrayBuffer(data.ciphertext);

@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '../ui/dialog';
 import { Button } from '../ui/button';
-import { Message, BaseContext, TherapistProfile, GeneratedTherapist } from '../../lib/ai/types';
+import { Message, BaseContext, TherapistProfile, GeneratedTherapist, SessionSummary } from '../../lib/ai/types';
 import { OpenRouterProvider } from '../../lib/ai/openrouter';
 import { encryptData } from '../../lib/encryption';
 import { getFirebase } from '../../lib/firebase';
@@ -117,21 +117,48 @@ Output strictly valid JSON in this format:
     setSaving(true);
 
     try {
+      // Create new insight from this session
+      const newInsight: SessionSummary = {
+        date: new Date().toISOString(),
+        summary: summary,
+        keyInsights: insights,
+        theme: "General" // LLM could provide this too
+      };
+
+      // Ensure integratedInsights exists and add new insight
+      const updatedContext: BaseContext = {
+        ...newContext,
+        integratedInsights: [
+          ...(unlockedProfile.context.context.integratedInsights || []),
+          newInsight
+        ],
+        sessionCount: (unlockedProfile.context.context.sessionCount || 0) + 1,
+        lastSessionSummary: summary
+      };
+
       // 1. Prepare data (Context + Persona ID/Therapist)
       const dataToEncrypt = JSON.stringify({
-        context: newContext,
+        context: updatedContext,
         personaId: unlockedProfile.context.personaId,
         therapist: unlockedProfile.context.therapist
       });
 
       // 2. Encrypt with SAME password
-      const encryptedContext = await encryptData(dataToEncrypt, unlockedProfile.password);
+      const encrypted = await encryptData(dataToEncrypt, unlockedProfile.password);
 
       // 3. Save to Firestore
       const profileData: TherapistProfile = {
-        encryptedContext,
-        therapistId: unlockedProfile.context.therapist?.id || unlockedProfile.context.personaId,
-        lastSessionDate: new Timestamp(Date.now() / 1000, 0).toDate().toISOString()
+        encryptedData: encrypted.ciphertext,
+        iv: encrypted.iv,
+        salt: encrypted.salt,
+        metadata: {
+          hasVault: true,
+          hasActiveSession: false,
+          lastActive: new Date().toISOString(),
+          therapistName: unlockedProfile.context.therapist?.name,
+          sessionCount: updatedContext.sessionCount || 0,
+          email: user.email || undefined
+        }
       };
 
       const { db } = getFirebase();
