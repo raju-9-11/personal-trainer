@@ -4,53 +4,14 @@ import { useAuth } from '@/lib/auth-context';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
-import { Shield, Sun, Moon, ArrowLeft } from 'lucide-react';
+import { Sun, Moon, ArrowLeft } from 'lucide-react';
 import { useTheme } from '@/components/ThemeContext';
 import { Link } from 'react-router-dom';
 import { useEffect } from 'react';
 import { useData } from '@/lib/data-provider';
 import { BrandIdentity } from '@/lib/types';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-
-function BrandIcon({ logoUrl, brandName, loading, logoScale = 'fit' }: { logoUrl?: string; brandName: string; loading: boolean; logoScale?: 'fit' | 'fill' }) {
-  if (loading) return <div className="h-12 w-12 rounded-full bg-muted animate-pulse mx-auto mb-4" />;
-  
-  if (logoUrl) {
-    const objectClass = logoScale === 'fill' ? 'object-cover' : 'object-contain';
-    return (
-      <div className="h-12 w-12 flex items-center justify-center overflow-hidden rounded-xl border border-border/50 bg-background shadow-md mx-auto mb-4">
-        <img src={logoUrl} alt={brandName} className={`h-full w-full ${objectClass} p-1`} />
-      </div>
-    );
-  }
-
-  const initial = brandName.trim().charAt(0).toUpperCase() || 'P';
-  const circumference = 2 * Math.PI * 20; // r=20
-  const dashArray = circumference;
-  const dashOffset = circumference - (0.75) * circumference; // 75% progress
-  
-  return (
-    <div className="relative h-12 w-12 flex items-center justify-center mx-auto mb-4">
-      <svg className="h-full w-full -rotate-90 transform" viewBox="0 0 44 44">
-        <circle cx="22" cy="22" r="20" fill="none" stroke="currentColor" strokeWidth="3" className="text-muted-foreground/20" />
-        <circle
-          cx="22" cy="22" r="20"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="3"
-          strokeLinecap="round"
-          className="text-primary animate-[spin_3s_ease-in-out_infinite]"
-          style={{ strokeDasharray: dashArray, strokeDashoffset: dashOffset }}
-        />
-      </svg>
-      <div className="absolute inset-0 flex items-center justify-center">
-        <span className="text-2xl font-black italic -rotate-6 text-foreground select-none">
-          {initial}
-        </span>
-      </div>
-    </div>
-  );
-}
+import { BrandIcon } from '@/components/layout/brand-icon';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -106,6 +67,8 @@ export default function LoginPage() {
             brandName={identity?.brandName || 'Admin'} 
             loading={loadingIdentity} 
             logoScale={identity?.logoScale} 
+            size="lg"
+            className="mx-auto mb-4"
           />
           <CardTitle className="text-2xl">Trainer Portal</CardTitle>
           <CardDescription>Enter your credentials to access the dashboard</CardDescription>
@@ -116,7 +79,7 @@ export default function LoginPage() {
             {identity?.logoUrl && (
                 <div className="flex items-center justify-between p-2 border rounded-md bg-muted/20">
                     <span className="text-xs font-medium">Preview Scale</span>
-                    <Select value={identity.logoScale || 'fit'} onValueChange={(val: any) => setIdentity({...identity, logoScale: val})}>
+                    <Select value={identity.logoScale || 'fit'} onValueChange={(val: 'fit' | 'fill') => setIdentity({...identity, logoScale: val})}>
                         <SelectTrigger className="w-[100px] h-8 text-xs">
                             <SelectValue placeholder="Scale" />
                         </SelectTrigger>

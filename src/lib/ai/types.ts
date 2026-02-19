@@ -34,16 +34,38 @@ export interface Persona {
   prompt: string; // The system prompt for this persona
 }
 
+// 1. Long-Term Memory (Optimized for System Prompt Injection)
 export interface BaseContext {
-  // Structured data extracted from intake
+  // Core Identity
+  identity?: string | {
+    name?: string;
+    pronouns?: string;
+    ageGroup?: string;
+  };
+  // The "Why"
+  struggles?: string | string[]; // e.g., ["anxiety", "insomnia"]
+  goals?: string | string[];     // e.g., ["better sleep", "conflict resolution"]
+  
+  // The "Deep" Context (Summarized)
+  backgroundSummary?: string; // Condensed childhood/trauma summary
+  
+  // Therapy State
+  communicationStyle?: 'direct' | 'gentle' | 'analytical';
+  sessionCount?: number;
+  lastSessionSummary?: string; // Recap of where we left off
+  
+  // Legacy/Compatibility (Optional)
   childhood?: string;
   trauma?: string;
-  identity?: string;
   history?: string;
-  goals?: string;
-  communicationStyle?: string;
-  // Raw chat history of intake
-  intakeTranscript?: Message[];
+  intakeTranscript?: any[];
+}
+
+// 2. Short-Term Memory (Active Conversation)
+export interface SessionContext {
+  messages: Message[]; // The actual chat log (sliding window)
+  currentMood?: string;
+  startedAt: number;
 }
 
 export interface SessionSummary {
@@ -52,11 +74,31 @@ export interface SessionSummary {
   keyInsights: string[];
 }
 
-export interface TherapistProfile {
-  encryptedContext: string; // JSON string of BaseContext + GeneratedTherapist
-  therapistId?: string; // Legacy or for quick lookup
+// 3. Storage Schema (Firestore Document)
+export interface EncryptedProfile {
+  uid?: string;
+  
+  // New Schema
+  encryptedData?: string; 
+  iv?: string;
+  salt?: string;
+  
+  // Old Schema (for compatibility)
+  encryptedContext?: string;
+  therapistId?: string;
   lastSessionDate?: string;
+  
+  // Metadata (Unencrypted for UI/Querying)
+  metadata?: {
+    hasVault: boolean;
+    lastActive: string;
+    therapistName?: string;
+    sessionCount: number;
+    email?: string; // Optional for debugging/admin
+  };
 }
+
+export type TherapistProfile = EncryptedProfile;
 
 export interface LLMProvider {
   sendMessage(messages: Message[]): Promise<string>;

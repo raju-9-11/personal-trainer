@@ -2,69 +2,13 @@
 
 import * as React from 'react';
 import { Link } from 'react-router-dom';
-import { Menu, X, Dumbbell, Sun, Moon } from 'lucide-react';
+import { Menu, X, Sun, Moon, Brain } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { motion } from 'framer-motion';
 import { useBrandIdentity, useTrainerSlug } from '@/components/TrainerContext';
 import { DEFAULT_BRAND_NAME } from '@/lib/constants';
 import { useTheme } from '@/components/ThemeContext';
-
-function BrandIcon({ logoUrl, brandName, loading, logoScale = 'fit' }: { logoUrl?: string; brandName: string; loading: boolean; logoScale?: 'fit' | 'fill' }) {
-  if (loading) return <div className="h-10 w-10 rounded-full bg-muted animate-pulse" />;
-  
-  if (logoUrl) {
-    const objectClass = logoScale === 'fill' ? 'object-cover' : 'object-contain';
-    return (
-      <div className="h-10 w-10 flex items-center justify-center overflow-hidden rounded-xl border border-border/50 bg-background shadow-sm hover:shadow-md transition-all">
-        <img src={logoUrl} alt={brandName} className={`h-full w-full ${objectClass} p-0.5`} />
-      </div>
-    );
-  }
-
-  const initial = brandName.trim().charAt(0).toUpperCase() || 'P';
-  const progress = 65 + (brandName.length * 3) % 25;
-  const circumference = 2 * Math.PI * 18;
-  const dashArray = circumference;
-  const dashOffset = circumference - (progress / 100) * circumference;
-  
-  return (
-    <div className="relative h-10 w-10 flex items-center justify-center group cursor-pointer">
-      <svg className="h-full w-full -rotate-90 transform" viewBox="0 0 44 44">
-        {/* Track Ring */}
-        <circle
-          cx="22"
-          cy="22"
-          r="18"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="3"
-          className="text-muted-foreground/20"
-        />
-        {/* Progress Ring */}
-        <motion.circle
-          cx="22"
-          cy="22"
-          r="18"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="3"
-          strokeLinecap="round"
-          className="text-primary"
-          initial={{ strokeDasharray: dashArray, strokeDashoffset: dashArray }}
-          animate={{ strokeDashoffset: dashOffset }}
-          transition={{ duration: 1.5, ease: "easeOut", delay: 0.2 }}
-        />
-      </svg>
-      
-      {/* Initial */}
-      <div className="absolute inset-0 flex items-center justify-center">
-        <span className="text-xl font-black italic -rotate-6 text-foreground select-none transition-transform duration-300">
-          {initial}
-        </span>
-      </div>
-    </div>
-  );
-}
+import { BrandIcon } from './brand-icon';
 
 export function Navbar() {
   const [isOpen, setIsOpen] = React.useState(false);
@@ -136,6 +80,14 @@ export function Navbar() {
               {link.label}
             </a>
           ))}
+          
+          <Link to="/therapy">
+              <Button variant="ghost" size="sm" className="gap-2 text-muted-foreground hover:text-primary">
+                  <Brain className="w-4 h-4" />
+                  Mental Wellness
+              </Button>
+          </Link>
+
           <Button variant="ghost" size="icon" onClick={toggleTheme} aria-label="Toggle Theme">
               {theme === 'dark' ? <Sun className="h-5 w-5 text-yellow-500" /> : <Moon className="h-5 w-5 text-slate-700" />}
           </Button>
@@ -173,6 +125,14 @@ export function Navbar() {
                 {link.label}
               </a>
             ))}
+            <Link 
+                to="/therapy" 
+                className="text-lg font-medium text-indigo-500 flex items-center gap-2"
+                onClick={() => setIsOpen(false)}
+            >
+                <Brain className="w-5 h-5" />
+                Mental Wellness
+            </Link>
             <Button className="w-full" asChild>
               <a href="#contact" onClick={() => setIsOpen(false)}>Book Your Session</a>
             </Button>

@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { TherapistLayout } from './ui/TherapistLayout';
-import { TherapistAvatar, AvatarState } from './ui/TherapistAvatar';
+import { ArtisticAvatar, AvatarState } from './ui/ArtisticAvatar';
 import { Button } from '../ui/button';
 import { Textarea } from '../ui/textarea'; // Assuming exists, checking later
 import { Input } from '../ui/input'; // Assuming exists
@@ -188,7 +188,7 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                     <Textarea
                         className="h-40 bg-white/50 dark:bg-black/20 text-lg"
                         placeholder="I value..."
-                        value={contextData.identity}
+                        value={contextData.identity as string}
                         onChange={e => setContextData({...contextData, identity: e.target.value})}
                     />
                 </div>
@@ -278,7 +278,7 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
       <div className="flex flex-col h-full max-w-2xl mx-auto">
         {/* Avatar Section */}
         <div className="flex-none py-6 flex justify-center">
-            <TherapistAvatar state={avatarState} />
+            <ArtisticAvatar gender="female" archetype="nurturer" state={avatarState} className="w-32 h-32" />
         </div>
 
         {/* Dynamic Content */}
