@@ -5,7 +5,7 @@ import { TherapistAvatar, AvatarState } from './ui/TherapistAvatar';
 import { Button } from '../ui/button';
 import { Textarea } from '../ui/textarea';
 import { OpenRouterProvider } from '../../lib/ai/openrouter';
-import { Message, BaseContext } from '../../lib/ai/types';
+import { Message, GeneratedTherapist, BaseContext } from '../../lib/ai/types';
 import { getPersonaById, getDefaultPersona } from '../../lib/ai/personas';
 import { Send, LogOut, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -15,13 +15,14 @@ interface SessionViewProps {
   unlockedProfile: {
     context: {
       context: BaseContext;
-      personaId: string;
+      personaId?: string; // Optional now
     };
     password: string;
   };
+  currentTherapist?: GeneratedTherapist;
 }
 
-export function SessionView({ unlockedProfile }: SessionViewProps) {
+export function SessionView({ unlockedProfile, currentTherapist }: SessionViewProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputText, setInputText] = useState('');
   const [avatarState, setAvatarState] = useState<AvatarState>('idle');
@@ -30,14 +31,33 @@ export function SessionView({ unlockedProfile }: SessionViewProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const { context, personaId } = unlockedProfile.context;
-  const persona = getPersonaById(personaId) || getDefaultPersona();
+
+  // Determine Persona Details
+  let name = '';
+  let role = '';
+  let systemPromptContent = '';
+  let greeting = '';
+
+  if (currentTherapist) {
+    name = currentTherapist.name;
+    role = currentTherapist.role;
+    systemPromptContent = currentTherapist.systemPrompt;
+    greeting = currentTherapist.greeting;
+  } else {
+    // Fallback to Legacy Persona
+    const persona = getPersonaById(personaId || '') || getDefaultPersona();
+    name = persona.name;
+    role = persona.role;
+    systemPromptContent = `${persona.prompt}\n\nUser Context:\n${JSON.stringify(context)}\n\nMaintain your persona strictly. Be concise but deep.`;
+    greeting = `Hello. I'm ${persona.name}. How are you feeling today?`;
+  }
 
   // Initial greeting
   useEffect(() => {
     if (messages.length === 0) {
       const initialGreeting: Message = {
         role: 'assistant',
-        content: `Hello. I'm ${persona.name}. How are you feeling today?`
+        content: greeting
       };
       setMessages([initialGreeting]);
     }
@@ -63,7 +83,7 @@ export function SessionView({ unlockedProfile }: SessionViewProps) {
       // Construct system prompt
       const systemPrompt: Message = {
         role: 'system',
-        content: `${persona.prompt}\n\nUser Context:\n${JSON.stringify(context)}\n\nMaintain your persona strictly. Be concise but deep.`
+        content: systemPromptContent
       };
 
       const history = messages.map(m => ({ role: m.role, content: m.content }));
@@ -109,7 +129,7 @@ export function SessionView({ unlockedProfile }: SessionViewProps) {
   };
 
   return (
-    <TherapistLayout title={`Session with ${persona.name}`} showBack={false}>
+    <TherapistLayout title={`Session with ${name}`} showBack={false}>
       <div className="flex flex-col h-full max-w-4xl mx-auto">
 
         {/* Top: Avatar & Controls */}
@@ -119,8 +139,8 @@ export function SessionView({ unlockedProfile }: SessionViewProps) {
                 <TherapistAvatar state={avatarState} className="w-24 h-24" />
               </div>
               <div>
-                <h3 className="font-medium text-lg">{persona.name}</h3>
-                <p className="text-xs text-slate-500 uppercase tracking-wider">{persona.role}</p>
+                <h3 className="font-medium text-lg">{name}</h3>
+                <p className="text-xs text-slate-500 uppercase tracking-wider">{role}</p>
               </div>
            </div>
 

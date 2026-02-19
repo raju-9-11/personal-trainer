@@ -39,7 +39,7 @@ async function deriveKey(password: string, salt: Uint8Array): Promise<CryptoKey>
   const enc = new TextEncoder();
   const keyMaterial = await window.crypto.subtle.importKey(
     "raw",
-    enc.encode(password),
+    new TextEncoder().encode(password),
     { name: "PBKDF2" },
     false,
     ["deriveKey"]
@@ -48,13 +48,13 @@ async function deriveKey(password: string, salt: Uint8Array): Promise<CryptoKey>
   return window.crypto.subtle.deriveKey(
     {
       name: "PBKDF2",
-      salt: salt,
+      salt: salt as any,
       iterations: ITERATIONS,
       hash: DIGEST
     },
     keyMaterial,
-    { name: ALGORITHM, length: KEY_LENGTH },
-    false,
+    { name: "AES-GCM", length: 256 },
+    true,
     ["encrypt", "decrypt"]
   );
 }

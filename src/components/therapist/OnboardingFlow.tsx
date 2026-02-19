@@ -117,7 +117,7 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
         // Save to Firestore
         const profile: TherapistProfile = {
             encryptedContext,
-            personaId: selectedPersona.id, // Storing ID unencrypted for reference is okay? Maybe better inside.
+            therapistId: selectedPersona.id, // Storing ID unencrypted for reference is okay? Maybe better inside.
             // Actually, we store ID outside too for UI purposes before unlock if needed, but for privacy, maybe hide it.
             // But let's keep it inside the encrypted blob primarily. The type definition has it outside too.
             // Let's rely on the encrypted blob for the source of truth.
