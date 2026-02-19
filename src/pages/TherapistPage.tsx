@@ -5,7 +5,7 @@ import { useAuth } from '../lib/auth-context';
 import { getFirebase } from '../lib/firebase';
 import { doc, getDoc } from 'firebase/firestore';
 import { TherapistLayout } from '../components/therapist/ui/TherapistLayout';
-import { TherapistProfile } from '../lib/ai/types';
+import { EncryptedProfile } from '../lib/ai/types';
 import { BootLoader } from '../components/ui/boot-loader';
 import { TherapyContainer } from '../components/therapist/TherapyContainer';
 
@@ -13,7 +13,7 @@ export default function TherapistPage() {
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
-  const [profile, setProfile] = useState<TherapistProfile | undefined>(undefined);
+  const [profile, setProfile] = useState<EncryptedProfile | undefined>(undefined);
 
   useEffect(() => {
     if (authLoading) return;
@@ -42,7 +42,7 @@ export default function TherapistPage() {
             const docSnap = await getDoc(docRef);
 
             if (docSnap.exists()) {
-                setProfile(docSnap.data() as TherapistProfile);
+                setProfile(docSnap.data() as EncryptedProfile);
             } else {
                 setProfile(undefined); // Triggers new intake flow
             }
