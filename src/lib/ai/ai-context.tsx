@@ -28,12 +28,16 @@ export function AIProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const init = async () => {
+        const openrouterKey = localStorage.getItem('VITE_OPENROUTER_API_KEY') || import.meta.env.VITE_OPENROUTER_API_KEY;
+        const grokKey = localStorage.getItem('VITE_GROK_API_KEY') || import.meta.env.VITE_GROK_API_KEY;
+        const googleKey = localStorage.getItem('VITE_GOOGLE_API_KEY') || import.meta.env.VITE_GOOGLE_API_KEY;
+
         const config = {
-            openrouterKey: localStorage.getItem('VITE_OPENROUTER_API_KEY') || import.meta.env.VITE_OPENROUTER_API_KEY,
-            grokKey: localStorage.getItem('VITE_GROK_API_KEY') || import.meta.env.VITE_GROK_API_KEY,
-            googleKey: localStorage.getItem('VITE_GOOGLE_API_KEY') || import.meta.env.VITE_GOOGLE_API_KEY,
+            openrouterKey,
+            grokKey,
+            googleKey,
             preferredModelId: localStorage.getItem('preferred_model') || undefined,
-            isMockMode: !import.meta.env.VITE_OPENROUTER_API_KEY && !localStorage.getItem('VITE_OPENROUTER_API_KEY')
+            isMockMode: !openrouterKey && !grokKey && !googleKey
         };
 
         const storage = new WebStorageAdapter();
