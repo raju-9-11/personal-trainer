@@ -143,3 +143,37 @@ export interface Booking {
     userId?: string;
     createdAt: string; // ISO String
 }
+
+export interface AITrainerProfile {
+  name: string;
+  gender: 'female' | 'male' | 'non-binary' | string;
+  assignedAtBirth?: 'female' | 'male';
+  traits: string[];
+  goals: string[];
+  baselineWeight?: number;
+  baselineHeight?: number;
+}
+
+export interface HealthDataLog {
+  date: string; // YYYY-MM-DD
+  weight?: number;
+  sleepHours?: number;
+  waterIntakeLiters?: number;
+  dietQuality?: number; // 1-10
+  trainingIntensity?: number; // 1-10
+  stressLevel?: number; // 1-10
+  sexFactors?: boolean;
+}
+
+export interface WorkoutPlan {
+  id: string;
+  date: string; // YYYY-MM-DD
+  title: string;
+  exercises: {
+    name: string;
+    sets: number;
+    reps: string;
+    notes?: string;
+  }[];
+  completed: boolean;
+}

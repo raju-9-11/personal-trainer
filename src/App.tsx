@@ -13,9 +13,12 @@ import DashboardPage from './pages/admin/DashboardPage'
 import MockPaymentPage from './pages/MockPaymentPage'
 import NotFoundPage from './pages/NotFoundPage'
 import React, { Suspense } from 'react'
+import { AITrainerProvider } from './components/ai-trainer/AITrainerContext'
+import { AIProvider } from './lib/ai/ai-context'
 
 const TherapistPage = React.lazy(() => import('./pages/TherapistPage'))
 const TherapyLandingPage = React.lazy(() => import('./pages/TherapyLandingPage'))
+const AITrainerPage = React.lazy(() => import('./pages/AITrainerPage'))
 const TherapyAuth = React.lazy(() => import('./pages/TherapyAuth'))
 const AnonymousChat = React.lazy(() => import('./components/therapist/AnonymousChat'))
 const ProfilePage = React.lazy(() => import('./pages/profile/ProfilePage'))
@@ -62,6 +65,17 @@ function App() {
             <Route path="/admin/dashboard" element={<DashboardPage />} />
             <Route path="/payment" element={<MockPaymentPage />} />
             
+            {/* AI Trainer Route */}
+            <Route path="/ai-trainer" element={
+              <Suspense fallback={<BootLoader />}>
+                <AIProvider>
+                  <AITrainerProvider>
+                    <AITrainerPage />
+                  </AITrainerProvider>
+                </AIProvider>
+              </Suspense>
+            } />
+
             {/* Therapy Routes */}
             <Route path="/therapy" element={
               <Suspense fallback={<BootLoader />}>
