@@ -1,19 +1,19 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAITrainer } from '../AITrainerContext';
 import { Button } from '../../ui/button';
-import { Send, User, Bot, Loader2 } from 'lucide-react';
+import { Send, User, Bot, Loader2, AlertCircle } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { InlineHealthForm } from './InlineForms';
 
 export const AITrainerChat = () => {
-  const { chatHistory, sendMessageToTrainer, isLoading, profile } = useAITrainer();
+  const { chatHistory, sendMessageToTrainer, isLoading, error, profile } = useAITrainer();
   const [input, setInput] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [formSubmitted, setFormSubmitted] = useState<Record<number, boolean>>({}); // track which forms are submitted
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [chatHistory, isLoading]);
+  }, [chatHistory, isLoading, error]);
 
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -24,30 +24,56 @@ export const AITrainerChat = () => {
   };
 
   const renderContent = (content: string, msgIndex: number) => {
-    // 1. Remove <thought> blocks from the public display
-    let publicContent = content.replace(/<thought>[\s\S]*?<\/thought>/g, '').trim();
+    // 1. Check for thought blocks and allow expanding them
+    let publicContent = content;
+    const thoughtMatch = content.match(/<thought>([\s\S]*?)<\/thought>/);
+    let thoughtContent = null;
+    
+    if (thoughtMatch) {
+      thoughtContent = thoughtMatch[1].trim();
+      publicContent = content.replace(/<thought>[\s\S]*?<\/thought>/g, '').trim();
+    } else if (content.includes('<thought>')) {
+      // Handle streaming state where <thought> is opened but not closed
+      const parts = content.split('<thought>');
+      publicContent = parts[0].trim();
+      thoughtContent = parts[1]; // The streaming thought
+    }
 
-    // 2. Check for form triggers
-    const hasHealthForm = publicContent.includes('[FORM:HEALTH_LOG]');
+    // 2. Check for form triggers (Robust check)
+    const formTrigger = '[FORM:HEALTH_LOG]';
+    const hasHealthForm = content.includes(formTrigger);
+    
+    // Clean public content for display
+    let displayContent = publicContent.replace(formTrigger, '').trim();
 
-    if (hasHealthForm) {
-      publicContent = publicContent.replace('[FORM:HEALTH_LOG]', '');
+    // Guard against empty public content when thought is present
+    if (!displayContent && thoughtContent) {
+        displayContent = "*(The trainer is analyzing your data...)*";
     }
 
     return (
-      <div className="flex flex-col gap-2 w-full">
-        {publicContent && (
-          <div className="prose prose-sm dark:prose-invert max-w-none">
-            <ReactMarkdown>{publicContent}</ReactMarkdown>
+      <div className="flex flex-col gap-4 w-full">
+        {displayContent && (
+          <div className={`prose prose-sm dark:prose-invert max-w-none ${displayContent.startsWith('*') ? 'italic text-muted-foreground' : ''}`}>
+            <ReactMarkdown>{displayContent}</ReactMarkdown>
           </div>
         )}
 
         {hasHealthForm && !formSubmitted[msgIndex] && (
-          <InlineHealthForm onSubmitSuccess={() => setFormSubmitted(s => ({ ...s, [msgIndex]: true }))} />
+          <div className="not-prose">
+             <InlineHealthForm onSubmitSuccess={() => setFormSubmitted(s => ({ ...s, [msgIndex]: true }))} />
+          </div>
         )}
+        
         {hasHealthForm && formSubmitted[msgIndex] && (
-          <div className="text-xs text-primary font-medium mt-2 flex items-center gap-1">
-             <span className="w-2 h-2 rounded-full bg-primary inline-block"></span> Health Log Saved
+          <div className="bg-primary/5 border border-primary/20 p-3 rounded-lg flex items-center gap-3">
+             <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
+                <span className="w-2.5 h-2.5 rounded-full bg-primary"></span>
+             </div>
+             <div>
+                <p className="text-sm font-bold text-primary">Health Data Synchronized</p>
+                <p className="text-[10px] text-muted-foreground">Your trainer has received the metrics and updated your capacity.</p>
+             </div>
           </div>
         )}
       </div>
@@ -59,8 +85,9 @@ export const AITrainerChat = () => {
       {/* Header */}
       <div className="p-4 border-b bg-muted/30 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center">
+          <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center relative">
              <Bot className="w-6 h-6 text-primary" />
+             {isLoading && <span className="absolute top-0 right-0 w-2.5 h-2.5 bg-blue-500 rounded-full animate-ping"></span>}
           </div>
           <div>
             <h3 className="font-bold text-lg leading-tight">{profile?.name || 'AI Trainer'}</h3>
@@ -80,6 +107,7 @@ export const AITrainerChat = () => {
         ) : (
           chatHistory.map((msg, idx) => {
             if (msg.role === 'system') return null;
+            if (msg.role === 'user' && msg.content.startsWith('[SYSTEM:')) return null;
             const isUser = msg.role === 'user';
             return (
               <div key={idx} className={`flex gap-3 max-w-[90%] ${isUser ? 'ml-auto flex-row-reverse' : 'mr-auto'}`}>
@@ -93,6 +121,7 @@ export const AITrainerChat = () => {
             );
           })
         )}
+        
         {isLoading && (
           <div className="flex gap-3 max-w-[80%] mr-auto">
              <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center shrink-0">
@@ -100,7 +129,33 @@ export const AITrainerChat = () => {
              </div>
              <div className="p-4 rounded-2xl bg-muted/50 border rounded-tl-sm flex items-center gap-2">
                 <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
-                <span className="text-sm text-muted-foreground">Analyzing...</span>
+                <span className="text-sm text-muted-foreground">Formulating advice...</span>
+             </div>
+          </div>
+        )}
+        
+        {error && !isLoading && (
+          <div className="flex gap-3 max-w-[90%] mr-auto mt-4">
+             <div className="w-8 h-8 rounded-full bg-destructive/10 flex items-center justify-center shrink-0">
+                <AlertCircle className="w-4 h-4 text-destructive" />
+             </div>
+             <div className="p-4 rounded-2xl bg-destructive/5 border border-destructive/20 rounded-tl-sm flex flex-col gap-2">
+                <span className="text-sm font-medium text-destructive">Connection Interrupted</span>
+                <span className="text-xs text-muted-foreground">{error}</span>
+                <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="mt-2 w-fit h-7 text-xs"
+                    onClick={() => {
+                        // Resend the last user message
+                        const lastUserMsg = [...chatHistory].reverse().find(m => m.role === 'user');
+                        if (lastUserMsg) {
+                            sendMessageToTrainer(lastUserMsg.content);
+                        }
+                    }}
+                >
+                    Retry Failed Request
+                </Button>
              </div>
           </div>
         )}

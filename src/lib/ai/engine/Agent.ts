@@ -18,16 +18,19 @@ export class TherapistAgent {
   }
 
   async initialize() {
-    if (this.config.openrouterKey) {
-        await ModelRegistry.fetchModels(this.config.openrouterKey);
-    }
-    
     // Load persisted state if storage exists
     if (this.storage) {
         const preferred = await this.storage.getItem('preferred_model');
         if (preferred) {
             // Update orchestrator state
         }
+    }
+    
+    // Background fetch models without blocking initialization
+    if (this.config.openrouterKey) {
+        ModelRegistry.fetchModels(this.config.openrouterKey).catch(e => {
+            console.warn("Background model fetch failed:", e);
+        });
     }
   }
 

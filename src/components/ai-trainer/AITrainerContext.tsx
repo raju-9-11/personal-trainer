@@ -45,7 +45,7 @@ const AITrainerContext = createContext<AITrainerContextType | null>(null);
 
 export const AITrainerProvider = ({ children }: { children: ReactNode }) => {
   const { user } = useAuth();
-  const { sendMessage, isInitialized } = useAI();
+  const { streamMessage, isInitialized } = useAI();
   const [state, setState] = useState<AITrainerState>({
     isLocked: true,
     hasProfile: false,
@@ -59,6 +59,7 @@ export const AITrainerProvider = ({ children }: { children: ReactNode }) => {
   });
 
   const passwordRef = useRef<string | null>(null);
+  const SESSION_KEY = 'ai_trainer_session_pwd';
 
   // Check if user has an existing encrypted profile
   useEffect(() => {
@@ -72,10 +73,23 @@ export const AITrainerProvider = ({ children }: { children: ReactNode }) => {
       try {
         const db = new FirebaseDataService(user);
         const data = await db.getAITrainerData(user.uid);
+        
+        // Session Recovery: Try to auto-unlock if password exists in session
+        const sessionPwd = sessionStorage.getItem(`${SESSION_KEY}_${user.uid}`);
+        
         if (data && data.encryptedProfile) {
-          setState(s => ({ ...s, hasProfile: true, isLocked: true, isLoading: false }));
+          if (sessionPwd) {
+            // Attempt silent unlock
+            const unlocked = await unlock(sessionPwd, true);
+            if (!unlocked) {
+                // If silent unlock fails (maybe session key is invalid/expired), stay locked
+                setState(s => ({ ...s, hasProfile: true, isLocked: true, isLoading: false }));
+            }
+          } else {
+            setState(s => ({ ...s, hasProfile: true, isLocked: true, isLoading: false }));
+          }
         } else {
-          setState(s => ({ ...s, hasProfile: false, isLocked: false, isLoading: false })); // Not locked if no profile exists
+          setState(s => ({ ...s, hasProfile: false, isLocked: false, isLoading: false })); 
         }
       } catch (e: any) {
         setState(s => ({ ...s, error: e.message || "Failed to check status", isLoading: false }));
@@ -84,6 +98,13 @@ export const AITrainerProvider = ({ children }: { children: ReactNode }) => {
 
     checkStatus();
   }, [user]);
+
+  // First Contact Protocol
+  useEffect(() => {
+     if (isInitialized && !state.isLocked && state.profile && state.chatHistory.length === 0 && !state.isLoading) {
+         sendMessageToTrainer(`[SYSTEM: Initial Greeting. Introduce yourself strictly acting as the AI Trainer with the traits: ${state.profile.traits.join(', ')}. Keep it brief, acknowledge the user's goal (${state.profile.goals[0] || 'getting fit'}), and ask a follow-up question to start.]`);
+     }
+  }, [isInitialized, state.isLocked, state.profile, state.chatHistory.length, state.isLoading]);
 
   const saveData = async (profile: AITrainerProfile, logs: HealthDataLog[], chat: Message[], pwd?: string) => {
     if (!user) throw new Error("Not logged in");
@@ -113,9 +134,9 @@ export const AITrainerProvider = ({ children }: { children: ReactNode }) => {
     await db.saveAITrainerData(user.uid, payload);
   };
 
-  const unlock = async (password: string): Promise<boolean> => {
+  const unlock = async (password: string, isSilent = false): Promise<boolean> => {
     if (!user) throw new Error("Not logged in");
-    setState(s => ({ ...s, isLoading: true, error: null }));
+    if (!isSilent) setState(s => ({ ...s, isLoading: true, error: null }));
 
     try {
       const db = new FirebaseDataService(user);
@@ -129,6 +150,7 @@ export const AITrainerProvider = ({ children }: { children: ReactNode }) => {
       }, password);
       const profile = JSON.parse(decProfileStr) as AITrainerProfile;
 
+      // ... rest of decryption logic
       let logs: HealthDataLog[] = [];
       if (data.encryptedHealthLogs) {
         const decLogsStr = await decryptData({
@@ -150,6 +172,9 @@ export const AITrainerProvider = ({ children }: { children: ReactNode }) => {
       }
 
       passwordRef.current = password;
+      // Persist password key to session storage for refresh survivor
+      sessionStorage.setItem(`${SESSION_KEY}_${user.uid}`, password);
+
       setState(s => ({
           ...s,
           isLocked: false,
@@ -160,11 +185,12 @@ export const AITrainerProvider = ({ children }: { children: ReactNode }) => {
           error: null
       }));
 
-      // Optionally, run an initial extraction if we wanted to guess capacity on load.
       return true;
     } catch (e: any) {
-      console.error(e);
-      setState(s => ({ ...s, isLoading: false, error: "Incorrect password or failed to decrypt." }));
+      if (!isSilent) {
+        console.error(e);
+        setState(s => ({ ...s, isLoading: false, error: "Incorrect password or failed to decrypt." }));
+      }
       return false;
     }
   };
@@ -174,6 +200,9 @@ export const AITrainerProvider = ({ children }: { children: ReactNode }) => {
     try {
       await saveData(profile, [], [], password);
       passwordRef.current = password;
+      // Persist password key
+      if (user) sessionStorage.setItem(`${SESSION_KEY}_${user.uid}`, password);
+
       setState(s => ({
         ...s,
         hasProfile: true,
@@ -195,6 +224,9 @@ export const AITrainerProvider = ({ children }: { children: ReactNode }) => {
      const newLogs = [...state.healthLogs, log];
      setState(s => ({ ...s, healthLogs: newLogs }));
      await saveData(state.profile, newLogs, state.chatHistory);
+     
+     // Proactively inform the AI about the new data so it can respond
+     sendMessageToTrainer(`[SYSTEM: The user just logged new health data: ${JSON.stringify(log)}. Provide a very brief, single-sentence acknowledgment or insight based on this new data and your persona.]`);
   };
 
   const extractStatsFromThought = (thought: string) => {
@@ -216,11 +248,16 @@ export const AITrainerProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const sendMessageToTrainer = async (content: string) => {
-      if (!isInitialized || !state.profile || state.isLocked) return;
+      if (!isInitialized || !state.profile || state.isLocked) {
+          console.warn("Cannot send message. isInitialized:", isInitialized, "profile:", !!state.profile, "isLocked:", state.isLocked);
+          return;
+      }
 
       const userMessage: Message = { role: 'user', content };
       const newHistory = [...state.chatHistory, userMessage];
-      setState(s => ({ ...s, chatHistory: newHistory, isLoading: true }));
+      const tempHistory = [...newHistory, { role: 'assistant', content: '' } as Message];
+      
+      setState(s => ({ ...s, chatHistory: tempHistory, isLoading: true, error: null }));
 
       try {
           // Prepare context
@@ -230,11 +267,21 @@ export const AITrainerProvider = ({ children }: { children: ReactNode }) => {
           // Inject logs into system prompt or pass as context
           const fullPrompt = `${systemPrompt}\n\nRecent Health Logs:\n${recentLogs || 'No recent logs.'}`;
 
-          const { response, updatedHistory } = await sendMessage(content, {
+          let streamingContent = '';
+          const { response, updatedHistory } = await streamMessage(content, {
               systemPrompt: fullPrompt,
               insights: [],
               summary: "A user chatting with their AI Trainer.",
               history: state.chatHistory // send old history
+          }, (chunk) => {
+              streamingContent += chunk;
+              setState(s => {
+                  const currentHistory = [...s.chatHistory];
+                  if (currentHistory.length > 0 && currentHistory[currentHistory.length - 1].role === 'assistant') {
+                      currentHistory[currentHistory.length - 1] = { ...currentHistory[currentHistory.length - 1], content: streamingContent };
+                  }
+                  return { ...s, chatHistory: currentHistory };
+              });
           });
 
           // The updatedHistory will contain the new messages (including thought blocks)
@@ -252,7 +299,9 @@ export const AITrainerProvider = ({ children }: { children: ReactNode }) => {
 
       } catch (e: any) {
           console.error("Failed to send message", e);
-          setState(s => ({ ...s, isLoading: false, error: "Failed to get response." }));
+          setState(s => ({ ...s, error: e.message || "Failed to get response." }));
+      } finally {
+          setState(s => ({ ...s, isLoading: false }));
       }
   };
 

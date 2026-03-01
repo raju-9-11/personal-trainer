@@ -9,9 +9,9 @@ import { useNavigate, Link } from 'react-router-dom';
 import { Dumbbell, ArrowLeft } from 'lucide-react';
 
 const AITrainerPageContent = () => {
-  const { isLocked } = useAITrainer();
+  const { isLocked, hasProfile } = useAITrainer();
 
-  if (isLocked) {
+  if (isLocked || !hasProfile) {
     return (
       <div className="min-h-screen bg-background text-foreground flex flex-col justify-center">
         <AITrainerAuth />
