@@ -13,11 +13,15 @@ import { DEFAULT_BRAND_NAME } from '@/lib/constants';
 import { BootLoader } from '@/components/ui/boot-loader';
 import { AnimatePresence } from 'framer-motion';
 import { Footer } from '@/components/layout/footer';
-import { HomeNavbar } from '@/components/layout/home-navbar';
+import { AppNavbar } from '@/components/layout/app-navbar';
 import { BrandIdentityContext } from '@/components/TrainerContext';
+import { Activity, ArrowRight, Brain } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { useNavigate } from 'react-router-dom';
 
 export default function HomePage() {
   const { getTrainers, getLandingPageContent, getBrandIdentity, getPlatformTestimonials } = useData();
+  const navigate = useNavigate();
   const [trainers, setTrainers] = useState<TrainerSummary[]>([]);
   const [landing, setLanding] = useState<LandingPageContent | null>(null);
   const [brand, setBrand] = useState<BrandIdentity | null>(null);
@@ -70,7 +74,7 @@ export default function HomePage() {
   return (
     <BrandIdentityContext.Provider value={{ identity: brand, loading: false }}>
       <main className="min-h-screen bg-background text-foreground">
-        <HomeNavbar />
+        <AppNavbar transparentOnTop />
         {/* Hero Section */}
         <section className="relative h-[80vh] flex items-center justify-center overflow-hidden">
           <div className="absolute inset-0 bg-black/60 z-10" />
@@ -89,6 +93,51 @@ export default function HomePage() {
             <a href="#trainers" className="bg-primary text-primary-foreground hover:bg-primary/90 px-8 py-4 rounded-full text-lg font-semibold transition-all">
               Browse Trainers
             </a>
+          </div>
+        </section>
+
+        {/* Features / Entry Points */}
+        <section className="py-12 bg-card border-t border-b" id="features">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="grid md:grid-cols-2 gap-8">
+              {/* AI Trainer Card */}
+              <div className="group relative overflow-hidden rounded-3xl bg-gradient-to-br from-primary/20 via-primary/5 to-background border border-primary/20 p-8 hover:shadow-2xl hover:shadow-primary/20 transition-all duration-300">
+                <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:scale-110 transition-transform duration-500">
+                  <Activity className="w-32 h-32" />
+                </div>
+                <div className="relative z-10 flex flex-col h-full">
+                  <div className="w-14 h-14 rounded-2xl bg-primary/20 flex items-center justify-center mb-6">
+                    <Activity className="w-7 h-7 text-primary" />
+                  </div>
+                  <h3 className="text-2xl font-bold mb-3">AI Personal Trainer</h3>
+                  <p className="text-muted-foreground mb-8 flex-1">
+                    Get an E2E encrypted, personalized AI trainer that tracks your health data, sleep, diet, and predicts your daily performance capacity.
+                  </p>
+                  <Button size="lg" className="w-fit" onClick={() => navigate('/ai-trainer')}>
+                    Launch Dashboard <ArrowRight className="w-4 h-4 ml-2" />
+                  </Button>
+                </div>
+              </div>
+
+              {/* Therapy Card */}
+              <div className="group relative overflow-hidden rounded-3xl bg-gradient-to-br from-blue-500/20 via-blue-500/5 to-background border border-blue-500/20 p-8 hover:shadow-2xl hover:shadow-blue-500/20 transition-all duration-300">
+                <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:scale-110 transition-transform duration-500">
+                  <Brain className="w-32 h-32 text-blue-500" />
+                </div>
+                <div className="relative z-10 flex flex-col h-full">
+                  <div className="w-14 h-14 rounded-2xl bg-blue-500/20 flex items-center justify-center mb-6">
+                    <Brain className="w-7 h-7 text-blue-500" />
+                  </div>
+                  <h3 className="text-2xl font-bold mb-3">Personal Therapy Bot</h3>
+                  <p className="text-muted-foreground mb-8 flex-1">
+                    Confidential, E2E encrypted AI therapy. Choose from different archetypes to help navigate life's challenges.
+                  </p>
+                  <Button size="lg" className="w-fit bg-blue-500 hover:bg-blue-600 text-white" onClick={() => navigate('/therapy')}>
+                    Start Session <ArrowRight className="w-4 h-4 ml-2" />
+                  </Button>
+                </div>
+              </div>
+            </div>
           </div>
         </section>
 

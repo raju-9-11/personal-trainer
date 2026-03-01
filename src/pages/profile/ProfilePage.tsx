@@ -1,13 +1,15 @@
 
 import { useState } from 'react';
 import { useAuth } from '../../lib/auth-context';
-import { HomeNavbar } from '../../components/layout/home-navbar';
+import { AppNavbar } from '../../components/layout/app-navbar';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../components/ui/tabs';
 import { SecuritySettings } from '../../components/profile/SecuritySettings';
 import { DebugSettings } from '../../components/profile/DebugSettings';
 import { TherapySettings } from '../../components/profile/TherapySettings';
+import { TrainerSettings } from '../../components/profile/TrainerSettings';
 import { User, Brain, Shield, Bug, Activity } from 'lucide-react';
 import { AIProvider } from '../../lib/ai/ai-context';
+import { AITrainerProvider } from '../../components/ai-trainer/AITrainerContext';
 
 export default function ProfilePage() {
   const { user } = useAuth();
@@ -15,7 +17,7 @@ export default function ProfilePage() {
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
-      <HomeNavbar />
+      <AppNavbar />
       
       <main className="container mx-auto px-4 py-24">
         {/* Header */}
@@ -84,10 +86,11 @@ export default function ProfilePage() {
             </TabsContent>
 
             <TabsContent value="fitness">
-                <div className="bg-white dark:bg-slate-900 p-12 rounded-xl shadow-sm border border-slate-100 dark:border-slate-800 text-center">
-                    <h3 className="text-xl font-medium mb-2">Personal Training History</h3>
-                    <p className="text-slate-500">Track your workouts and progress here.</p>
-                </div>
+                <AIProvider>
+                    <AITrainerProvider>
+                        <TrainerSettings />
+                    </AITrainerProvider>
+                </AIProvider>
             </TabsContent>
 
             <TabsContent value="mind">

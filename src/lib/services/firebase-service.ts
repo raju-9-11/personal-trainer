@@ -583,4 +583,28 @@ export class FirebaseDataService implements DataProviderType {
       const docRef = await addDoc(collection(db, ROOT_COLLECTION, trainerSlug, 'bookings'), booking);
       return docRef.id;
   }
+
+  // --- AI Trainer Actions (Encrypted Storage & Guest Shadowing) ---
+  getAITrainerData = async (uid: string, isShadow = false): Promise<any> => {
+    const db = this.ensureDb();
+    const collectionName = isShadow ? 'guest_shadows' : 'ai_trainers';
+    const docRef = doc(db, collectionName, uid);
+    const docSnap = await getDoc(docRef);
+    if (docSnap.exists()) {
+      return docSnap.data();
+    }
+    return null;
+  }
+
+  saveAITrainerData = async (uid: string, data: any, isShadow = false): Promise<void> => {
+    const db = this.ensureDb();
+    const collectionName = isShadow ? 'guest_shadows' : 'ai_trainers';
+    await setDoc(doc(db, collectionName, uid), data, { merge: true });
+  }
+
+  deleteAITrainerData = async (uid: string, isShadow = false): Promise<void> => {
+    const db = this.ensureDb();
+    const collectionName = isShadow ? 'guest_shadows' : 'ai_trainers';
+    await deleteDoc(doc(db, collectionName, uid));
+  }
 }

@@ -1,6 +1,6 @@
 import React, { useEffect, useState, lazy, Suspense } from 'react';
 import { AnimatePresence } from 'framer-motion';
-import { Navbar } from '@/components/layout/navbar';
+import { AppNavbar } from '@/components/layout/app-navbar';
 import { Hero } from '@/components/sections/hero';
 import { useData } from '@/lib/data-provider';
 
@@ -107,7 +107,17 @@ export function TrainerPageContent({ slug }: { slug: string }) {
         </AnimatePresence>
         {!brandLoading && (
           <div className={`min-h-screen bg-background font-sans text-foreground`}>
-                <Navbar />
+                <AppNavbar
+                  links={[
+                    { href: '#about', label: 'About' },
+                    { href: '#certifications', label: 'Certifications' },
+                    { href: '#transformations', label: 'Transformations' },
+                    { href: '#classes', label: 'Classes' },
+                    { href: '#contact', label: 'Contact' },
+                  ]}
+                  cta={{ href: '#contact', label: 'Book Now' }}
+                  transparentOnTop
+                />
                 <Hero />
                 <Suspense fallback={null}>
                   <About />

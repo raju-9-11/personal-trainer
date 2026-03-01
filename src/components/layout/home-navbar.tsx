@@ -77,7 +77,7 @@ export function HomeNavbar() {
                   </Button>
               </Link>
           ) : (
-              <Link to="/admin/login">
+              <Link to="/vault">
                   <Button variant={isScrolled ? "default" : "secondary"} size="sm">
                       Login
                   </Button>
