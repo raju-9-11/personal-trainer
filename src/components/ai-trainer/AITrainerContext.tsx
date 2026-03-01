@@ -1,8 +1,9 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode, useRef } from 'react';
 import { encryptData, decryptData } from '../../lib/encryption';
 import { useAuth } from '../../lib/auth-context';
+import { useVault } from '../../lib/vault-context';
 import { FirebaseDataService } from '../../lib/services/firebase-service';
-import { AITrainerProfile, HealthDataLog, WorkoutPlan, Routine, Supplement } from '../../lib/types';
+import { AITrainerProfile, HealthDataLog, WorkoutPlan, Routine, Supplement, IdentityContext, PhysicalInsight } from '../../lib/types';
 import { Message } from '../../lib/ai/types';
 import { useAI } from '../../lib/ai/ai-context';
 import { generateAITrainerPrompt } from '../../lib/ai/ai-trainer-personas';
@@ -31,6 +32,7 @@ interface AITrainerState {
   isOnboarding: boolean;
   isLoading: boolean;
   error: string | null;
+  lastPersistenceError: string | null;
   profile: AITrainerProfile | null;
   healthLogs: HealthDataLog[];
   chatHistory: Message[];
@@ -44,18 +46,24 @@ interface AITrainerContextType extends AITrainerState {
   unlock: (password: string) => Promise<boolean>;
   setupProfile: (password: string, profile: AITrainerProfile) => Promise<boolean>;
   updateProfile: (profileUpdates: Partial<AITrainerProfile>) => Promise<void>;
+  updateIdentity: (identity: Partial<IdentityContext>) => Promise<void>;
+  addSoulInsight: (insight: Omit<PhysicalInsight, 'date'>) => Promise<void>;
+  completeOnboarding: () => Promise<void>;
   logHealthData: (log: Partial<HealthDataLog>) => Promise<void>;
   addRoutine: (routine: Routine) => Promise<void>;
   updateRoutine: (id: string, updates: Partial<Routine>) => Promise<void>;
   sendMessageToTrainer: (content: string) => Promise<void>;
   lock: () => void;
-  migrateGuestToUser: (password: string) => Promise<boolean>;
+  migrateGuestToUser: () => Promise<boolean>;
+  resetAITrainerData: () => Promise<void>;
+  isProfileComplete: boolean;
 }
 
 const AITrainerContext = createContext<AITrainerContextType | null>(null);
 
 export const AITrainerProvider = ({ children }: { children: ReactNode }) => {
   const { user } = useAuth();
+  const { getSessionPassword, setSessionPassword, isUnlocked, lockVault } = useVault();
   const { streamMessage, isInitialized } = useAI();
   const [state, setState] = useState<AITrainerState>({
     isLocked: true,
@@ -63,6 +71,7 @@ export const AITrainerProvider = ({ children }: { children: ReactNode }) => {
     isOnboarding: false,
     isLoading: true,
     error: null,
+    lastPersistenceError: null,
     profile: null,
     healthLogs: [],
     chatHistory: [],
@@ -73,9 +82,56 @@ export const AITrainerProvider = ({ children }: { children: ReactNode }) => {
   });
 
   const passwordRef = useRef<string | null>(null);
-  const SESSION_KEY = 'titan_vault_session_pwd';
-  const GUEST_STORAGE_KEY = 'guest_ai_vault';
+  const stateRef = useRef<AITrainerState>(state);
+  const isSavingRef = useRef<boolean>(false);
+  const saveQueueRef = useRef<(() => Promise<void>)[]>([]);
+
   const SESSION_HINT_KEY = 'ai_trainer_has_profile_hint';
+
+  // Sync stateRef with state
+  useEffect(() => {
+    stateRef.current = state;
+  }, [state]);
+
+  const isProfileComplete = (profile: AITrainerProfile, chatHistory: Message[]) => {
+      if (!profile.baselineWeight) return false;
+      if (!profile.baselineHeight) return false;
+      if (!profile.supplements || profile.supplements.length === 0) return false;
+
+      if (profile.trackingLevel === 'indepth') {
+          if (!profile.assignedAtBirth) return false;
+          if (chatHistory.length <= 5) return false;
+      } else {
+          if (!profile.goals || profile.goals.length === 0) return false;
+      }
+
+      return true;
+  };
+
+  const verifyPersistence = async (): Promise<boolean> => {
+      if (!user) return false;
+      const db = new FirebaseDataService(user);
+      const persisted = await db.getAITrainerData(user.uid);
+      return !!(persisted && persisted.encryptedProfile);
+  };
+
+  // Helper to ensure Soul exists
+  const ensureSoul = (profile: AITrainerProfile): AITrainerProfile => {
+      if (profile.soul) return profile;
+      return {
+          ...profile,
+          soul: {
+              insights: [],
+              biometricTrends: { weightTrend: 'stable', avgSleep: 8, intensityBias: 5 },
+              identity: {
+                  genderIdentity: profile.gender,
+                  assignedAtBirth: profile.assignedAtBirth,
+                  preferredCoachingStyle: 'clinical',
+                  lastUpdated: new Date().toISOString()
+              }
+          }
+      };
+  };
 
   // Check if user has an existing encrypted profile or if they have a guest vault
   useEffect(() => {
@@ -83,33 +139,7 @@ export const AITrainerProvider = ({ children }: { children: ReactNode }) => {
       const hint = sessionStorage.getItem(SESSION_HINT_KEY);
       
       if (!user) {
-        // GUEST MODE LOGIC
-        const guestData = localStorage.getItem(GUEST_STORAGE_KEY);
-        if (guestData) {
-          try {
-            const parsed = JSON.parse(guestData);
-            setState(s => ({
-              ...s,
-              isLocked: false,
-              hasProfile: true,
-              isOnboarding: !parsed.profile?.onboardingComplete,
-              isLoading: false,
-              isGuest: true,
-              profile: parsed.profile,
-              healthLogs: parsed.healthLogs || [],
-              chatHistory: parsed.chatHistory || [],
-              routines: parsed.routines || [],
-            }));
-            sessionStorage.setItem(SESSION_HINT_KEY, 'true');
-            // Initial stats extraction
-            const lastMsg = parsed.chatHistory?.slice().reverse().find((m: Message) => m.role === 'assistant');
-            if (lastMsg) extractStatsFromThought(lastMsg.content);
-          } catch (e) {
-             setState(s => ({ ...s, isLoading: false, isLocked: false, isGuest: true, hasProfile: false, isOnboarding: false }));
-          }
-        } else {
-          setState(s => ({ ...s, isLoading: false, isLocked: false, isGuest: true, hasProfile: false, isOnboarding: false }));
-        }
+        setState(s => ({ ...s, isLoading: false, isLocked: true, isGuest: false, hasProfile: false, isOnboarding: false }));
         return;
       }
 
@@ -123,42 +153,29 @@ export const AITrainerProvider = ({ children }: { children: ReactNode }) => {
         const data = await db.getAITrainerData(user.uid);
         
         // Session Recovery: Try to auto-unlock if password exists in session
-        const sessionPwd = sessionStorage.getItem(`${SESSION_KEY}_${user.uid}`);
+        const sessionPwd = getSessionPassword();
         
-        if (data && data.encryptedProfile) {
-          sessionStorage.setItem(SESSION_HINT_KEY, 'true');
-          if (sessionPwd) {
-            const unlocked = await unlock(sessionPwd, true);
-            if (!unlocked) {
+      if (data && data.encryptedProfile) {
+        sessionStorage.setItem(SESSION_HINT_KEY, 'true');
+        setState(s => ({ ...s, lastPersistenceError: null }));
+        if (sessionPwd) {
+          const unlocked = await unlock(sessionPwd, true);
+          if (!unlocked) {
                 setState(s => ({ ...s, hasProfile: true, isLocked: true, isLoading: false }));
-            }
-          } else {
+          }
+        } else {
             setState(s => ({ ...s, hasProfile: true, isLocked: true, isLoading: false }));
           }
         } else {
-          // Check for Shadow Data (Cloud copy of guest data)
-          const shadowData = await db.getAITrainerData(user.uid, true); // We'll update the service to accept a 'shadow' flag
-          if (shadowData) {
-              setState(s => ({
-                  ...s,
-                  isLocked: false,
-                  hasProfile: true,
-                  isOnboarding: !shadowData.profile?.onboardingComplete,
-                  isLoading: false,
-                  isGuest: true,
-                  profile: shadowData.profile,
-                  healthLogs: shadowData.healthLogs || [],
-                  chatHistory: shadowData.chatHistory || [],
-                  routines: shadowData.routines || [],
-              }));
-              sessionStorage.setItem(SESSION_HINT_KEY, 'true');
-          } else if (state.hasProfile && state.isGuest) {
-              // We have local guest data, keep it!
-              setState(s => ({ ...s, isLoading: false }));
-          } else {
-              setState(s => ({ ...s, hasProfile: false, isLocked: false, isLoading: false, isOnboarding: false })); 
-              sessionStorage.removeItem(SESSION_HINT_KEY);
-          }
+          setState(s => ({
+            ...s,
+            hasProfile: false,
+            isLocked: false,
+            isLoading: false,
+            isOnboarding: false,
+            lastPersistenceError: hint ? 'No persisted AI Trainer profile found in Firebase.' : null,
+          }));
+          sessionStorage.removeItem(SESSION_HINT_KEY);
         }
       } catch (e: any) {
         setState(s => ({ ...s, error: e.message || "Failed to check status", isLoading: false }));
@@ -166,7 +183,7 @@ export const AITrainerProvider = ({ children }: { children: ReactNode }) => {
     };
 
     checkStatus();
-  }, [user]);
+  }, [user, getSessionPassword]);
 
   // First Contact Protocol
   useEffect(() => {
@@ -179,36 +196,12 @@ export const AITrainerProvider = ({ children }: { children: ReactNode }) => {
     sessionStorage.setItem(SESSION_HINT_KEY, 'true');
     
     if (!user) {
-      // GUEST MODE SAVE (Local Only)
-      localStorage.setItem(GUEST_STORAGE_KEY, JSON.stringify({
-        profile: profileToSave,
-        healthLogs: logsToSave,
-        chatHistory: chatToSave,
-        routines: routinesToSave,
-      }));
-      return;
+      throw new Error('AI Trainer requires an authenticated user.');
     }
 
     const activePassword = pwd || passwordRef.current;
     if (!activePassword) {
-      // SILENT SHADOW (Logged-in User, but in Guest/Unencrypted state)
-      const db = new FirebaseDataService(user);
-      await db.saveAITrainerData(user.uid, {
-          profile: profileToSave,
-          healthLogs: logsToSave,
-          chatHistory: chatToSave,
-          routines: routinesToSave,
-          isShadow: true,
-      }, true); // We'll update the service to support 'shadow' flag
-      
-      // Also save locally for instant access
-      localStorage.setItem(GUEST_STORAGE_KEY, JSON.stringify({
-        profile: profileToSave,
-        healthLogs: logsToSave,
-        chatHistory: chatToSave,
-        routines: routinesToSave,
-      }));
-      return;
+      throw new Error('Missing encryption password for AI Trainer data.');
     }
 
     const db = new FirebaseDataService(user);
@@ -239,6 +232,38 @@ export const AITrainerProvider = ({ children }: { children: ReactNode }) => {
     await db.saveAITrainerData(user.uid, payload);
   };
 
+  const persistCurrentState = async (overrides?: Partial<AITrainerState>) => {
+    if (isSavingRef.current) {
+        // Simple retry/wait if already saving
+        await new Promise(resolve => setTimeout(resolve, 500));
+    }
+    
+    isSavingRef.current = true;
+    const profileToSave = overrides?.profile || stateRef.current.profile;
+    const logsToSave = overrides?.healthLogs || stateRef.current.healthLogs;
+    const chatToSave = overrides?.chatHistory || stateRef.current.chatHistory;
+    const routinesToSave = overrides?.routines || stateRef.current.routines;
+
+    if (!profileToSave || stateRef.current.isLocked) {
+      isSavingRef.current = false;
+      return;
+    }
+    
+    try {
+      await saveData(
+        profileToSave,
+        logsToSave,
+        chatToSave,
+        routinesToSave
+      );
+    } catch (e) {
+      console.error("Titan Engine: Persist failed", e);
+      setState(s => ({ ...s, lastPersistenceError: "Failed to sync to cloud." }));
+    } finally {
+      isSavingRef.current = false;
+    }
+  };
+
   const unlock = async (password: string, isSilent = false): Promise<boolean> => {
     if (!user) throw new Error("Not logged in");
     if (!isSilent) setState(s => ({ ...s, isLoading: true, error: null }));
@@ -253,7 +278,7 @@ export const AITrainerProvider = ({ children }: { children: ReactNode }) => {
         iv: data.ivProfile,
         salt: data.saltProfile
       }, password);
-      const profile = JSON.parse(decProfileStr) as AITrainerProfile;
+      let profile = JSON.parse(decProfileStr) as AITrainerProfile;
 
       // ... rest of decryption logic
       let logs: HealthDataLog[] = [];
@@ -286,20 +311,28 @@ export const AITrainerProvider = ({ children }: { children: ReactNode }) => {
          routines = JSON.parse(decRoutinesStr);
       }
 
+      const complete = isProfileComplete(profile, chat);
+      if (complete && !profile.onboardingComplete) {
+        profile = { ...profile, onboardingComplete: true };
+        await saveData(profile, logs, chat, routines, password);
+      }
+
       passwordRef.current = password;
-      // Persist password key to session storage for refresh survivor
-      sessionStorage.setItem(`${SESSION_KEY}_${user.uid}`, password);
+      // Persist password key for refresh survivor
+      setSessionPassword(password);
 
       setState(s => ({
-          ...s,
-          isLocked: false,
-          isLoading: false,
-          profile,
-          healthLogs: logs,
-          chatHistory: chat,
-          routines,
-          isOnboarding: !profile.onboardingComplete,
-          error: null
+        ...s,
+        hasProfile: true,
+        isLocked: false,
+        isLoading: false,
+        profile,
+        healthLogs: logs,
+        chatHistory: chat,
+        routines,
+        isOnboarding: !profile.onboardingComplete,
+        error: null,
+        lastPersistenceError: null,
       }));
 
       return true;
@@ -313,12 +346,16 @@ export const AITrainerProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const setupProfile = async (password: string, profile: AITrainerProfile): Promise<boolean> => {
-    setState(s => ({ ...s, isLoading: true, error: null }));
+    setState(s => ({ ...s, isLoading: true, error: null, lastPersistenceError: null }));
     try {
       await saveData(profile, [], [], [], password);
+      const persisted = await verifyPersistence();
+      if (!persisted) {
+        throw new Error("Failed to persist AI Trainer profile to Firebase.");
+      }
       passwordRef.current = password;
       // Persist password key
-      if (user) sessionStorage.setItem(`${SESSION_KEY}_${user.uid}`, password);
+      if (user) setSessionPassword(password);
 
       setState(s => ({
         ...s,
@@ -333,53 +370,81 @@ export const AITrainerProvider = ({ children }: { children: ReactNode }) => {
       }));
       return true;
     } catch (e: any) {
-      setState(s => ({ ...s, isLoading: false, error: e.message }));
+      setState(s => ({ ...s, isLoading: false, error: e.message, lastPersistenceError: e.message }));
       return false;
     }
   };
 
-  const migrateGuestToUser = async (password: string): Promise<boolean> => {
-    if (!user || !state.isGuest || !state.profile) return false;
-    setState(s => ({ ...s, isLoading: true, error: null }));
-    try {
-      await saveData(state.profile, state.healthLogs, state.chatHistory, state.routines, password);
-      passwordRef.current = password;
-      sessionStorage.setItem(`${SESSION_KEY}_${user.uid}`, password);
-      localStorage.removeItem(GUEST_STORAGE_KEY);
-      
-      setState(s => ({
-        ...s,
-        isGuest: false,
-        isLocked: false,
-        isOnboarding: !state.profile?.onboardingComplete,
-        isLoading: false,
-      }));
-      return true;
-    } catch (e: any) {
-      setState(s => ({ ...s, isLoading: false, error: e.message }));
-      return false;
-    }
+  const migrateGuestToUser = async (): Promise<boolean> => {
+    setState(s => ({ ...s, error: 'Guest migration is disabled. Please sign in and set a vault password.' }));
+    return false;
+  };
+
+  const updateIdentity = async (identityUpdates: Partial<IdentityContext>) => {
+      if (!state.profile || state.isLocked) return;
+      const profile = ensureSoul(state.profile);
+      const newProfile = {
+          ...profile,
+          soul: {
+              ...profile.soul!,
+              identity: { ...profile.soul!.identity, ...identityUpdates, lastUpdated: new Date().toISOString() }
+          }
+      };
+      setState(s => ({ ...s, profile: newProfile }));
+      await persistCurrentState({ profile: newProfile });
+  };
+
+  const addSoulInsight = async (insight: Omit<PhysicalInsight, 'date'>) => {
+      if (!state.profile || state.isLocked) return;
+      const profile = ensureSoul(state.profile);
+      const newInsight: PhysicalInsight = { ...insight, date: new Date().toISOString().split('T')[0] };
+      const newProfile = {
+          ...profile,
+          soul: {
+              ...profile.soul!,
+              insights: [newInsight, ...profile.soul!.insights].slice(0, 50) // Keep last 50
+          }
+      };
+      setState(s => ({ ...s, profile: newProfile }));
+      await persistCurrentState({ profile: newProfile });
   };
 
   const updateProfile = async (profileUpdates: Partial<AITrainerProfile>) => {
     if (!state.profile || state.isLocked) return;
     const newProfile = { ...state.profile, ...profileUpdates };
     setState(s => ({ ...s, profile: newProfile, isOnboarding: !newProfile.onboardingComplete }));
-    await saveData(newProfile, state.healthLogs, state.chatHistory, state.routines);
+    await persistCurrentState({ profile: newProfile });
+  };
+
+  const completeOnboarding = async () => {
+    if (!state.profile || state.isLocked) return;
+    if (state.profile.onboardingComplete) return;
+    const newProfile = { ...state.profile, onboardingComplete: true };
+    setState(s => ({ ...s, profile: newProfile, isOnboarding: false }));
+    try {
+      await persistCurrentState({ profile: newProfile });
+      const persisted = await verifyPersistence();
+      if (!persisted) {
+        throw new Error("Failed to persist onboarding completion to Firebase.");
+      }
+      setState(s => ({ ...s, lastPersistenceError: null }));
+    } catch (e: any) {
+      setState(s => ({ ...s, error: e.message || "Failed to complete onboarding.", lastPersistenceError: e.message || "Failed to complete onboarding." }));
+    }
   };
 
   const addRoutine = async (routine: Routine) => {
     if (!state.profile || state.isLocked) return;
     const newRoutines = [...state.routines.filter(r => r.id !== routine.id), routine];
     setState(s => ({ ...s, routines: newRoutines }));
-    await saveData(state.profile, state.healthLogs, state.chatHistory, newRoutines);
+    await persistCurrentState({ routines: newRoutines });
   };
 
   const updateRoutine = async (id: string, updates: Partial<Routine>) => {
     if (!state.profile || state.isLocked) return;
     const newRoutines = state.routines.map(r => r.id === id ? { ...r, ...updates } : r);
     setState(s => ({ ...s, routines: newRoutines }));
-    await saveData(state.profile, state.healthLogs, state.chatHistory, newRoutines);
+    await persistCurrentState({ routines: newRoutines });
   };
 
   const logHealthData = async (log: Partial<HealthDataLog>) => {
@@ -396,11 +461,18 @@ export const AITrainerProvider = ({ children }: { children: ReactNode }) => {
        newLogs.push({ date: today, ...log } as HealthDataLog);
      }
      
-     setState(s => ({ ...s, healthLogs: newLogs }));
-     await saveData(state.profile, newLogs, state.chatHistory, state.routines);
-     
-     // Only proactively inform AI if it's a manual UI trigger (has fewer fields or specific context)
-     // If it's the AI syncing data itself, we don't need to bounce a message back.
+     // AUTO-SYNC BASELINES: If we get weight/height in a log and profile doesn't have it, update profile
+     const profileUpdates: Partial<AITrainerProfile> = {};
+     if (log.weight && !state.profile.baselineWeight) profileUpdates.baselineWeight = log.weight;
+     // Note: Height is rarely in a log, but we'll check if it was passed in payload
+     if ((log as any).height && !state.profile.baselineHeight) profileUpdates.baselineHeight = (log as any).height;
+
+     const finalProfile = Object.keys(profileUpdates).length > 0 
+        ? { ...state.profile, ...profileUpdates } 
+        : state.profile;
+
+     setState(s => ({ ...s, healthLogs: newLogs, profile: finalProfile }));
+     await persistCurrentState({ profile: finalProfile, healthLogs: newLogs });
   };
 
   const extractStatsFromThought = (thought: string) => {
@@ -432,13 +504,26 @@ export const AITrainerProvider = ({ children }: { children: ReactNode }) => {
               
               if (actionType === 'update_metrics') {
                   console.log("AI Action: update_metrics", payload);
-                  await logHealthData(payload);
+                  const parsedPayload = { ...payload };
+                  if (typeof parsedPayload.weight === 'string') parsedPayload.weight = parseFloat(parsedPayload.weight);
+                  if (typeof parsedPayload.height === 'string') parsedPayload.height = parseFloat(parsedPayload.height);
+                  if (typeof parsedPayload.baselineHeight === 'string') parsedPayload.baselineHeight = parseFloat(parsedPayload.baselineHeight);
+                  if (parsedPayload.baselineHeight && !parsedPayload.height) {
+                      parsedPayload.height = parsedPayload.baselineHeight;
+                  }
+                  await logHealthData(parsedPayload);
               } else if (actionType === 'sync_supplements') {
                   console.log("AI Action: sync_supplements", payload);
                   if (state.profile) {
                       const newSupps = [...(state.profile.supplements || []), { ...payload, id: Date.now().toString() }];
                       await updateProfile({ supplements: newSupps });
                   }
+              } else if (actionType === 'update_identity') {
+                   console.log("AI Action: update_identity", payload);
+                   await updateIdentity(payload);
+              } else if (actionType === 'add_soul_insight') {
+                   console.log("AI Action: add_soul_insight", payload);
+                   await addSoulInsight({ ...payload, source: 'conversation' });
               } else if (actionType === 'propose_routine') {
                    console.log("AI Action: propose_routine", payload);
                    const newRoutine: Routine = {
@@ -450,7 +535,7 @@ export const AITrainerProvider = ({ children }: { children: ReactNode }) => {
                    await addRoutine(newRoutine);
               } else if (actionType === 'complete_onboarding') {
                   console.log("AI Action: complete_onboarding");
-                  await updateProfile({ onboardingComplete: true });
+                  await completeOnboarding();
               }
           } catch (e) {
               console.error("Failed to parse action payload", e);
@@ -464,26 +549,65 @@ export const AITrainerProvider = ({ children }: { children: ReactNode }) => {
           return;
       }
 
+      const today = new Date().toISOString().split('T')[0];
+      let currentHistory = [...state.chatHistory];
+      let currentProfile = ensureSoul(state.profile);
+
+      // DAILY COMPACTION: If first message of a new day, compact old history
+      const lastMessageDate = state.chatHistory.length > 0 ? new Date().toISOString().split('T')[0] : null; // Simple check, could be more robust
+      const isNewDay = state.profile.soul?.lastCompactionDate !== today && state.chatHistory.length > 5;
+
+      if (isNewDay) {
+          console.log("Titan Engine: New day detected. Compacting history...");
+          // In a real implementation, we'd send the history to the LLM to get a summary
+          // For this prototype, we'll keep the last 5 messages and summarize the rest into a 'soul insight'
+          const oldMessages = currentHistory.slice(0, -5);
+          if (oldMessages.length > 0) {
+              const summaryInsight: PhysicalInsight = {
+                  date: today,
+                  type: 'recovery',
+                  content: `Daily Session Summary: User discussed ${state.profile.goals[0]}. Performance capacity was ${state.predictedPerformance || 'nominal'}.`,
+                  source: 'metric'
+              };
+              currentProfile = {
+                  ...currentProfile,
+                  soul: {
+                      ...currentProfile.soul!,
+                      insights: [summaryInsight, ...currentProfile.soul!.insights].slice(0, 50),
+                      lastCompactionDate: today
+                  }
+              };
+              currentHistory = currentHistory.slice(-5);
+          }
+      }
+
       const userMessage: Message = { role: 'user', content };
-      const newHistory = [...state.chatHistory, userMessage];
+      const newHistory = [...currentHistory, userMessage];
       const tempHistory = [...newHistory, { role: 'assistant', content: '' } as Message];
       
-      setState(s => ({ ...s, chatHistory: tempHistory, isLoading: true, error: null }));
+      setState(s => ({ ...s, chatHistory: tempHistory, profile: currentProfile, isLoading: true, error: null }));
+
+      // Save user message immediately so it's not lost on reload during streaming
+      try {
+          await persistCurrentState({ profile: currentProfile, chatHistory: newHistory });
+      } catch (saveErr) {
+          console.warn("Titan Engine: Pre-save failed (continuing streaming):", saveErr);
+      }
 
       try {
           // Prepare context
-          const systemPrompt = generateAITrainerPrompt(state.profile);
+          const latestLog = state.healthLogs[state.healthLogs.length - 1];
+          const systemPrompt = generateAITrainerPrompt(currentProfile, latestLog);
           const recentLogs = state.healthLogs.slice(-5).map(l => JSON.stringify(l)).join("\\n");
 
-          // Inject logs into system prompt or pass as context
           const fullPrompt = `${systemPrompt}\n\nRecent Health Logs:\n${recentLogs || 'No recent logs.'}`;
 
           let streamingContent = '';
-          const { response, updatedHistory } = await streamMessage(content, {
+          const { updatedHistory } = await streamMessage(content, {
               systemPrompt: fullPrompt,
               insights: [],
-              summary: "A user chatting with their AI Trainer.",
-              history: state.chatHistory // send old history
+              summary: "A user chatting with their AI Trainer Titan Engine.",
+              history: currentHistory 
           }, (chunk) => {
               streamingContent += chunk;
               setState(s => {
@@ -495,20 +619,19 @@ export const AITrainerProvider = ({ children }: { children: ReactNode }) => {
               });
           });
 
-          // The updatedHistory will contain the new messages (including thought blocks)
-          // We extract stats from the AI's latest response thought block
           const aiMessage = updatedHistory[updatedHistory.length - 1];
           if (aiMessage && aiMessage.role === 'assistant') {
               const thoughtMatch = aiMessage.content.match(/<thought>([\s\S]*?)<\/thought>/);
               if (thoughtMatch) {
                   extractStatsFromThought(thoughtMatch[1]);
               }
-              // Process any action tags
               await processActions(aiMessage.content);
           }
 
           setState(s => ({ ...s, chatHistory: updatedHistory, isLoading: false }));
-          await saveData(state.profile!, state.healthLogs, updatedHistory, state.routines);
+          
+          // Final save of full conversation history
+          await persistCurrentState({ chatHistory: updatedHistory });
 
       } catch (e: any) {
           console.error("Failed to send message", e);
@@ -518,7 +641,7 @@ export const AITrainerProvider = ({ children }: { children: ReactNode }) => {
       }
   };
 
-  const lock = () => {
+  const lockLocal = () => {
     passwordRef.current = null;
     setState(s => ({
       isLocked: true,
@@ -526,6 +649,7 @@ export const AITrainerProvider = ({ children }: { children: ReactNode }) => {
       isOnboarding: s.isOnboarding,
       isLoading: false,
       error: null,
+      lastPersistenceError: s.lastPersistenceError,
       profile: null,
       healthLogs: [],
       chatHistory: [],
@@ -536,18 +660,44 @@ export const AITrainerProvider = ({ children }: { children: ReactNode }) => {
     }));
   };
 
+  const lock = () => {
+    lockVault();
+    lockLocal();
+  };
+
+  const resetAITrainerData = async () => {
+    if (!user) return;
+    const db = new FirebaseDataService(user);
+    await db.deleteAITrainerData(user.uid);
+    sessionStorage.removeItem(SESSION_HINT_KEY);
+    lockLocal();
+    window.location.reload();
+  };
+
+  useEffect(() => {
+    if (!user || state.isGuest) return;
+    if (!isUnlocked && !state.isLocked) {
+      lockLocal();
+    }
+  }, [isUnlocked, user, state.isGuest, state.isLocked]);
+
   return (
     <AITrainerContext.Provider value={{
       ...state,
       unlock,
       setupProfile,
       updateProfile,
+      updateIdentity,
+      addSoulInsight,
+      completeOnboarding,
       logHealthData,
       addRoutine,
       updateRoutine,
       sendMessageToTrainer,
       lock,
       migrateGuestToUser,
+      resetAITrainerData,
+      isProfileComplete: state.profile ? isProfileComplete(state.profile, state.chatHistory) : false,
     }}>
       {children}
     </AITrainerContext.Provider>

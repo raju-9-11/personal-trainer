@@ -1,10 +1,7 @@
-import { Routes, Route, useLocation, Link } from 'react-router-dom'
+import { Routes, Route, useLocation } from 'react-router-dom'
 import { useEffect, useState } from 'react'
-import { useTheme } from './components/ThemeContext'
 import { BootLoader } from './components/ui/boot-loader'
 import { AnimatePresence } from 'framer-motion'
-import { Lock, Sun, Moon } from 'lucide-react'
-import { Button } from './components/ui/button'
 import HomePage from './pages/HomePage'
 import TrainerPage from './pages/TrainerPage'
 import AdminPage from './pages/AdminPage'
@@ -22,6 +19,7 @@ const AITrainerPage = React.lazy(() => import('./pages/AITrainerPage'))
 const TherapyAuth = React.lazy(() => import('./pages/TherapyAuth'))
 const AnonymousChat = React.lazy(() => import('./components/therapist/AnonymousChat'))
 const ProfilePage = React.lazy(() => import('./pages/profile/ProfilePage'))
+const VaultPage = React.lazy(() => import('./pages/VaultPage'))
 
 function ScrollToTop() {
   const { pathname, search } = useLocation()
@@ -35,9 +33,6 @@ function ScrollToTop() {
 
 function App() {
   const [booting, setBooting] = useState(true)
-  const { theme, toggleTheme } = useTheme()
-  const location = useLocation()
-
   useEffect(() => {
     // Simulate enterprise-level boot sequence
     const timer = setTimeout(() => {
@@ -45,8 +40,6 @@ function App() {
     }, 2000)
     return () => clearTimeout(timer)
   }, [])
-
-  const isAdminPage = location.pathname.startsWith('/admin')
 
   return (
     <>
@@ -64,6 +57,11 @@ function App() {
             <Route path="/admin/login" element={<LoginPage />} />
             <Route path="/admin/dashboard" element={<DashboardPage />} />
             <Route path="/payment" element={<MockPaymentPage />} />
+            <Route path="/vault" element={
+              <Suspense fallback={<BootLoader />}>
+                <VaultPage />
+              </Suspense>
+            } />
             
             {/* AI Trainer Route */}
             <Route path="/ai-trainer" element={

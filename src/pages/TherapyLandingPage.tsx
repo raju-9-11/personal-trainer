@@ -1,9 +1,10 @@
 
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Shield, Lock, Zap, User, Brain, Heart, ArrowRight } from 'lucide-react';
 import { useAuth } from '../lib/auth-context';
+import { AppNavbar } from '../components/layout/app-navbar';
 
 export default function TherapyLandingPage() {
   const navigate = useNavigate();
@@ -12,27 +13,7 @@ export default function TherapyLandingPage() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900 text-slate-900 dark:text-slate-100 font-sans">
       
-      {/* Navigation */}
-      <nav className="container mx-auto px-6 py-4 flex justify-between items-center">
-        <Link to="/" className="text-xl font-bold tracking-tighter flex items-center gap-2">
-            <Brain className="w-6 h-6 text-indigo-600 dark:text-indigo-400" />
-            <span>Mind<span className="text-indigo-600 dark:text-indigo-400">Vault</span></span>
-        </Link>
-        <div className="flex items-center gap-4">
-            <Link to="/" className="text-sm font-medium hover:text-indigo-600 transition-colors hidden md:block">
-                Fitness Home
-            </Link>
-            {user ? (
-                <Button variant="outline" onClick={() => navigate('/therapy/session')}>
-                    Enter Vault
-                </Button>
-            ) : (
-                <Button variant="ghost" onClick={() => navigate('/therapy/auth')}>
-                    Login
-                </Button>
-            )}
-        </div>
-      </nav>
+      <AppNavbar />
 
       {/* Hero Section */}
       <header className="container mx-auto px-6 py-16 md:py-24 text-center">
@@ -48,7 +29,7 @@ export default function TherapyLandingPage() {
         </p>
         
         <div className="flex flex-col md:flex-row gap-4 justify-center items-center">
-          <Button size="lg" className="h-14 px-8 text-lg rounded-full shadow-lg shadow-indigo-500/20" onClick={() => navigate(user ? '/therapy/session' : '/therapy/auth')}>
+          <Button size="lg" className="h-14 px-8 text-lg rounded-full shadow-lg shadow-indigo-500/20" onClick={() => navigate(user ? '/therapy/session' : '/vault?returnTo=/therapy/session')}>
              {user ? 'Continue Session' : 'Start New Journey'}
              <ArrowRight className="ml-2 w-5 h-5" />
           </Button>

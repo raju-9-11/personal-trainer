@@ -86,7 +86,7 @@ function AnonymousChatContent() {
                 </div>
             </div>
         </div>
-        <Link to="/therapy/auth">
+        <Link to="/vault">
             <Button size="sm" variant="outline" className="hidden md:flex">
                 Save Progress (Register)
             </Button>

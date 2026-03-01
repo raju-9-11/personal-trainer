@@ -12,6 +12,7 @@ import { encryptData, decryptData } from '../../lib/encryption';
 import { doc, setDoc, deleteDoc } from 'firebase/firestore';
 import { getFirebase } from '../../lib/firebase';
 import { useAuth } from '../../lib/auth-context';
+import { useVault } from '../../lib/vault-context';
 
 import { AIProvider } from '../../lib/ai/ai-context';
 
@@ -31,18 +32,18 @@ export function TherapyContainer({
   encryptedProfile 
 }: TherapyContainerProps) {
   const { user } = useAuth();
+  const { getSessionPassword, setSessionPassword, lockVault, isUnlocked } = useVault();
   const [mode, setMode] = useState<ExtendedTherapyMode>(initialMode);
   const [context, setContext] = useState<BaseContext>(initialContext || { integratedInsights: [] });
   const [activeSession, setActiveSession] = useState<ActiveSession | null>(null);
   const [selectedTherapist, setSelectedTherapist] = useState<GeneratedTherapist | undefined>(initialTherapist);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [vaultPassword, setVaultPassword] = useState<string | null>(null);
-  const SESSION_KEY = 'titan_vault_session_pwd';
 
   // Cross-Unlock: Automatically attempt to unlock if a password exists in shared session
   useEffect(() => {
     const checkAutoUnlock = async () => {
-        const sessionPwd = sessionStorage.getItem(SESSION_KEY);
+        const sessionPwd = getSessionPassword();
         if (sessionPwd && encryptedProfile && mode === 'locked') {
             const success = await handleUnlock(sessionPwd);
             if (!success) {
@@ -52,7 +53,14 @@ export function TherapyContainer({
         }
     };
     checkAutoUnlock();
-  }, [mode, encryptedProfile]);
+  }, [mode, encryptedProfile, getSessionPassword]);
+
+  useEffect(() => {
+    if (!isUnlocked && mode === 'session') {
+      setVaultPassword(null);
+      setMode('locked');
+    }
+  }, [isUnlocked, mode]);
 
   const handleIntakeComplete = async (transcript: any[]) => {
     setIsAnalyzing(true);
@@ -82,7 +90,7 @@ export function TherapyContainer({
       if (!user || !selectedTherapist) return;
       
       setVaultPassword(password);
-      sessionStorage.setItem(SESSION_KEY, password);
+      setSessionPassword(password);
       
       try {
           const soulData = JSON.stringify({
@@ -139,7 +147,7 @@ export function TherapyContainer({
           setContext(normalizedContext);
           setSelectedTherapist(decryptedSoul.therapist);
           setVaultPassword(password);
-          sessionStorage.setItem(SESSION_KEY, password);
+          setSessionPassword(password);
 
           // Check for active "Moment"
           if (encryptedProfile.encryptedMoment && encryptedProfile.momentIv && encryptedProfile.momentSalt) {
@@ -173,7 +181,7 @@ export function TherapyContainer({
           setContext({ integratedInsights: [] });
           setSelectedTherapist(undefined);
           setVaultPassword(null);
-          sessionStorage.removeItem(SESSION_KEY);
+          lockVault();
           setActiveSession(null);
           setMode('intake');
       } catch (e) {

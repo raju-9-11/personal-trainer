@@ -1,14 +1,18 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useAITrainer } from './AITrainerContext';
 import { Button } from '../ui/button';
 import { Send, Bot, Loader2, Sparkles, ShieldCheck, Zap, Activity } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { motion, AnimatePresence } from 'framer-motion';
+import { stripInternalTags } from '../../lib/ai/sanitize';
 
 export const AITrainerOnboarding = () => {
-  const { chatHistory, sendMessageToTrainer, isLoading, error, profile } = useAITrainer();
+  const { chatHistory, sendMessageToTrainer, isLoading, error, profile, completeOnboarding } = useAITrainer();
   const [input, setInput] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [completionSent, setCompletionSent] = useState(false);
+  const [isCompleting, setIsCompleting] = useState(false);
+  const [showContinue, setShowContinue] = useState(false);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -23,11 +27,9 @@ export const AITrainerOnboarding = () => {
   };
 
   const renderContent = (content: string) => {
-    const publicContent = content.replace(/<(thought|action)[\s\S]*?<\/\1>/g, '').trim();
-    if (!publicContent && content.includes('<thought>')) {
-        return <span className="italic text-muted-foreground">Neural engine analyzing biometrics...</span>;
-    }
-    return <ReactMarkdown>{publicContent}</ReactMarkdown>;
+    const { publicText } = stripInternalTags(content);
+    if (!publicText) return null;
+    return <ReactMarkdown>{publicText}</ReactMarkdown>;
   };
 
   // Calculate "Sync Progress" based on profile fields and tracking level
@@ -54,6 +56,49 @@ export const AITrainerOnboarding = () => {
   };
 
   const progress = getProgress();
+
+  useEffect(() => {
+    if (!profile || completionSent || isCompleting) return;
+    if (progress === 100 && !profile.onboardingComplete) {
+      const finish = async () => {
+          setIsCompleting(true);
+          try {
+              await completeOnboarding();
+              setCompletionSent(true);
+          } catch (err) {
+              console.error("Failed to complete onboarding", err);
+              setShowContinue(true);
+          } finally {
+              setIsCompleting(false);
+          }
+      };
+      finish();
+    }
+  }, [progress, profile, completionSent, isCompleting, completeOnboarding]);
+
+  useEffect(() => {
+    if (!profile) return;
+    if (progress === 100 && !profile.onboardingComplete) {
+      const timer = setTimeout(() => setShowContinue(true), 1500);
+      return () => clearTimeout(timer);
+    }
+    setShowContinue(false);
+  }, [progress, profile?.onboardingComplete, profile]);
+
+  const handleContinue = async () => {
+    if (!profile || isCompleting) return;
+    setIsCompleting(true);
+    try {
+      await completeOnboarding();
+      setCompletionSent(true);
+      setShowContinue(false);
+    } catch (err) {
+      console.error("Manual completion failed", err);
+      setShowContinue(true);
+    } finally {
+      setIsCompleting(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center p-4 relative overflow-hidden">
@@ -105,6 +150,18 @@ export const AITrainerOnboarding = () => {
         </div>
 
         {/* Chat / Conversation Area */}
+        {progress === 100 && (
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-primary/20 bg-primary/10 p-4">
+            <div className="text-xs uppercase tracking-widest font-bold text-primary">
+              Sync complete. Preparing dashboard...
+            </div>
+            {(showContinue || isCompleting) && (
+              <Button size="sm" onClick={handleContinue} disabled={isCompleting} className="rounded-full px-5">
+                {isCompleting ? "Finalizing..." : "Continue to Dashboard"}
+              </Button>
+            )}
+          </div>
+        )}
         <div className="flex-1 overflow-y-auto space-y-6 mb-6 p-6 bg-white/[0.02] border border-white/10 rounded-3xl backdrop-blur-xl">
             {chatHistory.length === 0 ? (
                 <div className="h-full flex flex-col items-center justify-center text-center space-y-6">
@@ -128,6 +185,8 @@ export const AITrainerOnboarding = () => {
                 chatHistory.map((msg, idx) => {
                     if (msg.role === 'system' || (msg.role === 'user' && msg.content.startsWith('[SYSTEM:'))) return null;
                     const isUser = msg.role === 'user';
+                    const rendered = renderContent(msg.content);
+                    if (!rendered) return null;
                     return (
                         <motion.div 
                             key={idx} 
@@ -140,7 +199,7 @@ export const AITrainerOnboarding = () => {
                             </div>
                             <div className={`max-w-[80%] p-5 rounded-3xl ${isUser ? 'bg-primary/20 border border-primary/30 rounded-tr-none' : 'bg-white/[0.05] border border-white/10 rounded-tl-none'}`}>
                                 <div className="prose prose-invert prose-sm">
-                                    {renderContent(msg.content)}
+                                    {rendered}
                                 </div>
                             </div>
                         </motion.div>

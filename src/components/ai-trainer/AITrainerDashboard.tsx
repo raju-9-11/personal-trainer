@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { useAITrainer } from './AITrainerContext';
-import { Activity, Dumbbell, Quote, Droplets, Moon, Utensils, AlertTriangle, TrendingUp, TrendingDown, Target, Zap, Shield, Save, CheckCircle2, FlaskConical, HeartPulse } from 'lucide-react';
+import { Activity, Dumbbell, Quote, Droplets, Moon, Utensils, AlertTriangle, TrendingUp, TrendingDown, Target, Zap, Shield, Save, CheckCircle2, FlaskConical, HeartPulse, History, User } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Button } from '../ui/button';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 
@@ -33,11 +34,37 @@ const ProgressRing = ({ value, label, icon: Icon, color }: { value: number, labe
   );
 };
 
+const RoutineView = ({ routine }: { routine?: any }) => {
+    if (!routine) return (
+        <div className="text-center py-8 text-muted-foreground">
+            <Dumbbell className="w-12 h-12 mx-auto mb-2 opacity-20" />
+            <p className="text-sm">No protocol active for this timeframe.</p>
+        </div>
+    );
+
+    return (
+        <div className="space-y-4">
+            <p className="text-xs italic text-muted-foreground">Rationale: {routine.rationale}</p>
+            <div className="space-y-2">
+                {routine.exercises.map((ex: any, i: number) => (
+                    <div key={i} className="flex justify-between items-center p-3 bg-muted/30 rounded-lg border border-muted">
+                        <div>
+                            <p className="text-sm font-bold">{ex.name}</p>
+                            {ex.notes && <p className="text-[10px] text-muted-foreground">{ex.notes}</p>}
+                        </div>
+                        <div className="text-right">
+                            <p className="text-sm font-bold text-primary">{ex.sets} <span className="text-muted-foreground font-normal text-xs">sets</span> x {ex.reps}</p>
+                        </div>
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+};
+
 export const AITrainerDashboard = () => {
-  const { profile, healthLogs, predictedPerformance, dailyQuote, isGuest, routines, migrateGuestToUser } = useAITrainer();
+  const { profile, healthLogs, predictedPerformance, dailyQuote, isGuest, routines, isProfileComplete } = useAITrainer();
   const navigate = useNavigate();
-  const [migrationPassword, setMigrationPassword] = useState('');
-  const [showMigration, setShowMigration] = useState(false);
 
   if (!profile) return null;
 
@@ -46,21 +73,24 @@ export const AITrainerDashboard = () => {
   const thisWeekLogs = healthLogs.slice(-7);
   const consistency = thisWeekLogs.length;
 
-  const weightTrend = prevLog && latestLog.weight && prevLog.weight
-    ? latestLog.weight < prevLog.weight ? 'down' : latestLog.weight > prevLog.weight ? 'up' : 'stable'
-    : 'none';
-
-  const activeRoutine = routines.find(r => r.status === 'active');
-
-  const handleMigration = async () => {
-      if (migrationPassword.length < 6) return;
-      navigate('/admin/login?redirect=ai'); 
-      // In a real flow, we'd wait for login then call migrateGuestToUser
-      // For this prototype, we'll prompt them to log in first.
-  };
+  const dailyRoutine = routines.find(r => r.timeframe === 'daily' && r.status === 'active');
+  const weeklyRoutine = routines.find(r => r.timeframe === 'weekly' && r.status === 'active');
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-20">
+      {!isProfileComplete && (
+        <Card className="bg-primary/10 border-primary/30">
+            <CardContent className="p-4 flex items-center justify-between gap-4">
+                <div>
+                    <p className="text-sm font-bold text-primary">Finish Onboarding</p>
+                    <p className="text-xs text-muted-foreground">Your profile is prefilled. Complete onboarding to unlock full analytics.</p>
+                </div>
+                <Button size="sm" onClick={() => navigate('/ai-trainer?onboarding=1')}>
+                    Finish Onboarding
+                </Button>
+            </CardContent>
+        </Card>
+      )}
       
       {/* Guest Mode Banner */}
       {isGuest && (
@@ -73,7 +103,7 @@ export const AITrainerDashboard = () => {
                         <p className="text-xs text-muted-foreground">Your data is stored locally. Sign in to permanently encrypt and save your vault.</p>
                     </div>
                 </div>
-                <Button size="sm" variant="outline" className="border-orange-500/50 hover:bg-orange-500/20" onClick={() => navigate('/admin/login')}>
+                <Button size="sm" variant="outline" className="border-orange-500/50 hover:bg-orange-500/20" onClick={() => navigate('/vault?returnTo=/ai-trainer')}>
                     <Save className="w-4 h-4 mr-2" /> Save Vault
                 </Button>
             </CardContent>
@@ -97,17 +127,17 @@ export const AITrainerDashboard = () => {
             <div className="flex-1 space-y-4 text-center md:text-left">
               <div>
                 <h3 className="text-2xl font-bold flex items-center justify-center md:justify-start gap-2">
-                   <Shield className="w-6 h-6 text-primary" /> Neural Performance Status
+                   <Shield className="w-6 h-6 text-primary" /> Titan Engine Status
                 </h3>
                 <p className="text-muted-foreground mt-2 leading-relaxed">
-                   Your capacity is {predictedPerformance ? 'calculated based on biometric telemetry' : 'currently at baseline'}. 
-                   {latestLog?.cnsFatigueScore && latestLog.cnsFatigueScore > 7 ? " Warning: High CNS fatigue detected." : " Systems optimized for training."}
+                   Operating at {predictedPerformance || 85}% efficiency. 
+                   {latestLog?.cnsFatigueScore && latestLog.cnsFatigueScore > 7 ? " Warning: CNS overload detected. Adapting protocols." : " Neural pathways clear. Protocols optimized for performance."}
                 </p>
               </div>
               <div className="flex flex-wrap gap-2 justify-center md:justify-start">
-                 <span className="px-3 py-1 bg-primary/10 rounded-full text-[10px] font-bold uppercase text-primary border border-primary/20">Recovery Active</span>
-                 <span className="px-3 py-1 bg-green-500/10 rounded-full text-[10px] font-bold uppercase text-green-500 border border-green-500/20">Data Synced</span>
-                 {!isGuest && <span className="px-3 py-1 bg-blue-500/10 rounded-full text-[10px] font-bold uppercase text-blue-500 border border-blue-500/20">E2E Encrypted</span>}
+                 <span className="px-3 py-1 bg-primary/10 rounded-full text-[10px] font-bold uppercase text-primary border border-primary/20">Titan Core Active</span>
+                 <span className="px-3 py-1 bg-green-500/10 rounded-full text-[10px] font-bold uppercase text-green-500 border border-green-500/20">Identity Synced</span>
+                 {profile.trackingLevel === 'indepth' && <span className="px-3 py-1 bg-purple-500/10 rounded-full text-[10px] font-bold uppercase text-purple-500 border border-purple-500/20">Biological Tracking</span>}
               </div>
             </div>
           </CardContent>
@@ -119,130 +149,122 @@ export const AITrainerDashboard = () => {
           <CardContent className="p-8 h-full flex flex-col justify-between relative z-10">
             <Quote className="w-10 h-10 text-primary/20 mb-4" />
             <p className="text-xl italic font-serif leading-relaxed text-foreground/90">
-              "{dailyQuote || "The only way to finish is to start. Your goals are waiting for your actions, not your excuses."}"
+              "{dailyQuote || "Your potential is a limited resource until you apply discipline. Let's optimize."}"
             </p>
             <div className="mt-8 flex items-center gap-3">
                <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center font-bold text-primary-foreground">{profile.name[0]}</div>
                <div>
                   <p className="text-sm font-bold">{profile.name}</p>
-                  <p className="text-[10px] uppercase text-muted-foreground tracking-widest">AI Lead Strategist</p>
+                  <p className="text-[10px] uppercase text-muted-foreground tracking-widest">Titan Engine Strategist</p>
                </div>
             </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Advanced Telemetry & Active Protocol Grid */}
+      {/* Protocol & History Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           
-          {/* Active Training Protocol */}
+          {/* Training Protocols */}
           <Card className="bg-card border-primary/20 shadow-md">
-              <CardHeader className="border-b pb-4">
-                  <div className="flex justify-between items-center">
-                      <CardTitle className="flex items-center gap-2 text-lg">
-                          <Dumbbell className="w-5 h-5 text-primary" /> Active Protocol
-                      </CardTitle>
-                      {activeRoutine && <span className="px-2 py-1 bg-primary/10 text-primary text-[10px] font-bold uppercase rounded">{activeRoutine.timeframe}</span>}
-                  </div>
+              <CardHeader className="pb-4 border-b">
+                  <CardTitle className="flex items-center gap-2 text-lg">
+                      <Dumbbell className="w-5 h-5 text-primary" /> Training Protocols
+                  </CardTitle>
               </CardHeader>
-              <CardContent className="pt-4">
-                  {!activeRoutine ? (
-                      <div className="text-center py-8 text-muted-foreground">
-                          <Dumbbell className="w-12 h-12 mx-auto mb-2 opacity-20" />
-                          <p className="text-sm">No active protocol.</p>
-                          <p className="text-xs">Ask your trainer to generate a daily or weekly routine.</p>
-                      </div>
-                  ) : (
-                      <div className="space-y-4">
-                          <p className="text-xs italic text-muted-foreground">Rationale: {activeRoutine.rationale}</p>
-                          <div className="space-y-2">
-                              {activeRoutine.exercises.map((ex, i) => (
-                                  <div key={i} className="flex justify-between items-center p-3 bg-muted/30 rounded-lg border border-muted">
-                                      <div>
-                                          <p className="text-sm font-bold">{ex.name}</p>
-                                          {ex.notes && <p className="text-[10px] text-muted-foreground">{ex.notes}</p>}
-                                      </div>
-                                      <div className="text-right">
-                                          <p className="text-sm font-bold text-primary">{ex.sets} <span className="text-muted-foreground font-normal text-xs">sets</span> x {ex.reps}</p>
-                                      </div>
-                                  </div>
-                              ))}
-                          </div>
-                      </div>
-                  )}
+              <CardContent className="pt-6">
+                  <Tabs defaultValue="daily" className="w-full">
+                      <TabsList className="grid w-full grid-cols-2 mb-4">
+                          <TabsTrigger value="daily">Daily Session</TabsTrigger>
+                          <TabsTrigger value="weekly">Weekly Strategy</TabsTrigger>
+                      </TabsList>
+                      <TabsContent value="daily">
+                          <RoutineView routine={dailyRoutine} />
+                      </TabsContent>
+                      <TabsContent value="weekly">
+                          <RoutineView routine={weeklyRoutine} />
+                      </TabsContent>
+                  </Tabs>
               </CardContent>
           </Card>
 
-          {/* Biometric & Supplement Stack */}
+          {/* Physical Soul & Identity */}
           <div className="space-y-6">
-              {/* Biological Telemetry - INDEPTH ONLY */}
-              {profile.trackingLevel === 'indepth' && (
-                <Card className="bg-muted/10 border-none">
-                    <CardHeader className="pb-2">
-                        <CardTitle className="text-sm font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
-                            <HeartPulse className="w-4 h-4 text-red-500" /> Deep Biometrics
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent className="grid grid-cols-2 gap-4">
-                        <div className="p-3 bg-background rounded-xl border shadow-sm">
-                            <p className="text-[10px] uppercase text-muted-foreground font-bold mb-1">CNS Fatigue</p>
-                            <p className="text-2xl font-black">{latestLog.cnsFatigueScore || '--'}<span className="text-xs font-normal text-muted-foreground">/10</span></p>
-                        </div>
-                        <div className="p-3 bg-background rounded-xl border shadow-sm">
-                            <p className="text-[10px] uppercase text-muted-foreground font-bold mb-1">Mood Index</p>
-                            <p className="text-2xl font-black">{latestLog.moodScore || '--'}<span className="text-xs font-normal text-muted-foreground">/10</span></p>
-                        </div>
-                        {latestLog.testosteroneLevel && (
-                            <div className="p-3 bg-background rounded-xl border shadow-sm col-span-2">
-                                <p className="text-[10px] uppercase text-muted-foreground font-bold mb-1">Testosterone Baseline</p>
-                                <p className="text-2xl font-black">{latestLog.testosteroneLevel} <span className="text-xs font-normal text-muted-foreground">ng/dL</span></p>
-                            </div>
-                        )}
-                        {latestLog.menstrualCycleDay && (
-                            <div className="p-3 bg-background rounded-xl border shadow-sm col-span-2 flex justify-between items-end">
-                                <div>
-                                    <p className="text-[10px] uppercase text-muted-foreground font-bold mb-1">Cycle Day</p>
-                                    <p className="text-2xl font-black">{latestLog.menstrualCycleDay}</p>
-                                </div>
-                                <span className="px-2 py-1 bg-pink-500/10 text-pink-500 text-[10px] font-bold uppercase rounded border border-pink-500/20">{latestLog.menstrualPhase || 'Unknown'}</span>
-                            </div>
-                        )}
-                    </CardContent>
-                </Card>
-              )}
-
-              {/* Supplement Stack */}
+              {/* Soul Insights History */}
               <Card className="bg-muted/10 border-none">
                   <CardHeader className="pb-2">
                       <CardTitle className="text-sm font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
-                          <FlaskConical className="w-4 h-4 text-blue-500" /> Active Stack
+                          <History className="w-4 h-4 text-primary" /> Physical Soul History
                       </CardTitle>
                   </CardHeader>
-                  <CardContent>
-                      {!profile.supplements || profile.supplements.length === 0 ? (
-                          <p className="text-xs text-muted-foreground italic">No supplements documented. Tell your trainer what you take.</p>
+                  <CardContent className="space-y-3">
+                      {!profile.soul?.insights || profile.soul.insights.length === 0 ? (
+                          <p className="text-xs text-muted-foreground italic text-center py-4">No physical landmarks recorded yet.</p>
                       ) : (
-                          <div className="flex flex-wrap gap-2">
-                              {profile.supplements.map((supp, i) => (
-                                  <div key={i} className="flex items-center gap-2 px-3 py-1.5 bg-background border rounded-lg shadow-sm">
-                                      <CheckCircle2 className="w-3 h-3 text-green-500" />
-                                      <span className="text-xs font-bold">{supp.name}</span>
-                                      {supp.category && <span className="text-[9px] text-muted-foreground uppercase">{supp.category}</span>}
+                          <div className="max-h-[200px] overflow-y-auto space-y-2 pr-2 scrollbar-thin scrollbar-thumb-primary/20">
+                              {profile.soul.insights.map((insight, i) => (
+                                  <div key={i} className="p-2 bg-background/50 border rounded text-[11px] flex gap-2">
+                                      <span className="text-primary font-bold whitespace-nowrap">{insight.date}</span>
+                                      <span className="text-muted-foreground uppercase font-bold text-[9px] px-1 bg-muted rounded h-fit">{insight.type}</span>
+                                      <p className="text-foreground">{insight.content}</p>
                                   </div>
                               ))}
                           </div>
                       )}
                   </CardContent>
               </Card>
-          </div>
 
+              {/* Identity & Biological Context */}
+              <Card className="bg-muted/10 border-none">
+                  <CardHeader className="pb-2">
+                      <CardTitle className="text-sm font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+                          <User className="w-4 h-4 text-purple-500" /> Identity Matrix
+                      </CardTitle>
+                  </CardHeader>
+                  <CardContent className="grid grid-cols-2 gap-3">
+                      <div className="p-3 bg-background border rounded-lg">
+                          <p className="text-[9px] uppercase font-bold text-muted-foreground">Identity</p>
+                          <p className="text-sm font-bold truncate">{profile.soul?.identity?.genderIdentity || profile.gender}</p>
+                      </div>
+                      <div className="p-3 bg-background border rounded-lg">
+                          <p className="text-[9px] uppercase font-bold text-muted-foreground">Strategy</p>
+                          <p className="text-sm font-bold capitalize">{profile.soul?.identity?.preferredCoachingStyle || 'Clinical'}</p>
+                      </div>
+                      {profile.trackingLevel === 'indepth' && (
+                          <div className="p-3 bg-background border rounded-lg col-span-2 flex justify-between items-center">
+                              <div>
+                                  <p className="text-[9px] uppercase font-bold text-muted-foreground">Physiological Context</p>
+                                  <p className="text-xs">{profile.assignedAtBirth ? `Assigned at birth: ${profile.assignedAtBirth}` : 'Pending synchronization...'}</p>
+                              </div>
+                              <Shield className="w-4 h-4 text-primary/40" />
+                          </div>
+                      )}
+                  </CardContent>
+              </Card>
+
+              {/* Biometrics INDEPTH */}
+              {profile.trackingLevel === 'indepth' && latestLog.menstrualCycleDay && (
+                  <Card className="bg-pink-500/5 border border-pink-500/10">
+                      <CardContent className="p-4 flex justify-between items-center">
+                          <div className="flex items-center gap-3">
+                              <HeartPulse className="w-6 h-6 text-pink-500" />
+                              <div>
+                                  <p className="text-[10px] uppercase font-bold text-pink-500/70">Bio-Periodization</p>
+                                  <p className="text-sm font-black">Day {latestLog.menstrualCycleDay} - {latestLog.menstrualPhase}</p>
+                              </div>
+                          </div>
+                          <Zap className="w-5 h-5 text-pink-500 animate-pulse" />
+                      </CardContent>
+                  </Card>
+              )}
+          </div>
       </div>
 
-      {/* Recovery Rings */}
+      {/* Metrics Grid */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <ProgressRing value={latestLog?.dietQuality ? latestLog.dietQuality * 10 : 0} label="Diet Quality" icon={Utensils} color="stroke-green-500" />
-          <ProgressRing value={latestLog?.sleepHours ? Math.min(100, (latestLog.sleepHours / 8) * 100) : 0} label="Sleep Engine" icon={Moon} color="stroke-blue-500" />
-          <ProgressRing value={latestLog?.trainingIntensity ? latestLog.trainingIntensity * 10 : 0} label="Intensity" icon={Zap} color="stroke-orange-500" />
+          <ProgressRing value={latestLog?.dietQuality ? latestLog.dietQuality * 10 : 0} label="Diet Load" icon={Utensils} color="stroke-green-500" />
+          <ProgressRing value={latestLog?.sleepHours ? Math.min(100, (latestLog.sleepHours / 8) * 100) : 0} label="Neural Recovery" icon={Moon} color="stroke-blue-500" />
+          <ProgressRing value={latestLog?.trainingIntensity ? latestLog.trainingIntensity * 10 : 0} label="Output Power" icon={Zap} color="stroke-orange-500" />
           <ProgressRing value={(consistency / 7) * 100} label="Consistency" icon={Target} color="stroke-primary" />
       </div>
     </div>

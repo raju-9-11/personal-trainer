@@ -4,6 +4,7 @@ import { Button } from '../../ui/button';
 import { Send, User, Bot, Loader2, AlertCircle, Dumbbell, CheckCircle2 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { Routine } from '../../../lib/types';
+import { stripInternalTags } from '../../../lib/ai/sanitize';
 
 export const AITrainerChat = () => {
   const { chatHistory, sendMessageToTrainer, isLoading, error, profile, routines, updateRoutine } = useAITrainer();
@@ -69,36 +70,19 @@ export const AITrainerChat = () => {
       }
   };
 
-  const renderContent = (content: string, msgIndex: number) => {
-    // 1. Check for thought blocks
-    let publicContent = content;
-    const thoughtMatch = content.match(/<thought>([\s\S]*?)<\/thought>/);
-    let thoughtContent = null;
-    
-    if (thoughtMatch) {
-      thoughtContent = thoughtMatch[1].trim();
-      publicContent = content.replace(/<thought>[\s\S]*?<\/thought>/g, '').trim();
-    } else if (content.includes('<thought>')) {
-      const parts = content.split('<thought>');
-      publicContent = parts[0].trim();
-      thoughtContent = parts[1];
-    }
+  const renderContent = (content: string) => {
+    const routineCard = renderRoutineCard(content);
+    const { publicText } = stripInternalTags(content);
 
-    // 2. Extract action tags out of public view
-    const routineCard = renderRoutineCard(publicContent);
-    const cleanPublicContent = publicContent.replace(/<action[\s\S]*?<\/action>/g, '').trim();
-
-    // Guard against empty public content when thought is present
-    let displayContent = cleanPublicContent;
-    if (!displayContent && thoughtContent) {
-        displayContent = "*(The trainer is analyzing your telemetry...)*";
+    if (!publicText && !routineCard) {
+      return null;
     }
 
     return (
       <div className="flex flex-col gap-4 w-full">
-        {displayContent && (
-          <div className={`prose prose-sm dark:prose-invert max-w-none ${displayContent.startsWith('*') ? 'italic text-muted-foreground' : ''}`}>
-            <ReactMarkdown>{displayContent}</ReactMarkdown>
+        {publicText && (
+          <div className="prose prose-sm dark:prose-invert max-w-none">
+            <ReactMarkdown>{publicText}</ReactMarkdown>
           </div>
         )}
         {routineCard}
@@ -135,13 +119,15 @@ export const AITrainerChat = () => {
             if (msg.role === 'system') return null;
             if (msg.role === 'user' && msg.content.startsWith('[SYSTEM:')) return null;
             const isUser = msg.role === 'user';
+            const rendered = renderContent(msg.content);
+            if (!rendered) return null;
             return (
               <div key={idx} className={`flex gap-3 max-w-[90%] ${isUser ? 'ml-auto flex-row-reverse' : 'mr-auto'}`}>
                 <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${isUser ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
                   {isUser ? <User className="w-4 h-4" /> : <Bot className="w-4 h-4" />}
                 </div>
                 <div className={`p-4 rounded-2xl ${isUser ? 'bg-primary text-primary-foreground rounded-tr-sm' : 'bg-muted/50 border rounded-tl-sm w-full'}`}>
-                  {renderContent(msg.content, idx)}
+                  {rendered}
                 </div>
               </div>
             );

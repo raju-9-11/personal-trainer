@@ -13,7 +13,7 @@ import { DEFAULT_BRAND_NAME } from '@/lib/constants';
 import { BootLoader } from '@/components/ui/boot-loader';
 import { AnimatePresence } from 'framer-motion';
 import { Footer } from '@/components/layout/footer';
-import { HomeNavbar } from '@/components/layout/home-navbar';
+import { AppNavbar } from '@/components/layout/app-navbar';
 import { BrandIdentityContext } from '@/components/TrainerContext';
 import { Activity, ArrowRight, Brain } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -74,7 +74,7 @@ export default function HomePage() {
   return (
     <BrandIdentityContext.Provider value={{ identity: brand, loading: false }}>
       <main className="min-h-screen bg-background text-foreground">
-        <HomeNavbar />
+        <AppNavbar transparentOnTop />
         {/* Hero Section */}
         <section className="relative h-[80vh] flex items-center justify-center overflow-hidden">
           <div className="absolute inset-0 bg-black/60 z-10" />

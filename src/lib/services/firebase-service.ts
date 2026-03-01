@@ -601,4 +601,10 @@ export class FirebaseDataService implements DataProviderType {
     const collectionName = isShadow ? 'guest_shadows' : 'ai_trainers';
     await setDoc(doc(db, collectionName, uid), data, { merge: true });
   }
+
+  deleteAITrainerData = async (uid: string, isShadow = false): Promise<void> => {
+    const db = this.ensureDb();
+    const collectionName = isShadow ? 'guest_shadows' : 'ai_trainers';
+    await deleteDoc(doc(db, collectionName, uid));
+  }
 }

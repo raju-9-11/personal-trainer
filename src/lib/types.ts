@@ -154,6 +154,32 @@ export interface Supplement {
   isConsistent?: boolean;
 }
 
+export interface PhysicalInsight {
+  date: string;
+  type: 'pr' | 'injury' | 'recovery' | 'physiology' | 'identity';
+  content: string;
+  source: 'conversation' | 'metric';
+}
+
+export interface IdentityContext {
+  genderIdentity: string;
+  assignedAtBirth?: 'female' | 'male';
+  preferredCoachingStyle: 'aggressive' | 'clinical' | 'empathetic';
+  identityNotes?: string;
+  lastUpdated: string;
+}
+
+export interface PhysicalSoul {
+  insights: PhysicalInsight[];
+  biometricTrends: {
+    weightTrend: 'up' | 'down' | 'stable';
+    avgSleep: number;
+    intensityBias: number; // 1-10 (how hard they usually push)
+  };
+  identity: IdentityContext;
+  lastCompactionDate?: string;
+}
+
 export interface AITrainerProfile {
   name: string;
   gender: 'female' | 'male' | 'non-binary' | string;
@@ -165,6 +191,7 @@ export interface AITrainerProfile {
   supplements?: Supplement[];
   onboardingComplete?: boolean;
   trackingLevel?: 'standard' | 'indepth';
+  soul?: PhysicalSoul; // The "Titan Engine" Soul
 }
 
 export interface HealthDataLog {

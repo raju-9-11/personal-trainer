@@ -1,14 +1,26 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useAITrainer } from './AITrainerContext';
 import { Button } from '../ui/button';
 import { Lock, UserPlus, ArrowRight, ArrowLeft, CheckCircle2, ShieldCheck, Dumbbell, Sparkles, Save, Zap, Activity } from 'lucide-react';
 import { AITrainerProfile } from '../../lib/types';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useVault } from '../../lib/vault-context';
+import { useNavigate } from 'react-router-dom';
 
 export const AITrainerAuth = () => {
-  const { unlock, setupProfile, hasProfile, isGuest, profile, isLoading, error } = useAITrainer();
+  const { unlock, setupProfile, hasProfile, isGuest, profile, isLoading, error, lastPersistenceError } = useAITrainer();
+  const { hasTherapyVault, isUnlocked, getSessionPassword } = useVault();
+  const navigate = useNavigate();
   const [password, setPassword] = useState('');
   const [isRegistering, setIsRegistering] = useState(!hasProfile || isGuest);
+
+  // Re-sync isRegistering when hasProfile changes (e.g., after loading finishes)
+  useEffect(() => {
+    if (hasProfile && !isGuest) {
+      setIsRegistering(false);
+    }
+  }, [hasProfile, isGuest]);
+
   const [step, setStep] = useState(isGuest ? 4 : 0); // Step 0 is Tracking Level Selection
   const [trackingLevel, setTrackingLevel] = useState<'standard' | 'indepth'>(profile?.trackingLevel || 'standard');
 
@@ -23,8 +35,22 @@ export const AITrainerAuth = () => {
     if (password) await unlock(password);
   };
 
+  const effectivePassword = useMemo(() => {
+    if (password) return password;
+    if (hasTherapyVault && isUnlocked) {
+      return getSessionPassword() || '';
+    }
+    return '';
+  }, [password, hasTherapyVault, isUnlocked, getSessionPassword]);
+
+  useEffect(() => {
+    if (effectivePassword && !password) {
+      setPassword(effectivePassword);
+    }
+  }, [effectivePassword, password]);
+
   const handleSetup = async () => {
-    if (!password || !name) return;
+    if (!effectivePassword || !name) return;
 
     const newProfile: AITrainerProfile = {
       ...profile,
@@ -35,7 +61,7 @@ export const AITrainerAuth = () => {
       goals: goals.split(',').map(g => g.trim()),
       onboardingComplete: false,
     };
-    await setupProfile(password, newProfile);
+    await setupProfile(effectivePassword, newProfile);
   };
 
   const nextStep = () => setStep(s => s + 1);
@@ -201,18 +227,32 @@ export const AITrainerAuth = () => {
             </div>
             
             <div className="pt-4">
-                <label className="block text-sm font-medium mb-2">Create Encryption Password</label>
-                <input
-                    type="password"
-                    className="w-full p-4 bg-background border rounded-xl focus:ring-2 focus:ring-primary outline-none shadow-inner"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="Min 6 characters..."
-                    required
-                />
+                {hasTherapyVault && !isUnlocked ? (
+                    <div className="bg-muted/40 border rounded-xl p-4 space-y-3">
+                        <p className="text-sm text-muted-foreground">You already have a Therapy Vault. Unlock it to reuse the same password for your AI Trainer.</p>
+                        <Button onClick={() => navigate('/vault?returnTo=/ai-trainer')} className="w-full">
+                            Unlock Existing Vault
+                        </Button>
+                    </div>
+                ) : (
+                    <>
+                        <label className="block text-sm font-medium mb-2">
+                          {hasTherapyVault && isUnlocked ? 'Using Existing Vault Password' : 'Create Encryption Password'}
+                        </label>
+                        <input
+                            type="password"
+                            className="w-full p-4 bg-background border rounded-xl focus:ring-2 focus:ring-primary outline-none shadow-inner"
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            placeholder={hasTherapyVault && isUnlocked ? 'Vault password detected' : 'Min 6 characters...'}
+                            required={!hasTherapyVault || !isUnlocked}
+                            disabled={hasTherapyVault && isUnlocked}
+                        />
+                    </>
+                )}
             </div>
             
-            <Button onClick={nextStep} disabled={password.length < 6} className="w-full py-7 rounded-xl font-bold">
+            <Button onClick={nextStep} disabled={effectivePassword.length < 6} className="w-full py-7 rounded-xl font-bold">
                 Continue to Profile
                 <ArrowRight className="ml-2 w-5 h-5" />
             </Button>
@@ -328,6 +368,16 @@ export const AITrainerAuth = () => {
                 </Button>
             </div>
             {error && <p className="text-red-500 text-sm text-center">{error}</p>}
+            {lastPersistenceError && (
+              <div className="mt-2 space-y-2">
+                <div className="text-xs text-red-500 text-center bg-red-500/10 p-2 rounded-lg">
+                  {lastPersistenceError}
+                </div>
+                <Button onClick={handleSetup} variant="outline" className="w-full text-xs">
+                  Retry Save
+                </Button>
+              </div>
+            )}
           </motion.div>
         )}
       </AnimatePresence>
