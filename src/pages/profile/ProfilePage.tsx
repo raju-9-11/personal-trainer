@@ -1,6 +1,6 @@
 
 import { useState } from 'react';
-import { useAuth } from '../../lib/auth-context';
+import { useAuth, isSuperAdminEmail } from '../../lib/auth-context';
 import { HomeNavbar } from '../../components/layout/home-navbar';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../components/ui/tabs';
 import { SecuritySettings } from '../../components/profile/SecuritySettings';
@@ -12,6 +12,8 @@ import { AIProvider } from '../../lib/ai/ai-context';
 export default function ProfilePage() {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState('overview');
+
+  const showDebug = isSuperAdminEmail(user?.email);
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
@@ -43,7 +45,7 @@ export default function ProfilePage() {
 
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-8">
-            <TabsList className="grid w-full grid-cols-2 md:grid-cols-5 h-auto p-1 bg-slate-200 dark:bg-slate-900 rounded-xl">
+            <TabsList className={`grid w-full grid-cols-2 ${showDebug ? 'md:grid-cols-5' : 'md:grid-cols-4'} h-auto p-1 bg-slate-200 dark:bg-slate-900 rounded-xl`}>
                 <TabsTrigger value="overview" className="py-3 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800 data-[state=active]:shadow-sm rounded-lg transition-all">
                     <Activity className="w-4 h-4 mr-2" /> Overview
                 </TabsTrigger>
@@ -56,9 +58,11 @@ export default function ProfilePage() {
                 <TabsTrigger value="security" className="py-3 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800 data-[state=active]:shadow-sm rounded-lg transition-all">
                     <Shield className="w-4 h-4 mr-2" /> Security
                 </TabsTrigger>
-                <TabsTrigger value="debug" className="py-3 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800 data-[state=active]:shadow-sm rounded-lg transition-all text-amber-600 dark:text-amber-500">
-                    <Bug className="w-4 h-4 mr-2" /> Debug
-                </TabsTrigger>
+                {showDebug && (
+                    <TabsTrigger value="debug" className="py-3 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800 data-[state=active]:shadow-sm rounded-lg transition-all text-amber-600 dark:text-amber-500">
+                        <Bug className="w-4 h-4 mr-2" /> Debug
+                    </TabsTrigger>
+                )}
             </TabsList>
 
             <TabsContent value="overview" className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -98,11 +102,13 @@ export default function ProfilePage() {
                 <SecuritySettings />
             </TabsContent>
 
-            <TabsContent value="debug">
-                <AIProvider>
-                    <DebugSettings />
-                </AIProvider>
-            </TabsContent>
+            {showDebug && (
+                <TabsContent value="debug">
+                    <AIProvider>
+                        <DebugSettings />
+                    </AIProvider>
+                </TabsContent>
+            )}
         </Tabs>
       </main>
     </div>

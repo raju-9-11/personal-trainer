@@ -218,6 +218,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   );
 }
 
+export function isSuperAdminEmail(email: string | null | undefined): boolean {
+  if (!email) return false;
+  const lowerEmail = email.toLowerCase();
+  return lowerEmail === 'raju9112000@gmail.com' || lowerEmail === 'admin@admin.com';
+}
+
 export function useAuth() {
   const context = useContext(AuthContext);
   if (!context) {

@@ -5,6 +5,7 @@ import remarkGfm from 'remark-gfm';
 import { motion } from 'framer-motion';
 import { Message } from '../../../lib/ai/types';
 import { Brain, ChevronDown, ChevronRight } from 'lucide-react';
+import { useAuth, isSuperAdminEmail } from '../../../lib/auth-context';
 
 interface MessageBubbleProps {
   message: Message;
@@ -12,6 +13,9 @@ interface MessageBubbleProps {
 }
 
 export function MessageBubble({ message }: MessageBubbleProps) {
+  const { user } = useAuth();
+  const isSuperAdmin = isSuperAdminEmail(user?.email);
+
   const isUser = message.role === 'user';
   const isSystem = message.role === 'system';
   const [showThought, setShowThought] = useState(false);
@@ -50,7 +54,7 @@ export function MessageBubble({ message }: MessageBubbleProps) {
         }`}
       >
         {/* Internal Monologue (Debug View) */}
-        {!isUser && thoughtContent && (
+        {!isUser && thoughtContent && isSuperAdmin && (
             <div className="mb-4 border-b border-slate-200 dark:border-slate-700 pb-3">
                 <button
                     onClick={() => setShowThought(!showThought)}
