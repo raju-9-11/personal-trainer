@@ -1,19 +1,18 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAITrainer } from '../AITrainerContext';
 import { Button } from '../../ui/button';
-import { Send, User, Bot, Loader2, AlertCircle } from 'lucide-react';
+import { Send, User, Bot, Loader2, AlertCircle, Dumbbell, CheckCircle2 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
-import { InlineHealthForm } from './InlineForms';
+import { Routine } from '../../../lib/types';
 
 export const AITrainerChat = () => {
-  const { chatHistory, sendMessageToTrainer, isLoading, error, profile } = useAITrainer();
+  const { chatHistory, sendMessageToTrainer, isLoading, error, profile, routines, updateRoutine } = useAITrainer();
   const [input, setInput] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const [formSubmitted, setFormSubmitted] = useState<Record<number, boolean>>({}); // track which forms are submitted
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [chatHistory, isLoading, error]);
+  }, [chatHistory, isLoading, error, routines]);
 
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -23,8 +22,55 @@ export const AITrainerChat = () => {
     await sendMessageToTrainer(msg);
   };
 
+  const renderRoutineCard = (content: string) => {
+      const match = content.match(/<action\s+type="propose_routine">([\s\S]*?)<\/action>/);
+      if (!match) return null;
+      
+      try {
+          const payload = JSON.parse(match[1]);
+          // Check if we have this routine in state to see its status
+          const activeRoutine = routines.find(r => r.rationale === payload.rationale && r.status === 'proposed');
+          const isApproved = routines.some(r => r.rationale === payload.rationale && r.status === 'active');
+
+          return (
+              <div className="mt-3 bg-card border border-primary/20 rounded-xl p-4 shadow-sm">
+                  <div className="flex items-center gap-2 mb-2">
+                      <Dumbbell className="w-5 h-5 text-primary" />
+                      <h4 className="font-bold text-sm">Protocol Deployed</h4>
+                  </div>
+                  <p className="text-xs text-muted-foreground mb-3 italic">"{payload.rationale}"</p>
+                  <div className="space-y-2 mb-4">
+                      {payload.exercises.map((ex: any, i: number) => (
+                          <div key={i} className="flex justify-between items-center text-xs bg-muted/50 p-2 rounded">
+                              <span className="font-medium">{ex.name}</span>
+                              <span className="text-muted-foreground">{ex.sets} x {ex.reps}</span>
+                          </div>
+                      ))}
+                  </div>
+                  {activeRoutine && !isApproved && (
+                      <Button 
+                          size="sm" 
+                          className="w-full font-bold"
+                          onClick={() => updateRoutine(activeRoutine.id, { status: 'active' })}
+                      >
+                          Approve & Sync to Dashboard
+                      </Button>
+                  )}
+                  {isApproved && (
+                      <div className="flex items-center justify-center gap-2 text-green-500 text-xs font-bold py-2 bg-green-500/10 rounded-md">
+                          <CheckCircle2 className="w-4 h-4" />
+                          Protocol Active
+                      </div>
+                  )}
+              </div>
+          );
+      } catch (e) {
+          return null;
+      }
+  };
+
   const renderContent = (content: string, msgIndex: number) => {
-    // 1. Check for thought blocks and allow expanding them
+    // 1. Check for thought blocks
     let publicContent = content;
     const thoughtMatch = content.match(/<thought>([\s\S]*?)<\/thought>/);
     let thoughtContent = null;
@@ -33,22 +79,19 @@ export const AITrainerChat = () => {
       thoughtContent = thoughtMatch[1].trim();
       publicContent = content.replace(/<thought>[\s\S]*?<\/thought>/g, '').trim();
     } else if (content.includes('<thought>')) {
-      // Handle streaming state where <thought> is opened but not closed
       const parts = content.split('<thought>');
       publicContent = parts[0].trim();
-      thoughtContent = parts[1]; // The streaming thought
+      thoughtContent = parts[1];
     }
 
-    // 2. Check for form triggers (Robust check)
-    const formTrigger = '[FORM:HEALTH_LOG]';
-    const hasHealthForm = content.includes(formTrigger);
-    
-    // Clean public content for display
-    let displayContent = publicContent.replace(formTrigger, '').trim();
+    // 2. Extract action tags out of public view
+    const routineCard = renderRoutineCard(publicContent);
+    const cleanPublicContent = publicContent.replace(/<action[\s\S]*?<\/action>/g, '').trim();
 
     // Guard against empty public content when thought is present
+    let displayContent = cleanPublicContent;
     if (!displayContent && thoughtContent) {
-        displayContent = "*(The trainer is analyzing your data...)*";
+        displayContent = "*(The trainer is analyzing your telemetry...)*";
     }
 
     return (
@@ -58,24 +101,7 @@ export const AITrainerChat = () => {
             <ReactMarkdown>{displayContent}</ReactMarkdown>
           </div>
         )}
-
-        {hasHealthForm && !formSubmitted[msgIndex] && (
-          <div className="not-prose">
-             <InlineHealthForm onSubmitSuccess={() => setFormSubmitted(s => ({ ...s, [msgIndex]: true }))} />
-          </div>
-        )}
-        
-        {hasHealthForm && formSubmitted[msgIndex] && (
-          <div className="bg-primary/5 border border-primary/20 p-3 rounded-lg flex items-center gap-3">
-             <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
-                <span className="w-2.5 h-2.5 rounded-full bg-primary"></span>
-             </div>
-             <div>
-                <p className="text-sm font-bold text-primary">Health Data Synchronized</p>
-                <p className="text-[10px] text-muted-foreground">Your trainer has received the metrics and updated your capacity.</p>
-             </div>
-          </div>
-        )}
+        {routineCard}
       </div>
     );
   };

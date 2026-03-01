@@ -1,21 +1,22 @@
 import React, { useState } from 'react';
 import { useAITrainer } from './AITrainerContext';
 import { Button } from '../ui/button';
-import { Lock, UserPlus, ArrowRight, ArrowLeft, CheckCircle2, ShieldCheck, Dumbbell, Sparkles } from 'lucide-react';
+import { Lock, UserPlus, ArrowRight, ArrowLeft, CheckCircle2, ShieldCheck, Dumbbell, Sparkles, Save, Zap, Activity } from 'lucide-react';
 import { AITrainerProfile } from '../../lib/types';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export const AITrainerAuth = () => {
-  const { unlock, setupProfile, hasProfile, isLoading, error } = useAITrainer();
+  const { unlock, setupProfile, hasProfile, isGuest, profile, isLoading, error } = useAITrainer();
   const [password, setPassword] = useState('');
-  const [isRegistering, setIsRegistering] = useState(!hasProfile);
-  const [step, setStep] = useState(1);
+  const [isRegistering, setIsRegistering] = useState(!hasProfile || isGuest);
+  const [step, setStep] = useState(isGuest ? 4 : 0); // Step 0 is Tracking Level Selection
+  const [trackingLevel, setTrackingLevel] = useState<'standard' | 'indepth'>(profile?.trackingLevel || 'standard');
 
   // Setup state
-  const [name, setName] = useState('');
-  const [gender, setGender] = useState('male');
-  const [traits, setTraits] = useState('Motivating, Strict');
-  const [goals, setGoals] = useState('Build Muscle, Lose Fat');
+  const [name, setName] = useState(profile?.name || '');
+  const [gender, setGender] = useState(profile?.gender || 'male');
+  const [traits, setTraits] = useState(profile?.traits.join(', ') || 'Motivating, Strict');
+  const [goals, setGoals] = useState(profile?.goals.join(', ') || 'Build Muscle, Lose Fat');
 
   const handleUnlock = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -25,13 +26,16 @@ export const AITrainerAuth = () => {
   const handleSetup = async () => {
     if (!password || !name) return;
 
-    const profile: AITrainerProfile = {
+    const newProfile: AITrainerProfile = {
+      ...profile,
       name,
       gender,
+      trackingLevel,
       traits: traits.split(',').map(t => t.trim()),
       goals: goals.split(',').map(g => g.trim()),
+      onboardingComplete: false,
     };
-    await setupProfile(password, profile);
+    await setupProfile(password, newProfile);
   };
 
   const nextStep = () => setStep(s => s + 1);
@@ -41,12 +45,12 @@ export const AITrainerAuth = () => {
     return (
       <div className="flex flex-col items-center justify-center h-full min-h-[50vh] space-y-4">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-        <p className="text-muted-foreground animate-pulse font-medium">Encrypting Biometrics...</p>
+        <p className="text-muted-foreground animate-pulse font-medium">Synchronizing Neural Data...</p>
       </div>
     );
   }
 
-  if (hasProfile && !isRegistering) {
+  if (hasProfile && !isRegistering && !isGuest) {
     return (
       <motion.div 
         initial={{ opacity: 0, scale: 0.95 }}
@@ -88,12 +92,96 @@ export const AITrainerAuth = () => {
       <div className="absolute top-0 left-0 w-full h-1 bg-muted">
          <motion.div 
             className="h-full bg-primary" 
-            initial={{ width: "33%" }} 
-            animate={{ width: `${(step / 3) * 100}%` }}
+            initial={{ width: "20%" }} 
+            animate={{ width: `${((step + 1) / 5) * 100}%` }}
          />
       </div>
 
       <AnimatePresence mode="wait">
+        {step === 0 && (
+             <motion.div
+               key="step0"
+               initial={{ opacity: 0, x: 20 }}
+               animate={{ opacity: 1, x: 0 }}
+               exit={{ opacity: 0, x: -20 }}
+               className="space-y-6"
+             >
+               <div className="flex justify-center">
+                 <div className="p-4 bg-primary/10 rounded-full">
+                   <Zap className="w-10 h-10 text-primary" />
+                 </div>
+               </div>
+               <div className="text-center">
+                   <h2 className="text-2xl font-bold uppercase tracking-tighter italic">Select Link Tier</h2>
+                   <p className="text-muted-foreground">Define the depth of your biological synchronization.</p>
+               </div>
+
+               <div className="grid grid-cols-1 gap-4">
+                   <button 
+                       onClick={() => { setTrackingLevel('standard'); nextStep(); }}
+                       className={`p-6 rounded-2xl border-2 text-left transition-all ${trackingLevel === 'standard' ? 'border-primary bg-primary/5 shadow-lg shadow-primary/10' : 'border-muted hover:border-primary/50'}`}
+                   >
+                       <div className="flex items-center justify-between mb-2">
+                           <span className="font-black uppercase italic tracking-widest text-sm">Standard Link</span>
+                           <Activity className="w-5 h-5 text-primary" />
+                       </div>
+                       <p className="text-xs text-muted-foreground leading-relaxed">Focus on physical metrics, supplement consistency, and basic recovery. Professional-grade performance tracking.</p>
+                   </button>
+
+                   <button 
+                       onClick={() => { setTrackingLevel('indepth'); nextStep(); }}
+                       className={`p-6 rounded-2xl border-2 text-left transition-all ${trackingLevel === 'indepth' ? 'border-primary bg-primary/5 shadow-lg shadow-primary/10' : 'border-muted hover:border-primary/50'}`}
+                   >
+                       <div className="flex items-center justify-between mb-2">
+                           <span className="font-black uppercase italic tracking-widest text-sm">Indepth Neural Link</span>
+                           <Sparkles className="w-5 h-5 text-primary" />
+                       </div>
+                       <p className="text-xs text-muted-foreground leading-relaxed">Total biological optimization. Correlates hormonal cycles, intimate activity impact, and deep biometric telemetry for elite strategy.</p>
+                   </button>
+               </div>
+             </motion.div>
+        )}
+
+        {step === 4 && isGuest && (
+             <motion.div
+               key="step4"
+               initial={{ opacity: 0, x: 20 }}
+               animate={{ opacity: 1, x: 0 }}
+               exit={{ opacity: 0, x: -20 }}
+               className="space-y-6"
+             >
+               <div className="flex justify-center">
+                 <div className="p-4 bg-orange-500/10 rounded-full">
+                   <Save className="w-10 h-10 text-orange-500" />
+                 </div>
+               </div>
+               <div className="text-center">
+                   <h2 className="text-2xl font-bold">Secure Your Biometrics</h2>
+                   <p className="text-muted-foreground">We've detected your guest progress. Let's encrypt and save it to your permanent vault.</p>
+               </div>
+               
+               <div className="bg-muted/30 p-4 rounded-xl space-y-2 border">
+                   <p className="text-xs font-bold uppercase text-muted-foreground">Current Progress</p>
+                   <div className="flex justify-between text-sm">
+                       <span>Profile Identity</span>
+                       <span className="text-primary font-bold">{profile?.name || 'Active'}</span>
+                   </div>
+                   <div className="flex justify-between text-sm">
+                       <span>Telemetry Logs</span>
+                       <span className="text-primary font-bold">Synchronized</span>
+                   </div>
+               </div>
+
+               <Button onClick={() => setStep(1)} className="w-full py-7 rounded-xl font-bold bg-primary text-primary-foreground shadow-xl">
+                   Secure & Migrate Now
+                   <ArrowRight className="ml-2 w-5 h-5" />
+               </Button>
+               <Button variant="ghost" onClick={() => setIsRegistering(false)} className="w-full text-xs text-muted-foreground">
+                   Ignore and use cloud vault
+               </Button>
+             </motion.div>
+        )}
+
         {step === 1 && (
           <motion.div
             key="step1"

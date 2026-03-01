@@ -3,13 +3,14 @@ import { useAITrainer } from '../components/ai-trainer/AITrainerContext';
 import { AITrainerAuth } from '../components/ai-trainer/AITrainerAuth';
 import { AITrainerDashboard } from '../components/ai-trainer/AITrainerDashboard';
 import { AITrainerChat } from '../components/ai-trainer/ui/AITrainerChat';
+import { AITrainerOnboarding } from '../components/ai-trainer/AITrainerOnboarding';
 import { useAuth } from '../lib/auth-context';
 import { Button } from '../components/ui/button';
 import { useNavigate, Link } from 'react-router-dom';
 import { Dumbbell, ArrowLeft } from 'lucide-react';
 
 const AITrainerPageContent = () => {
-  const { isLocked, hasProfile } = useAITrainer();
+  const { isLocked, hasProfile, isOnboarding } = useAITrainer();
 
   if (isLocked || !hasProfile) {
     return (
@@ -17,6 +18,10 @@ const AITrainerPageContent = () => {
         <AITrainerAuth />
       </div>
     );
+  }
+
+  if (isOnboarding) {
+    return <AITrainerOnboarding />;
   }
 
   return (
@@ -55,21 +60,10 @@ const AITrainerPageContent = () => {
 };
 
 export default function AITrainerPage() {
-  const { user, loading } = useAuth();
-  const navigate = useNavigate();
+  const { loading } = useAuth();
 
   if (loading) {
     return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
-  }
-
-  if (!user) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-background text-foreground">
-        <h2 className="text-3xl font-bold mb-4">Login Required</h2>
-        <p className="text-muted-foreground mb-8">You must be logged in to access your personal AI Trainer.</p>
-        <Button onClick={() => navigate('/admin/login')} size="lg">Go to Login</Button>
-      </div>
-    );
   }
 
   return <AITrainerPageContent />;

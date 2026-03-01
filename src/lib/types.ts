@@ -144,6 +144,16 @@ export interface Booking {
     createdAt: string; // ISO String
 }
 
+export interface Supplement {
+  id: string;
+  name: string;
+  category: string;
+  brand?: string;
+  dosage?: string;
+  frequency?: string;
+  isConsistent?: boolean;
+}
+
 export interface AITrainerProfile {
   name: string;
   gender: 'female' | 'male' | 'non-binary' | string;
@@ -152,6 +162,9 @@ export interface AITrainerProfile {
   goals: string[];
   baselineWeight?: number;
   baselineHeight?: number;
+  supplements?: Supplement[];
+  onboardingComplete?: boolean;
+  trackingLevel?: 'standard' | 'indepth';
 }
 
 export interface HealthDataLog {
@@ -163,17 +176,46 @@ export interface HealthDataLog {
   trainingIntensity?: number; // 1-10
   stressLevel?: number; // 1-10
   sexFactors?: boolean;
+  // Biological
+  testosteroneLevel?: number; // ng/dL
+  estrogenLevel?: number; // pg/mL
+  menstrualCycleDay?: number; // 1-28
+  menstrualPhase?: 'follicular' | 'ovulation' | 'luteal' | 'menstrual';
+  // Psychological & Performance
+  moodScore?: number; // 1-10
+  moodNotes?: string;
+  strengthTrend?: 'up' | 'down' | 'stable';
+  cnsFatigueScore?: number; // 1-10
+  // Intimate
+  sexualActivityCount?: number; // in last 24h
+  masturbationCount?: number; // in last 24h
+  // Supplements
+  supplementsTakenToday?: string[]; // array of Supplement IDs
 }
 
+export interface Exercise {
+  name: string;
+  sets: number;
+  reps: string;
+  rpe?: number;
+  intensity?: string;
+  notes?: string;
+}
+
+export interface Routine {
+  id: string;
+  timeframe: 'daily' | 'weekly';
+  status: 'proposed' | 'active';
+  rationale: string;
+  date: string; // YYYY-MM-DD
+  exercises: Exercise[];
+}
+
+// Keeping for legacy compatibility if needed, but transitioning to Routine
 export interface WorkoutPlan {
   id: string;
   date: string; // YYYY-MM-DD
   title: string;
-  exercises: {
-    name: string;
-    sets: number;
-    reps: string;
-    notes?: string;
-  }[];
+  exercises: Exercise[];
   completed: boolean;
 }

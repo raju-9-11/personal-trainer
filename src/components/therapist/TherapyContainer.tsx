@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { TherapyMode, BaseContext, GeneratedTherapist, EncryptedProfile, ActiveSession, SessionSummary } from '../../lib/ai/types';
 import { IntakeChat } from './IntakeChat';
 import { TherapistSelection } from './TherapistSelection';
@@ -37,6 +37,22 @@ export function TherapyContainer({
   const [selectedTherapist, setSelectedTherapist] = useState<GeneratedTherapist | undefined>(initialTherapist);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [vaultPassword, setVaultPassword] = useState<string | null>(null);
+  const SESSION_KEY = 'titan_vault_session_pwd';
+
+  // Cross-Unlock: Automatically attempt to unlock if a password exists in shared session
+  useEffect(() => {
+    const checkAutoUnlock = async () => {
+        const sessionPwd = sessionStorage.getItem(SESSION_KEY);
+        if (sessionPwd && encryptedProfile && mode === 'locked') {
+            const success = await handleUnlock(sessionPwd);
+            if (!success) {
+                // If it fails, maybe the password was for a different account or changed? 
+                // Don't alert, just let them try manually.
+            }
+        }
+    };
+    checkAutoUnlock();
+  }, [mode, encryptedProfile]);
 
   const handleIntakeComplete = async (transcript: any[]) => {
     setIsAnalyzing(true);
@@ -66,6 +82,7 @@ export function TherapyContainer({
       if (!user || !selectedTherapist) return;
       
       setVaultPassword(password);
+      sessionStorage.setItem(SESSION_KEY, password);
       
       try {
           const soulData = JSON.stringify({
@@ -122,6 +139,7 @@ export function TherapyContainer({
           setContext(normalizedContext);
           setSelectedTherapist(decryptedSoul.therapist);
           setVaultPassword(password);
+          sessionStorage.setItem(SESSION_KEY, password);
 
           // Check for active "Moment"
           if (encryptedProfile.encryptedMoment && encryptedProfile.momentIv && encryptedProfile.momentSalt) {
@@ -155,6 +173,7 @@ export function TherapyContainer({
           setContext({ integratedInsights: [] });
           setSelectedTherapist(undefined);
           setVaultPassword(null);
+          sessionStorage.removeItem(SESSION_KEY);
           setActiveSession(null);
           setMode('intake');
       } catch (e) {
