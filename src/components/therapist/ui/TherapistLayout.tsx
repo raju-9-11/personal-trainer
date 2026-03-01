@@ -4,9 +4,11 @@ import { AppNavbar } from '../../layout/app-navbar';
 
 interface TherapistLayoutProps {
   children: ReactNode;
+  title?: string;
+  showBack?: boolean;
 }
 
-export function TherapistLayout({ children }: TherapistLayoutProps) {
+export function TherapistLayout({ children, title, showBack }: TherapistLayoutProps) {
   return (
     <div className="min-h-screen w-full bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans selection:bg-indigo-100 selection:text-indigo-900 overflow-hidden relative">
       {/* Animated Background Elements */}
