@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { useAITrainer } from './AITrainerContext';
+import { useAITrainer, type OnboardingStatus } from './AITrainerContext';
 import { Button } from '../ui/button';
 import { Send, Bot, Loader2, Sparkles, ShieldCheck, Zap, Activity } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
@@ -7,12 +7,9 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { stripInternalTags } from '../../lib/ai/sanitize';
 
 export const AITrainerOnboarding = () => {
-  const { chatHistory, sendMessageToTrainer, isLoading, error, profile, completeOnboarding } = useAITrainer();
+  const { chatHistory, sendMessageToTrainer, isLoading, error, profile, completeOnboarding, onboardingStatus } = useAITrainer();
   const [input, setInput] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const [completionSent, setCompletionSent] = useState(false);
-  const [isCompleting, setIsCompleting] = useState(false);
-  const [showContinue, setShowContinue] = useState(false);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -57,47 +54,8 @@ export const AITrainerOnboarding = () => {
 
   const progress = getProgress();
 
-  useEffect(() => {
-    if (!profile || completionSent || isCompleting) return;
-    if (progress === 100 && !profile.onboardingComplete) {
-      const finish = async () => {
-          setIsCompleting(true);
-          try {
-              await completeOnboarding();
-              setCompletionSent(true);
-          } catch (err) {
-              console.error("Failed to complete onboarding", err);
-              setShowContinue(true);
-          } finally {
-              setIsCompleting(false);
-          }
-      };
-      finish();
-    }
-  }, [progress, profile, completionSent, isCompleting, completeOnboarding]);
-
-  useEffect(() => {
-    if (!profile) return;
-    if (progress === 100 && !profile.onboardingComplete) {
-      const timer = setTimeout(() => setShowContinue(true), 1500);
-      return () => clearTimeout(timer);
-    }
-    setShowContinue(false);
-  }, [progress, profile?.onboardingComplete, profile]);
-
-  const handleContinue = async () => {
-    if (!profile || isCompleting) return;
-    setIsCompleting(true);
-    try {
-      await completeOnboarding();
-      setCompletionSent(true);
-      setShowContinue(false);
-    } catch (err) {
-      console.error("Manual completion failed", err);
-      setShowContinue(true);
-    } finally {
-      setIsCompleting(false);
-    }
+  const handleContinue = () => {
+    completeOnboarding();
   };
 
   return (
@@ -150,16 +108,40 @@ export const AITrainerOnboarding = () => {
         </div>
 
         {/* Chat / Conversation Area */}
-        {progress === 100 && (
+        {progress === 100 && onboardingStatus === 'collecting' && (
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-primary/20 bg-primary/10 p-4">
             <div className="text-xs uppercase tracking-widest font-bold text-primary">
-              Sync complete. Preparing dashboard...
+              Sync complete. Ready to finalize.
             </div>
-            {(showContinue || isCompleting) && (
-              <Button size="sm" onClick={handleContinue} disabled={isCompleting} className="rounded-full px-5">
-                {isCompleting ? "Finalizing..." : "Continue to Dashboard"}
-              </Button>
-            )}
+            <Button size="sm" onClick={handleContinue} className="rounded-full px-5">
+              Continue to Dashboard
+            </Button>
+          </div>
+        )}
+        {onboardingStatus === 'completing' && (
+          <div className="mb-4 flex items-center gap-3 rounded-2xl border border-primary/20 bg-primary/10 p-4">
+            <Loader2 className="w-4 h-4 animate-spin text-primary" />
+            <div className="text-xs uppercase tracking-widest font-bold text-primary">
+              Finalizing neural link...
+            </div>
+          </div>
+        )}
+        {onboardingStatus === 'failed' && (
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-red-500/20 bg-red-500/10 p-4">
+            <div className="text-xs uppercase tracking-widest font-bold text-red-400">
+              Sync failed. {error || 'Please retry.'}
+            </div>
+            <Button size="sm" variant="destructive" onClick={handleContinue} className="rounded-full px-5">
+              Retry
+            </Button>
+          </div>
+        )}
+        {onboardingStatus === 'completed' && (
+          <div className="mb-4 flex items-center gap-3 rounded-2xl border border-green-500/20 bg-green-500/10 p-4">
+            <Sparkles className="w-4 h-4 text-green-400" />
+            <div className="text-xs uppercase tracking-widest font-bold text-green-400">
+              Neural link established. Redirecting...
+            </div>
           </div>
         )}
         <div className="flex-1 overflow-y-auto space-y-6 mb-6 p-6 bg-white/[0.02] border border-white/10 rounded-3xl backdrop-blur-xl">

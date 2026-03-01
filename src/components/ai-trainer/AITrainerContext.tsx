@@ -8,6 +8,8 @@ import { Message } from '../../lib/ai/types';
 import { useAI } from '../../lib/ai/ai-context';
 import { generateAITrainerPrompt } from '../../lib/ai/ai-trainer-personas';
 
+export type OnboardingStatus = 'idle' | 'collecting' | 'completing' | 'completed' | 'failed';
+
 interface EncryptedTrainerData {
   encryptedProfile: string;
   ivProfile: string;
@@ -29,7 +31,7 @@ interface EncryptedTrainerData {
 interface AITrainerState {
   isLocked: boolean;
   hasProfile: boolean;
-  isOnboarding: boolean;
+  onboardingStatus: OnboardingStatus;
   isLoading: boolean;
   error: string | null;
   lastPersistenceError: string | null;
@@ -43,6 +45,8 @@ interface AITrainerState {
 }
 
 interface AITrainerContextType extends AITrainerState {
+  /** Backward-compat computed getter: true when onboarding is active */
+  isOnboarding: boolean;
   unlock: (password: string) => Promise<boolean>;
   setupProfile: (password: string, profile: AITrainerProfile) => Promise<boolean>;
   updateProfile: (profileUpdates: Partial<AITrainerProfile>) => Promise<void>;
@@ -68,7 +72,7 @@ export const AITrainerProvider = ({ children }: { children: ReactNode }) => {
   const [state, setState] = useState<AITrainerState>({
     isLocked: true,
     hasProfile: false,
-    isOnboarding: false,
+    onboardingStatus: 'idle',
     isLoading: true,
     error: null,
     lastPersistenceError: null,
@@ -139,7 +143,7 @@ export const AITrainerProvider = ({ children }: { children: ReactNode }) => {
       const hint = sessionStorage.getItem(SESSION_HINT_KEY);
       
       if (!user) {
-        setState(s => ({ ...s, isLoading: false, isLocked: true, isGuest: false, hasProfile: false, isOnboarding: false }));
+        setState(s => ({ ...s, isLoading: false, isLocked: true, isGuest: false, hasProfile: false, onboardingStatus: 'idle' }));
         return;
       }
 
@@ -172,7 +176,7 @@ export const AITrainerProvider = ({ children }: { children: ReactNode }) => {
             hasProfile: false,
             isLocked: false,
             isLoading: false,
-            isOnboarding: false,
+            onboardingStatus: 'idle',
             lastPersistenceError: hint ? 'No persisted AI Trainer profile found in Firebase.' : null,
           }));
           sessionStorage.removeItem(SESSION_HINT_KEY);
@@ -330,7 +334,7 @@ export const AITrainerProvider = ({ children }: { children: ReactNode }) => {
         healthLogs: logs,
         chatHistory: chat,
         routines,
-        isOnboarding: !profile.onboardingComplete,
+        onboardingStatus: profile.onboardingComplete ? 'idle' : 'collecting',
         error: null,
         lastPersistenceError: null,
       }));
@@ -361,7 +365,7 @@ export const AITrainerProvider = ({ children }: { children: ReactNode }) => {
         ...s,
         hasProfile: true,
         isLocked: false,
-        isOnboarding: !profile.onboardingComplete,
+        onboardingStatus: profile.onboardingComplete ? 'idle' : 'collecting',
         isLoading: false,
         profile,
         healthLogs: [],
@@ -412,24 +416,46 @@ export const AITrainerProvider = ({ children }: { children: ReactNode }) => {
   const updateProfile = async (profileUpdates: Partial<AITrainerProfile>) => {
     if (!state.profile || state.isLocked) return;
     const newProfile = { ...state.profile, ...profileUpdates };
-    setState(s => ({ ...s, profile: newProfile, isOnboarding: !newProfile.onboardingComplete }));
+    setState(s => ({ ...s, profile: newProfile }));
     await persistCurrentState({ profile: newProfile });
   };
 
+  const isCompletingOnboardingRef = useRef(false);
+
   const completeOnboarding = async () => {
-    if (!state.profile || state.isLocked) return;
-    if (state.profile.onboardingComplete) return;
-    const newProfile = { ...state.profile, onboardingComplete: true };
-    setState(s => ({ ...s, profile: newProfile, isOnboarding: false }));
+    const current = stateRef.current;
+    if (!current.profile || current.isLocked) return;
+    if (current.profile.onboardingComplete) {
+      // Already complete — just ensure status is correct
+      if (current.onboardingStatus !== 'idle') {
+        setState(s => ({ ...s, onboardingStatus: 'idle' }));
+      }
+      return;
+    }
+    if (isCompletingOnboardingRef.current) return;
+    isCompletingOnboardingRef.current = true;
+
+    const newProfile = { ...current.profile, onboardingComplete: true };
+    setState(s => ({ ...s, onboardingStatus: 'completing', profile: newProfile }));
+
     try {
       await persistCurrentState({ profile: newProfile });
       const persisted = await verifyPersistence();
       if (!persisted) {
         throw new Error("Failed to persist onboarding completion to Firebase.");
       }
-      setState(s => ({ ...s, lastPersistenceError: null }));
+      setState(s => ({ ...s, onboardingStatus: 'completed', lastPersistenceError: null }));
     } catch (e: any) {
-      setState(s => ({ ...s, error: e.message || "Failed to complete onboarding.", lastPersistenceError: e.message || "Failed to complete onboarding." }));
+      // Rollback: restore onboardingComplete to false so retry is possible
+      setState(s => ({
+        ...s,
+        onboardingStatus: 'failed',
+        profile: s.profile ? { ...s.profile, onboardingComplete: false } : s.profile,
+        error: e.message || "Failed to complete onboarding.",
+        lastPersistenceError: e.message || "Failed to complete onboarding.",
+      }));
+    } finally {
+      isCompletingOnboardingRef.current = false;
     }
   };
 
@@ -646,7 +672,7 @@ export const AITrainerProvider = ({ children }: { children: ReactNode }) => {
     setState(s => ({
       isLocked: true,
       hasProfile: s.hasProfile,
-      isOnboarding: s.isOnboarding,
+      onboardingStatus: 'idle' as OnboardingStatus,
       isLoading: false,
       error: null,
       lastPersistenceError: s.lastPersistenceError,
@@ -684,6 +710,7 @@ export const AITrainerProvider = ({ children }: { children: ReactNode }) => {
   return (
     <AITrainerContext.Provider value={{
       ...state,
+      isOnboarding: ['collecting', 'completing', 'failed'].includes(state.onboardingStatus),
       unlock,
       setupProfile,
       updateProfile,

@@ -10,7 +10,7 @@ import { AIProvider } from '../lib/ai/ai-context';
 import { useLocation } from 'react-router-dom';
 
 const AITrainerPageContent = () => {
-  const { isLocked, hasProfile, isLoading, isOnboarding } = useAITrainer();
+  const { isLocked, hasProfile, isLoading, onboardingStatus } = useAITrainer();
   const location = useLocation();
   const forceOnboarding = new URLSearchParams(location.search).get('onboarding') === '1';
 
@@ -40,7 +40,7 @@ const AITrainerPageContent = () => {
     );
   }
 
-  const showOnboarding = isOnboarding || forceOnboarding;
+  const showOnboarding = ['collecting', 'completing', 'failed'].includes(onboardingStatus) || forceOnboarding;
 
   if (showOnboarding) {
     return (
