@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../lib/auth-context';
+import { useVault } from '../lib/vault-context';
 import { getFirebase } from '../lib/firebase';
 import { doc, getDoc } from 'firebase/firestore';
 import { TherapistLayout } from '../components/therapist/ui/TherapistLayout';
@@ -11,6 +12,7 @@ import { TherapyContainer } from '../components/therapist/TherapyContainer';
 
 export default function TherapistPage() {
   const { user, loading: authLoading } = useAuth();
+  const { isUnlocked } = useVault();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState<EncryptedProfile | undefined>(undefined);
@@ -20,13 +22,13 @@ export default function TherapistPage() {
 
     if (!user) {
         // Not logged in -> Redirect to Auth
-        navigate('/therapy/auth');
+        navigate('/vault?returnTo=/therapy/session');
         return;
     }
 
     if (!user.emailVerified) {
         // Not verified -> Redirect to Auth (Verification Gate)
-        navigate('/therapy/auth');
+        navigate('/vault?returnTo=/therapy/session');
         return;
     }
 
@@ -42,6 +44,10 @@ export default function TherapistPage() {
             const docSnap = await getDoc(docRef);
 
             if (docSnap.exists()) {
+                if (!isUnlocked) {
+                    navigate('/vault?returnTo=/therapy/session');
+                    return;
+                }
                 setProfile(docSnap.data() as EncryptedProfile);
             } else {
                 setProfile(undefined); // Triggers new intake flow
@@ -54,7 +60,7 @@ export default function TherapistPage() {
     };
 
     fetchProfile();
-  }, [user, authLoading, navigate]);
+  }, [user, authLoading, navigate, isUnlocked]);
 
   if (authLoading || loading) {
     return <TherapistLayout><div className="flex items-center justify-center h-full"><BootLoader /></div></TherapistLayout>;
