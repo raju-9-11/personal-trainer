@@ -481,7 +481,7 @@ export const AITrainerProvider = ({ children }: { children: ReactNode }) => {
      const today = log.date || new Date().toISOString().split('T')[0];
      const existingLogIndex = state.healthLogs.findIndex(l => l.date === today);
 
-     let newLogs = [...state.healthLogs];
+     const newLogs = [...state.healthLogs];
      if (existingLogIndex >= 0) {
        newLogs[existingLogIndex] = { ...newLogs[existingLogIndex], ...log };
      } else {
