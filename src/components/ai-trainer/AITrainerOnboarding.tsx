@@ -39,7 +39,7 @@ export const AITrainerOnboarding = () => {
       if (profile?.baselineWeight) progress += pointValue;
       if (profile?.baselineHeight) progress += pointValue;
       if (profile?.supplements && profile.supplements.length > 0) progress += pointValue;
-      
+
       if (isIndepth) {
           if (profile?.assignedAtBirth) progress += pointValue;
           // For indepth, we check if they've at least started the conversation about intimacy/stress
@@ -83,7 +83,7 @@ export const AITrainerOnboarding = () => {
                 <div className="text-right">
                     <p className="text-xs font-bold uppercase text-primary mb-1">Sync Progress: {progress}%</p>
                     <div className="w-48 h-1.5 bg-muted/20 rounded-full overflow-hidden border border-white/5">
-                        <motion.div 
+                        <motion.div
                             className="h-full bg-primary shadow-[0_0_10px_rgba(0,100,255,0.8)]"
                             initial={{ width: 0 }}
                             animate={{ width: `${progress}%` }}
@@ -91,7 +91,7 @@ export const AITrainerOnboarding = () => {
                     </div>
                 </div>
             </div>
-            
+
             <div className={`grid ${profile?.trackingLevel === 'indepth' ? 'grid-cols-5' : 'grid-cols-4'} gap-2`}>
                 <div className={`h-1 rounded-full ${profile?.baselineWeight ? 'bg-primary shadow-[0_0_5px_rgba(0,100,255,1)]' : 'bg-white/5'}`}></div>
                 <div className={`h-1 rounded-full ${profile?.baselineHeight ? 'bg-primary shadow-[0_0_5px_rgba(0,100,255,1)]' : 'bg-white/5'}`}></div>
@@ -155,8 +155,8 @@ export const AITrainerOnboarding = () => {
                         <h2 className="text-xl font-bold mb-2">Neural Link Online</h2>
                         <p className="text-sm text-muted-foreground">The AI Strategist is ready for biometric synchronization. Provide your stats to calibrate the training engine.</p>
                     </div>
-                    <Button 
-                        size="lg" 
+                    <Button
+                        size="lg"
                         onClick={() => sendMessageToTrainer("I'm ready. Let's begin the initialization.")}
                         className="rounded-full px-8 py-6 font-bold shadow-2xl shadow-primary/20"
                     >
@@ -170,9 +170,9 @@ export const AITrainerOnboarding = () => {
                     const rendered = renderContent(msg.content);
                     if (!rendered) return null;
                     return (
-                        <motion.div 
-                            key={idx} 
-                            initial={{ opacity: 0, y: 10 }} 
+                        <motion.div
+                            key={idx}
+                            initial={{ opacity: 0, y: 10 }}
                             animate={{ opacity: 1, y: 0 }}
                             className={`flex gap-4 ${isUser ? 'flex-row-reverse' : 'flex-row'}`}
                         >
@@ -218,9 +218,9 @@ export const AITrainerOnboarding = () => {
                     className="flex-1 bg-transparent border-none outline-none px-6 py-4 text-sm"
                     disabled={isLoading}
                 />
-                <Button 
-                    type="submit" 
-                    size="icon" 
+                <Button
+                    type="submit"
+                    size="icon"
                     className="w-12 h-12 rounded-full shadow-lg shadow-primary/20"
                     disabled={isLoading || !input.trim()}
                 >

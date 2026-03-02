@@ -16,7 +16,7 @@ const AITrainerPageContent = () => {
 
   // Only show full-screen loader during initial boot or auth transition.
   // We check (!hasProfile || isLocked) to ensure we have the minimum data to render the UI.
-  // Once we have a profile and are unlocked, isLoading just means "AI is thinking" and 
+  // Once we have a profile and are unlocked, isLoading just means "AI is thinking" and
   // we should let the child components (Chat/Onboarding) handle their own loading UI.
   if (isLoading && (!hasProfile || isLocked)) {
     return (
@@ -52,19 +52,19 @@ const AITrainerPageContent = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
+    <div className="h-screen flex flex-col bg-background text-foreground overflow-hidden">
       <AppNavbar />
-      <main className="max-w-7xl mx-auto px-4 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Dashboard Area */}
-          <div className="lg:col-span-2 space-y-8">
+      <main className="flex-1 flex w-full">
+        {/* Dashboard Area - Scrollable */}
+        <div className="w-full lg:w-2/3 h-full overflow-y-auto px-4 py-8 custom-scrollbar">
+          <div className="max-w-4xl mx-auto space-y-8">
             <AITrainerDashboard />
           </div>
+        </div>
 
-          {/* Chat Area */}
-          <div className="lg:col-span-1 h-full sticky top-24">
-            <AITrainerChat />
-          </div>
+        {/* Chat Area - Fixed Sidebar */}
+        <div className="hidden lg:block w-1/3 h-full border-l bg-card/50">
+          <AITrainerChat />
         </div>
       </main>
     </div>

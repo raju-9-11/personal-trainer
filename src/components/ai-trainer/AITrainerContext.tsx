@@ -56,6 +56,7 @@ interface AITrainerContextType extends AITrainerState {
   logHealthData: (log: Partial<HealthDataLog>) => Promise<void>;
   addRoutine: (routine: Routine) => Promise<void>;
   updateRoutine: (id: string, updates: Partial<Routine>) => Promise<void>;
+  approveAction: (actionType: string, payload: any) => Promise<void>;
   sendMessageToTrainer: (content: string) => Promise<void>;
   lock: () => void;
   migrateGuestToUser: () => Promise<boolean>;
@@ -141,7 +142,7 @@ export const AITrainerProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     const checkStatus = async () => {
       const hint = sessionStorage.getItem(SESSION_HINT_KEY);
-      
+
       if (!user) {
         setState(s => ({ ...s, isLoading: false, isLocked: true, isGuest: false, hasProfile: false, onboardingStatus: 'idle' }));
         return;
@@ -151,14 +152,14 @@ export const AITrainerProvider = ({ children }: { children: ReactNode }) => {
       // If we already have guest data, don't set isLoading to true immediately
       // This prevents the "flash" of onboarding.
       if (!hint) setState(s => ({ ...s, isLoading: true, error: null, isGuest: false }));
-      
+
       try {
         const db = new FirebaseDataService(user);
         const data = await db.getAITrainerData(user.uid);
-        
+
         // Session Recovery: Try to auto-unlock if password exists in session
         const sessionPwd = getSessionPassword();
-        
+
       if (data && data.encryptedProfile) {
         sessionStorage.setItem(SESSION_HINT_KEY, 'true');
         setState(s => ({ ...s, lastPersistenceError: null }));
@@ -198,7 +199,7 @@ export const AITrainerProvider = ({ children }: { children: ReactNode }) => {
 
   const saveData = async (profileToSave: AITrainerProfile, logsToSave: HealthDataLog[], chatToSave: Message[], routinesToSave: Routine[], pwd?: string) => {
     sessionStorage.setItem(SESSION_HINT_KEY, 'true');
-    
+
     if (!user) {
       throw new Error('AI Trainer requires an authenticated user.');
     }
@@ -241,7 +242,7 @@ export const AITrainerProvider = ({ children }: { children: ReactNode }) => {
         // Simple retry/wait if already saving
         await new Promise(resolve => setTimeout(resolve, 500));
     }
-    
+
     isSavingRef.current = true;
     const profileToSave = overrides?.profile || stateRef.current.profile;
     const logsToSave = overrides?.healthLogs || stateRef.current.healthLogs;
@@ -252,7 +253,7 @@ export const AITrainerProvider = ({ children }: { children: ReactNode }) => {
       isSavingRef.current = false;
       return;
     }
-    
+
     try {
       await saveData(
         profileToSave,
@@ -475,26 +476,26 @@ export const AITrainerProvider = ({ children }: { children: ReactNode }) => {
 
   const logHealthData = async (log: Partial<HealthDataLog>) => {
      if (!state.profile || state.isLocked) return;
-     
+
      // Find today's log or create a new one
      const today = log.date || new Date().toISOString().split('T')[0];
      const existingLogIndex = state.healthLogs.findIndex(l => l.date === today);
-     
+
      const newLogs = [...state.healthLogs];
      if (existingLogIndex >= 0) {
        newLogs[existingLogIndex] = { ...newLogs[existingLogIndex], ...log };
      } else {
        newLogs.push({ date: today, ...log } as HealthDataLog);
      }
-     
+
      // AUTO-SYNC BASELINES: If we get weight/height in a log and profile doesn't have it, update profile
      const profileUpdates: Partial<AITrainerProfile> = {};
      if (log.weight && !state.profile.baselineWeight) profileUpdates.baselineWeight = log.weight;
      // Note: Height is rarely in a log, but we'll check if it was passed in payload
      if ((log as any).height && !state.profile.baselineHeight) profileUpdates.baselineHeight = (log as any).height;
 
-     const finalProfile = Object.keys(profileUpdates).length > 0 
-        ? { ...state.profile, ...profileUpdates } 
+     const finalProfile = Object.keys(profileUpdates).length > 0
+        ? { ...state.profile, ...profileUpdates }
         : state.profile;
 
      setState(s => ({ ...s, healthLogs: newLogs, profile: finalProfile }));
@@ -519,6 +520,47 @@ export const AITrainerProvider = ({ children }: { children: ReactNode }) => {
      }
   };
 
+  const approveAction = async (actionType: string, payload: any) => {
+      try {
+          if (actionType === 'update_metrics') {
+              console.log("Approving AI Action: update_metrics", payload);
+              const parsedPayload = { ...payload };
+              if (typeof parsedPayload.weight === 'string') parsedPayload.weight = parseFloat(parsedPayload.weight);
+              if (typeof parsedPayload.height === 'string') parsedPayload.height = parseFloat(parsedPayload.height);
+              if (typeof parsedPayload.baselineHeight === 'string') parsedPayload.baselineHeight = parseFloat(parsedPayload.baselineHeight);
+              if (parsedPayload.baselineHeight && !parsedPayload.height) {
+                  parsedPayload.height = parsedPayload.baselineHeight;
+              }
+              await logHealthData(parsedPayload);
+          } else if (actionType === 'sync_supplements') {
+              console.log("Approving AI Action: sync_supplements", payload);
+              if (state.profile) {
+                  const newSupps = [...(state.profile.supplements || []), { ...payload, id: Date.now().toString() }];
+                  await updateProfile({ supplements: newSupps });
+              }
+          } else if (actionType === 'update_identity') {
+               console.log("Approving AI Action: update_identity", payload);
+               await updateIdentity(payload);
+          } else if (actionType === 'update_profile') {
+               console.log("Approving AI Action: update_profile", payload);
+               await updateProfile(payload);
+          } else if (actionType === 'propose_routine') {
+               console.log("Approving AI Action: propose_routine", payload);
+               const newRoutine: Routine = {
+                   ...payload,
+                   id: Date.now().toString(),
+                   date: new Date().toISOString().split('T')[0],
+                   status: 'active'
+               };
+               await addRoutine(newRoutine);
+          }
+      } catch (e) {
+          console.error("Failed to execute approved action", e);
+      }
+  };
+
+  // Note: We're removing auto-processing for data-mutating actions (except complete_onboarding and add_soul_insight).
+  // These will now be processed via the Chat UI approval mechanism.
   const processActions = async (content: string) => {
       // Find all <action> tags
       const actionRegex = /<action\s+type="([^"]+)">([\s\S]*?)<\/action>/g;
@@ -527,42 +569,16 @@ export const AITrainerProvider = ({ children }: { children: ReactNode }) => {
           const actionType = match[1];
           try {
               const payload = JSON.parse(match[2].trim());
-              
-              if (actionType === 'update_metrics') {
-                  console.log("AI Action: update_metrics", payload);
-                  const parsedPayload = { ...payload };
-                  if (typeof parsedPayload.weight === 'string') parsedPayload.weight = parseFloat(parsedPayload.weight);
-                  if (typeof parsedPayload.height === 'string') parsedPayload.height = parseFloat(parsedPayload.height);
-                  if (typeof parsedPayload.baselineHeight === 'string') parsedPayload.baselineHeight = parseFloat(parsedPayload.baselineHeight);
-                  if (parsedPayload.baselineHeight && !parsedPayload.height) {
-                      parsedPayload.height = parsedPayload.baselineHeight;
-                  }
-                  await logHealthData(parsedPayload);
-              } else if (actionType === 'sync_supplements') {
-                  console.log("AI Action: sync_supplements", payload);
-                  if (state.profile) {
-                      const newSupps = [...(state.profile.supplements || []), { ...payload, id: Date.now().toString() }];
-                      await updateProfile({ supplements: newSupps });
-                  }
-              } else if (actionType === 'update_identity') {
-                   console.log("AI Action: update_identity", payload);
-                   await updateIdentity(payload);
-              } else if (actionType === 'add_soul_insight') {
-                   console.log("AI Action: add_soul_insight", payload);
+
+              if (actionType === 'add_soul_insight') {
+                   console.log("AI Action (Auto): add_soul_insight", payload);
                    await addSoulInsight({ ...payload, source: 'conversation' });
-              } else if (actionType === 'propose_routine') {
-                   console.log("AI Action: propose_routine", payload);
-                   const newRoutine: Routine = {
-                       ...payload,
-                       id: Date.now().toString(),
-                       date: new Date().toISOString().split('T')[0],
-                       status: 'proposed'
-                   };
-                   await addRoutine(newRoutine);
               } else if (actionType === 'complete_onboarding') {
-                  console.log("AI Action: complete_onboarding");
+                  console.log("AI Action (Auto): complete_onboarding");
                   await completeOnboarding();
               }
+              // Other actions (update_metrics, sync_supplements, update_identity, propose_routine, update_profile)
+              // are ignored here and handled by the user clicking "Approve" in the chat UI.
           } catch (e) {
               console.error("Failed to parse action payload", e);
           }
@@ -610,7 +626,7 @@ export const AITrainerProvider = ({ children }: { children: ReactNode }) => {
       const userMessage: Message = { role: 'user', content };
       const newHistory = [...currentHistory, userMessage];
       const tempHistory = [...newHistory, { role: 'assistant', content: '' } as Message];
-      
+
       setState(s => ({ ...s, chatHistory: tempHistory, profile: currentProfile, isLoading: true, error: null }));
 
       // Save user message immediately so it's not lost on reload during streaming
@@ -633,7 +649,7 @@ export const AITrainerProvider = ({ children }: { children: ReactNode }) => {
               systemPrompt: fullPrompt,
               insights: [],
               summary: "A user chatting with their AI Trainer Titan Engine.",
-              history: currentHistory 
+              history: currentHistory
           }, (chunk) => {
               streamingContent += chunk;
               setState(s => {
@@ -655,7 +671,7 @@ export const AITrainerProvider = ({ children }: { children: ReactNode }) => {
           }
 
           setState(s => ({ ...s, chatHistory: updatedHistory, isLoading: false }));
-          
+
           // Final save of full conversation history
           await persistCurrentState({ chatHistory: updatedHistory });
 
@@ -720,6 +736,7 @@ export const AITrainerProvider = ({ children }: { children: ReactNode }) => {
       logHealthData,
       addRoutine,
       updateRoutine,
+      approveAction,
       sendMessageToTrainer,
       lock,
       migrateGuestToUser,

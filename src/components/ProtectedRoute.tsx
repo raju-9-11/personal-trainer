@@ -9,10 +9,10 @@ interface ProtectedRouteProps {
   allowGuest?: boolean;
 }
 
-export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ 
-  children, 
+export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
+  children,
   redirectTo = '/admin/login',
-  allowGuest = false 
+  allowGuest = false
 }) => {
   const { isAuthenticated, loading, user } = useAuth();
   const navigate = useNavigate();

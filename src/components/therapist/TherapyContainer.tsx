@@ -47,7 +47,7 @@ export function TherapyContainer({
         if (sessionPwd && encryptedProfile && mode === 'locked') {
             const success = await handleUnlock(sessionPwd);
             if (!success) {
-                // If it fails, maybe the password was for a different account or changed? 
+                // If it fails, maybe the password was for a different account or changed?
                 // Don't alert, just let them try manually.
             }
         }

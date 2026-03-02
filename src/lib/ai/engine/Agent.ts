@@ -25,7 +25,7 @@ export class TherapistAgent {
             // Update orchestrator state
         }
     }
-    
+
     // Background fetch models without blocking initialization
     if (this.config.openrouterKey) {
         ModelRegistry.fetchModels(this.config.openrouterKey).catch(e => {

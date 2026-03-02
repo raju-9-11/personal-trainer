@@ -43,8 +43,8 @@ export function TrainerSettings() {
                       AI Performance Strategist
                   </CardDescription>
                   <p className="text-sm text-slate-600 dark:text-slate-400 mt-2 max-w-lg">
-                      {profile?.goals && profile.goals.length > 0 
-                        ? `Focus: ${profile.goals.join(', ')}` 
+                      {profile?.goals && profile.goals.length > 0
+                        ? `Focus: ${profile.goals.join(', ')}`
                         : "Optimizing your physical potential."}
                   </p>
               </div>

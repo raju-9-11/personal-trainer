@@ -91,7 +91,7 @@ export const AITrainerDashboard = () => {
             </CardContent>
         </Card>
       )}
-      
+
       {/* Guest Mode Banner */}
       {isGuest && (
         <Card className="bg-orange-500/10 border-orange-500/30">
@@ -130,7 +130,7 @@ export const AITrainerDashboard = () => {
                    <Shield className="w-6 h-6 text-primary" /> Titan Engine Status
                 </h3>
                 <p className="text-muted-foreground mt-2 leading-relaxed">
-                   Operating at {predictedPerformance || 85}% efficiency. 
+                   Operating at {predictedPerformance || 85}% efficiency.
                    {latestLog?.cnsFatigueScore && latestLog.cnsFatigueScore > 7 ? " Warning: CNS overload detected. Adapting protocols." : " Neural pathways clear. Protocols optimized for performance."}
                 </p>
               </div>
@@ -164,7 +164,7 @@ export const AITrainerDashboard = () => {
 
       {/* Protocol & History Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          
+
           {/* Training Protocols */}
           <Card className="bg-card border-primary/20 shadow-md">
               <CardHeader className="pb-4 border-b">

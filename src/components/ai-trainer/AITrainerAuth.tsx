@@ -78,7 +78,7 @@ export const AITrainerAuth = () => {
 
   if (hasProfile && !isRegistering && !isGuest) {
     return (
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
         className="max-w-md mx-auto mt-20 p-8 bg-card rounded-2xl border shadow-2xl relative overflow-hidden"
@@ -116,9 +116,9 @@ export const AITrainerAuth = () => {
   return (
     <div className="max-w-xl mx-auto mt-10 p-8 bg-card rounded-2xl border shadow-2xl relative overflow-hidden">
       <div className="absolute top-0 left-0 w-full h-1 bg-muted">
-         <motion.div 
-            className="h-full bg-primary" 
-            initial={{ width: "20%" }} 
+         <motion.div
+            className="h-full bg-primary"
+            initial={{ width: "20%" }}
             animate={{ width: `${((step + 1) / 5) * 100}%` }}
          />
       </div>
@@ -143,7 +143,7 @@ export const AITrainerAuth = () => {
                </div>
 
                <div className="grid grid-cols-1 gap-4">
-                   <button 
+                   <button
                        onClick={() => { setTrackingLevel('standard'); nextStep(); }}
                        className={`p-6 rounded-2xl border-2 text-left transition-all ${trackingLevel === 'standard' ? 'border-primary bg-primary/5 shadow-lg shadow-primary/10' : 'border-muted hover:border-primary/50'}`}
                    >
@@ -154,7 +154,7 @@ export const AITrainerAuth = () => {
                        <p className="text-xs text-muted-foreground leading-relaxed">Focus on physical metrics, supplement consistency, and basic recovery. Professional-grade performance tracking.</p>
                    </button>
 
-                   <button 
+                   <button
                        onClick={() => { setTrackingLevel('indepth'); nextStep(); }}
                        className={`p-6 rounded-2xl border-2 text-left transition-all ${trackingLevel === 'indepth' ? 'border-primary bg-primary/5 shadow-lg shadow-primary/10' : 'border-muted hover:border-primary/50'}`}
                    >
@@ -185,7 +185,7 @@ export const AITrainerAuth = () => {
                    <h2 className="text-2xl font-bold">Secure Your Biometrics</h2>
                    <p className="text-muted-foreground">We've detected your guest progress. Let's encrypt and save it to your permanent vault.</p>
                </div>
-               
+
                <div className="bg-muted/30 p-4 rounded-xl space-y-2 border">
                    <p className="text-xs font-bold uppercase text-muted-foreground">Current Progress</p>
                    <div className="flex justify-between text-sm">
@@ -225,7 +225,7 @@ export const AITrainerAuth = () => {
                 <h2 className="text-2xl font-bold">Secure Your Data</h2>
                 <p className="text-muted-foreground">This password encrypts your health data locally. It is never stored on our servers.</p>
             </div>
-            
+
             <div className="pt-4">
                 {hasTherapyVault && !isUnlocked ? (
                     <div className="bg-muted/40 border rounded-xl p-4 space-y-3">
@@ -251,7 +251,7 @@ export const AITrainerAuth = () => {
                     </>
                 )}
             </div>
-            
+
             <Button onClick={nextStep} disabled={effectivePassword.length < 6} className="w-full py-7 rounded-xl font-bold">
                 Continue to Profile
                 <ArrowRight className="ml-2 w-5 h-5" />
