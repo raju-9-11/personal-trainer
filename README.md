@@ -30,7 +30,6 @@ A high-performance, energetic portfolio web application for personal trainers an
     ```bash
     npm run dev
     ```
-    Open [http://localhost:3000](http://localhost:3000).
 
 ## Documentation
 
