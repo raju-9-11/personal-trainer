@@ -1,19 +1,37 @@
 rules_version = '2';
-
 service cloud.firestore {
   match /databases/{database}/documents {
+    // Helper function to check if user is signed in
+    function isSignedIn() {
+      return request.auth != null;
+    }
 
-    // This rule allows anyone with your Firestore database reference to view, edit,
-    // and delete all data in your Firestore database. It is useful for getting
-    // started, but it is configured to expire after 30 days because it
-    // leaves your app open to attackers. At that time, all client
-    // requests to your Firestore database will be denied.
-    //
-    // Make sure to write security rules for your app before that time, or else
-    // all client requests to your Firestore database will be denied until you Update
-    // your rules
-    match /{document=**} {
-      allow read, write: if request.time < timestamp.date(2026, 1, 27);
+    // Allow users to read/write their own trainer profile
+    match /trainers/{trainerId} {
+      allow read: if true; // Publicly viewable
+      allow write: if isSignedIn() && request.auth.uid == trainerId;
+      
+      // Sub-collections like brand_identity, certifications, etc.
+      match /{allSubcollections=**} {
+        allow read: if true;
+        allow write: if isSignedIn() && request.auth.uid == trainerId;
+      }
+    }
+
+    // Allow users to read/write their own AI trainer data (Encrypted)
+    match /ai_trainers/{userId} {
+      allow read, write: if isSignedIn() && request.auth.uid == userId;
+    }
+    
+    // Therapy profiles
+    match /therapist_profiles/{userId} {
+      allow read, write: if isSignedIn() && request.auth.uid == userId;
+    }
+
+    // Platform settings (Admin only)
+    match /platform_settings/{document=**} {
+      allow read: if true;
+      allow write: if isSignedIn() && request.auth.token.admin == true;
     }
   }
 }
